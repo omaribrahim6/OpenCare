@@ -99,6 +99,17 @@ export interface NessieOptions {
 
 type Method = "GET" | "POST" | "PUT";
 
+/**
+ * Nessie keeps whole dollars only: it silently truncates cents ($64.20 is stored as $64). Refuse
+ * anything else, so a payout or donation can never be recorded for more than Nessie moved.
+ */
+export function wholeDollars(cents: number): number {
+  if (!Number.isInteger(cents) || cents < 0 || cents % 100 !== 0) {
+    throw new CoreError("bad_request", `Nessie only handles whole dollars, not ${cents} cents`);
+  }
+  return cents / 100;
+}
+
 export class NessieClient {
   private readonly apiKey: string;
   private readonly baseUrl: string;
@@ -229,7 +240,7 @@ export class NessieClient {
     return this.request("GET", `/bills/${encodeURIComponent(billId)}`);
   }
 
-  createBill(
+  async createBill(
     accountId: string,
     input: { payee: string; nickname: string; amountCents: number; status?: NessieBillStatus; paymentDate?: string },
   ): Promise<NessieBill> {
@@ -240,7 +251,7 @@ export class NessieClient {
       nickname: input.nickname,
       payment_date: input.paymentDate ?? today,
       recurring_date: 1,
-      payment_amount: centsToDollars(input.amountCents),
+      payment_amount: wholeDollars(input.amountCents),
     });
   }
 
@@ -255,11 +266,15 @@ export class NessieClient {
     return this.request("GET", `/accounts/${encodeURIComponent(accountId)}/purchases`);
   }
 
-  getPurchase(purchaseId: string): Promise<NessiePurchase> {
-    return this.request("GET", `/purchases/${encodeURIComponent(purchaseId)}`);
+  /**
+   * One purchase on an account, or null. api.nessieisreal.com doesn't serve GET /purchases/{id}
+   * (it answers 403), so this searches the account's purchase list.
+   */
+  async findPurchase(accountId: string, purchaseId: string): Promise<NessiePurchase | null> {
+    return (await this.listPurchases(accountId)).find((p) => p._id === purchaseId) ?? null;
   }
 
-  createPurchase(
+  async createPurchase(
     accountId: string,
     input: { merchantId: string; amountCents: number; description: string; date?: string },
   ): Promise<NessiePurchase> {
@@ -267,7 +282,7 @@ export class NessieClient {
       merchant_id: input.merchantId,
       medium: "balance",
       purchase_date: input.date ?? nessieDate(),
-      amount: centsToDollars(input.amountCents),
+      amount: wholeDollars(input.amountCents),
       status: "completed",
       description: input.description,
     });
@@ -279,7 +294,7 @@ export class NessieClient {
     return this.request("GET", `/accounts/${encodeURIComponent(accountId)}/deposits`);
   }
 
-  createDeposit(
+  async createDeposit(
     accountId: string,
     input: { amountCents: number; description: string; date?: string },
   ): Promise<NessieDeposit> {
@@ -287,7 +302,7 @@ export class NessieClient {
       medium: "balance",
       transaction_date: input.date ?? nessieDate(),
       status: "completed",
-      amount: centsToDollars(input.amountCents),
+      amount: wholeDollars(input.amountCents),
       description: input.description,
     });
   }

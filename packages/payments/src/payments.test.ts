@@ -117,10 +117,18 @@ describe("money", () => {
 });
 
 describe("Nessie client", () => {
+  test("refuses amounts Nessie would truncate", async () => {
+    await assert.rejects(
+      deps.nessie.createDeposit("acct_fund", { amountCents: 6_420, description: "x" }),
+      (err: unknown) => err instanceof CoreError && err.code === "bad_request",
+    );
+    assert.equal(fake.deposits.length, 0);
+  });
+
   test("unwraps created objects and keeps the key out of errors", async () => {
     const dep = await deps.nessie.createDeposit("acct_fund", { amountCents: 2_500, description: "x" });
     assert.equal(dep.amount, 25);
-    await assert.rejects(deps.nessie.getPurchase("missing"), (err: unknown) => {
+    await assert.rejects(deps.nessie.getBill("missing"), (err: unknown) => {
       assert.ok(err instanceof NessieError);
       assert.equal(err.status, 404);
       assert.equal(err.uncertain, false);
@@ -213,6 +221,13 @@ describe("redemption", () => {
     assert.equal(fake.purchaseCount(), 1);
   });
 
+  test("a grant with cents is refused before it is claimed", async () => {
+    await approvedGrant(4_550);
+    await assert.rejects(redeemGrant(deps, REDEEM), (err: unknown) => err instanceof CoreError && err.code === "bad_request");
+    assert.equal((await getGrant(db, "grt_1")).status, "approved");
+    assert.equal(fake.purchaseCount(), 0);
+  });
+
   test("the wrong provider can't redeem", async () => {
     await approvedGrant();
     await assert.rejects(
@@ -241,5 +256,6 @@ describe("card donations", () => {
   test("rejects out-of-range amounts", async () => {
     await assert.rejects(donateByCard(deps, { amountCents: 50 }), (err: unknown) => err instanceof CoreError);
     await assert.rejects(donateByCard(deps, { amountCents: 12.5 }), (err: unknown) => err instanceof CoreError);
+    await assert.rejects(donateByCard(deps, { amountCents: 2_550 }), (err: unknown) => err instanceof CoreError);
   });
 });
