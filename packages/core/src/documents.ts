@@ -1,50 +1,51 @@
-// Document persistence (SPEC §3, §9). Extraction itself is the ai lane's job: route handlers
-// call @abdulcare/ai and store the result here.
+// Documents (SPEC §9): a copy of the Nessie bill or purchase the patient chose. Route handlers
+// re-read the item from Nessie (payments lane) and classify it (ai lane) before storing it here,
+// so nothing in a document comes from the browser except the Nessie ID.
 
-import type {
-  ConfirmedFields,
-  DocumentRecord,
-  DocumentSource,
-  DocumentStatus,
-  ExtractionResult,
+import {
+  EXPENSE_CATEGORIES,
+  type DocumentRecord,
+  type DocumentSource,
+  type ExpenseCategory,
 } from "@abdulcare/contracts";
 import type { Db } from "./db";
-import { CoreError, iso, newId } from "./util";
-
-/** Vercel's request body limit is 4.5 MB; base64 adds a third. */
-export const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
-const IMAGE_MIMES = ["image/jpeg", "image/png"];
+import { CoreError, isPositiveCents, iso, newId } from "./util";
 
 interface DocumentRow {
   id: string;
   patient_id: string;
   source: DocumentSource;
-  status: DocumentStatus;
-  extraction: ExtractionResult | null;
-  confirmed: ConfirmedFields | null;
-  has_image: boolean;
+  nessie_id: string;
+  merchant: string;
+  description: string | null;
+  bill_date: Date | string | null;
+  amount_cents: number;
+  likely_medical: boolean | null;
+  category: ExpenseCategory | null;
   created_at: Date;
 }
 
-const DOC_SELECT = `select id, patient_id, source, status, extraction, confirmed,
-                           image is not null as has_image, created_at
-                      from documents`;
+export const DOC_COLUMNS = `id, patient_id, source, nessie_id, merchant, description, bill_date,
+  amount_cents, likely_medical, category, created_at`;
 
-function toDocument(row: DocumentRow): DocumentRecord {
+export function toDocument(row: DocumentRow): DocumentRecord {
   return {
     id: row.id,
     patientId: row.patient_id,
     source: row.source,
-    status: row.status,
-    extraction: row.extraction,
-    confirmed: row.confirmed,
-    imageUrl: row.has_image ? `/api/documents/${row.id}/image` : null,
+    nessieId: row.nessie_id,
+    merchant: row.merchant,
+    description: row.description,
+    date: row.bill_date == null ? null : iso(row.bill_date).slice(0, 10),
+    amountCents: Number(row.amount_cents),
+    likelyMedical: row.likely_medical,
+    category: row.category,
     createdAt: iso(row.created_at),
   };
 }
 
 export async function getDocument(db: Db, id: string): Promise<DocumentRecord> {
-  const { rows } = await db.query<DocumentRow>(`${DOC_SELECT} where id = $1`, [id]);
+  const { rows } = await db.query<DocumentRow>(`select ${DOC_COLUMNS} from documents where id = $1`, [id]);
   if (!rows[0]) throw new CoreError("not_found", "Document not found");
   return toDocument(rows[0]);
 }
@@ -56,91 +57,54 @@ export async function getOwnedDocument(db: Db, id: string, patientId: string): P
   return doc;
 }
 
-export async function createScanDocument(
-  db: Db,
-  patientId: string,
-  image: Buffer,
-  mimeType: string,
-): Promise<DocumentRecord> {
-  if (!IMAGE_MIMES.includes(mimeType)) throw new CoreError("bad_request", "Image must be JPEG or PNG");
-  if (image.length === 0) throw new CoreError("bad_request", "Image is empty");
-  if (image.length > MAX_IMAGE_BYTES) throw new CoreError("bad_request", "Image is larger than 3 MB");
-  const id = newId("doc");
-  await db.query(
-    "insert into documents (id, patient_id, source, image, image_mime) values ($1, $2, 'scan', $3, $4)",
-    [id, patientId, image, mimeType],
-  );
-  return getDocument(db, id);
+export interface NessieItemInput {
+  source: DocumentSource;
+  nessieId: string;
+  merchant: string;
+  description?: string | null;
+  /** YYYY-MM-DD, or null. */
+  date?: string | null;
+  amountCents: number;
+  likelyMedical?: boolean | null;
+  category?: ExpenseCategory | null;
 }
 
-export async function createNessieDocument(
-  db: Db,
-  patientId: string,
-  source: "nessie_bill" | "nessie_purchase",
-  nessieId: string,
-): Promise<DocumentRecord> {
-  if (!nessieId) throw new CoreError("bad_request", "nessieId is required");
-  const id = newId("doc");
-  await db.query(
-    "insert into documents (id, patient_id, source, nessie_id) values ($1, $2, $3, $4)",
-    [id, patientId, source, nessieId],
-  );
-  return getDocument(db, id);
-}
-
-export async function getDocumentImage(db: Db, id: string): Promise<{ bytes: Buffer; mimeType: string } | null> {
-  const { rows } = await db.query<{ image: Buffer | Uint8Array | null; image_mime: string | null }>(
-    "select image, image_mime from documents where id = $1",
-    [id],
-  );
-  const row = rows[0];
-  if (!row?.image || !row.image_mime) return null;
-  return { bytes: Buffer.from(row.image), mimeType: row.image_mime };
-}
-
-/** Store the ai lane's extraction result. Unreadable scans go to retake/manual review. */
-export async function saveExtraction(db: Db, id: string, extraction: ExtractionResult): Promise<DocumentRecord> {
-  await db.query(
-    `update documents set extraction = $2, warnings = $3, status = $4, updated_at = now()
-      where id = $1 and status in ('extracting', 'extracted', 'unreadable')`,
-    [id, JSON.stringify(extraction), extraction.warnings ?? [], extraction.readable ? "extracted" : "unreadable"],
-  );
-  return getDocument(db, id);
-}
-
-function validateConfirmed(c: ConfirmedFields): ConfirmedFields {
-  if (!c || typeof c !== "object") throw new CoreError("bad_request", "confirmed fields are required");
-  const total = c.totalCents;
-  if (total != null && !(Number.isSafeInteger(total) && total > 0)) {
-    throw new CoreError("bad_request", "totalCents must be a positive integer or null");
+/**
+ * Store the patient's chosen Nessie item. Choosing the same item again returns the existing
+ * document, so a double tap on "Request help" never creates two.
+ */
+export async function createNessieDocument(db: Db, patientId: string, item: NessieItemInput): Promise<DocumentRecord> {
+  if (item.source !== "nessie_bill" && item.source !== "nessie_purchase") {
+    throw new CoreError("bad_request", "source must be nessie_bill or nessie_purchase");
   }
-  if (c.date != null && !/^\d{4}-\d{2}-\d{2}$/.test(c.date)) {
+  if (!item.nessieId) throw new CoreError("bad_request", "nessieId is required");
+  if (!isPositiveCents(item.amountCents)) throw new CoreError("bad_request", "amountCents must be a positive integer");
+  if (item.date != null && !/^\d{4}-\d{2}-\d{2}$/.test(item.date)) {
     throw new CoreError("bad_request", "date must be YYYY-MM-DD or null");
   }
-  const text = (v: string | null) => (v == null ? null : String(v).slice(0, 200));
-  return {
-    provider: text(c.provider),
-    documentType: c.documentType ?? null,
-    currency: c.currency == null ? null : String(c.currency).toUpperCase().slice(0, 3),
-    totalCents: total ?? null,
-    date: c.date ?? null,
-  };
-}
+  const category = item.category ?? null;
+  if (category != null && !EXPENSE_CATEGORIES.includes(category)) {
+    throw new CoreError("bad_request", "Unknown expense category");
+  }
 
-/** The patient reviewed and corrected the fields (SPEC §3: required before a request). */
-export async function confirmDocument(
-  db: Db,
-  id: string,
-  patientId: string,
-  confirmed: ConfirmedFields,
-): Promise<DocumentRecord> {
-  const doc = await getOwnedDocument(db, id, patientId);
-  if (doc.status === "extracting") throw new CoreError("invalid_state", "Extraction hasn't finished yet");
-  const { rows: locked } = await db.query("select 1 from grants where document_id = $1", [id]);
-  if (locked[0]) throw new CoreError("invalid_state", "A request was already made for this document");
-  await db.query(
-    "update documents set confirmed = $2, status = 'confirmed', updated_at = now() where id = $1",
-    [id, JSON.stringify(validateConfirmed(confirmed))],
+  const { rows } = await db.query<DocumentRow>(
+    `insert into documents (id, patient_id, source, nessie_id, merchant, description, bill_date,
+                            amount_cents, likely_medical, category)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     on conflict (patient_id, nessie_id) do update set nessie_id = excluded.nessie_id
+     returning ${DOC_COLUMNS}`,
+    [
+      newId("doc"),
+      patientId,
+      item.source,
+      item.nessieId,
+      String(item.merchant ?? "").slice(0, 200),
+      item.description == null ? null : String(item.description).slice(0, 500),
+      item.date ?? null,
+      item.amountCents,
+      item.likelyMedical ?? null,
+      category,
+    ],
   );
-  return getDocument(db, id);
+  return toDocument(rows[0]);
 }
