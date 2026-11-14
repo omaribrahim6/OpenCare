@@ -1,22 +1,10 @@
-body:has(.patient-workspace) {
-  background: #edf3ef;
-}
-
-.station-session:has(.patient-workspace) {
-  width: min(calc(100% - 32px), 820px);
-  margin: 24px auto;
-  background: #f6faf7;
-  border-color: #dce8df;
-  box-shadow: 0 18px 55px #1c453211;
-}
-
 .patient-workspace {
-  --insurance: #237765;
-  --hospital: #7575c1;
+  --insurance: #6954cb;
+  --hospital: #a48ce9;
   --fund: #b06a38;
   --payment: #477c9e;
-  --remaining: #a0aea6;
-  color: #182e27;
+  --remaining: #bbb9c9;
+  color: var(--d-text);
 }
 
 .patient-workspace h1 {
@@ -31,16 +19,16 @@ body:has(.patient-workspace) {
   font-size: 1.125rem;
 }
 
-.patient-nav {
-  display: flex;
+.patient-back {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-  margin-top: 18px;
-  padding: 5px;
-  background: #e9f0eb;
-  border-radius: 12px;
+  min-height: 44px;
+  color: var(--d-teal-deep);
+  text-decoration: none;
+  font-weight: 600;
 }
 
-.patient-nav a,
 .patient-back {
   display: inline-flex;
   align-items: center;
@@ -92,14 +80,14 @@ body:has(.patient-workspace) {
   align-items: center;
   gap: 14px;
   padding: 16px;
-  border: 1px solid #dce8df;
+  border: 1px solid var(--d-line);
   border-radius: 14px;
   background: white;
   color: inherit;
   text-decoration: none;
 }
 
-.patient-visit:hover { border-color: #58917c; background: #fbfefb; }
+.patient-visit:hover { border-color: #a991ef; background: #faf8ff; }
 
 .patient-visit-icon {
   display: grid;
@@ -107,8 +95,8 @@ body:has(.patient-workspace) {
   height: 43px;
   place-items: center;
   border-radius: 12px;
-  background: #e4f2e9;
-  color: #25634e;
+  background: #eeebfa;
+  color: var(--d-teal);
 }
 
 .patient-visit small,
@@ -140,7 +128,7 @@ body:has(.patient-workspace) {
 .patient-panel {
   margin: 14px 0;
   padding: clamp(14px, 3vw, 22px);
-  border: 1px solid #dce8df;
+  border: 1px solid var(--d-line);
   border-radius: 16px;
   background: #fff;
 }
@@ -206,7 +194,7 @@ body:has(.patient-workspace) {
   cursor: pointer;
 }
 
-.patient-legend button[aria-pressed="true"] { background: #edf4ef; border-color: #dce8df; }
+.patient-legend button[aria-pressed="true"] { background: #f0ebfc; border-color: var(--d-line); }
 .patient-legend strong, .patient-legend small { display: block; }
 .patient-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; }
 
@@ -215,7 +203,7 @@ body:has(.patient-workspace) {
   margin: 12px 0 0;
   padding: 10px 12px;
   border-radius: 8px;
-  background: #f4f7f5;
+  background: #f5f3fa;
   font-size: .9rem;
 }
 
@@ -226,7 +214,7 @@ body:has(.patient-workspace) {
   justify-content: space-between;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid #e3ebe6;
+  border-bottom: 1px solid var(--d-line);
 }
 
 .patient-lines li:last-child,
@@ -237,13 +225,13 @@ body:has(.patient-workspace) {
 .patient-plan dd { margin: 0; font-weight: 650; text-align: right; }
 
 .patient-action {
-  background: #eff8f2;
-  border-color: #d1e6d8;
+  background: #f0ebfc;
+  border-color: var(--d-line);
 }
 
-.station .patient-action .btn:not(.secondary) {
-  background: #145843;
-  border-color: #145843;
+.patient-action .btn:not(.secondary) {
+  background: var(--d-teal-deep);
+  border-color: var(--d-teal-deep);
   justify-content: center;
 }
 
@@ -260,17 +248,11 @@ body:has(.patient-workspace) {
 .patient-demo { display: flex; align-items: center; gap: 7px; }
 
 .patient-workspace :is(a, button, summary, input):focus-visible {
-  outline: 2px solid #145843;
+  outline: 2px solid var(--d-teal-deep);
   outline-offset: 2px;
 }
 
 @media (max-width: 520px) {
-  .station-session:has(.patient-workspace) {
-    width: 100%;
-    margin: 0;
-    border: 0;
-  }
-
   .patient-visit { gap: 9px; padding: 12px; grid-template-columns: auto minmax(0, 1fr) auto; }
   .patient-chevron { display: none; }
   .patient-visit-icon { width: 34px; height: 34px; }
@@ -288,19 +270,19 @@ body:has(.patient-workspace) {
 .patient-list-heading > span { color: #526463; font-size: .875rem; }
 .patient-visit-sheet {
   background: #fff;
-  border: 1px solid #dce8df;
+  border: 1px solid var(--d-line);
   border-radius: 20px;
   overflow: hidden;
 }
 
 .patient-visit-heading {
   padding: clamp(18px, 4vw, 28px);
-  background: #e8f1eb;
+  background: #eeebfa;
 }
 
 .patient-visit-heading h1 { margin: 0; font-size: clamp(1.65rem, 4vw, 2.5rem); }
-.patient-visit-heading .patient-visit-subtitle { margin: 6px 0 0; color: #425f53; }
-.patient-visit-heading > svg { flex: none; color: #386a55; }
+.patient-visit-heading .patient-visit-subtitle { margin: 6px 0 0; color: var(--d-text-2); }
+.patient-visit-heading > svg { flex: none; color: var(--d-teal); }
 
 .patient-visit-sheet .patient-balance {
   display: flex;
@@ -312,9 +294,9 @@ body:has(.patient-workspace) {
   padding: clamp(18px, 4vw, 28px);
   border: 0;
   border-radius: 0;
-  border-bottom: 1px solid #e3ebe6;
+  border-bottom: 1px solid var(--d-line);
   background: white;
-  color: #193f34;
+  color: #191822;
 }
 
 .patient-balance > div > span,
@@ -355,9 +337,9 @@ body:has(.patient-workspace) {
 .patient-visit-details {
   margin-top: 20px;
   padding: 0 clamp(12px, 3vw, 22px);
-  border-block: 1px solid #dce8df;
+  border-block: 1px solid var(--d-line);
 }
-.patient-visit-details details + details { border-top: 1px solid #dce8df; }
+.patient-visit-details details + details { border-top: 1px solid var(--d-line); }
 .patient-visit-details summary {
   display: flex;
   align-items: center;
@@ -368,3 +350,16 @@ body:has(.patient-workspace) {
 .patient-visit-details summary svg:last-child { margin-left: auto; }
 .patient-visit-details details[open] summary svg:last-child { transform: rotate(180deg); }
 .patient-visit-details details[open] { padding-bottom: 14px; }
+
+
+.patient-desk .d-body { width: 100%; max-width: 1240px; }
+.patient-desk .d-head { justify-content: space-between; }
+.patient-desk .d-head > strong { font-size: 20px; font-weight: 550; }
+.patient-desk-nav { margin-top: 20px; }
+.patient-mobile-nav { display: none; }
+
+@media (max-width: 900px) {
+  .patient-mobile-nav { display: block; padding: 0 12px; }
+  .patient-mobile-nav .d-nav { display: flex; flex-wrap: wrap; margin-top: 8px; }
+  .patient-mobile-nav .d-nav a { width: auto; }
+}
