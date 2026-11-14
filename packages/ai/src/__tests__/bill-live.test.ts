@@ -139,6 +139,24 @@ test("explanation: invented amounts, medical or payment claims, or a missing bal
   for (const f of failures) assert.equal((await engineWith(f).engine.explainBill(explainInput)).fallback, true);
 });
 
+test("explanation: 'you have' billing wording passes; 'you have' medical wording still falls back", async () => {
+  for (const summary of [
+    "Valley General Hospital charged $4,800.00. After insurance and charity care, you have $432.00 left to pay.",
+    "You have a remaining balance of $432.00, and you have the right to ask for an itemized bill.",
+  ]) {
+    const e = await engineWith(JSON.stringify({ summary, questionsToAsk: [] })).engine.explainBill(explainInput);
+    assert.equal(e.fallback, false, summary);
+  }
+  for (const summary of [
+    "You have a broken wrist, and $432.00 is left.",
+    "You may have a sprain. $432.00 is left.",
+    "You have 2 fractures; $432.00 is left.",
+  ]) {
+    const e = await engineWith(JSON.stringify({ summary, questionsToAsk: [] })).engine.explainBill(explainInput);
+    assert.equal(e.fallback, true, summary);
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Application text
 
@@ -180,6 +198,15 @@ test("application and explanation rewrites skip Gemini 3's thinking step", async
   const exp = engineWith(JSON.stringify({ summary: "x", questionsToAsk: [] }));
   await exp.engine.explainBill(explainInput);
   assert.deepEqual([app.client.calls[0].thinkingLevel, exp.client.calls[0].thinkingLevel], ["minimal", "minimal"]);
+});
+
+test("application: the policy name in other case and whole-dollar amounts still match", async () => {
+  const letter = "Dear billing office,\nI am applying for charity care for my visit on 2026-11-14 and request a reduction of $1,728 on my balance of $2,160.\nThank you.";
+  const a = await engineWith(JSON.stringify({ text: letter })).engine.writeApplication(appInput);
+  assert.equal(a.source, "gemini");
+  // Cents that are not in the case data are still an invented amount.
+  const off = await engineWith(JSON.stringify({ text: "I am applying for charity care and request $1,728.50 off." })).engine.writeApplication(appInput);
+  assert.equal(off.source, "template");
 });
 
 test("application: new numbers, approval claims, a missing reduction or failures fall back", async () => {
