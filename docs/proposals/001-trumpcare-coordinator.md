@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Discussing |
+| **Status** | Discussing (revision 2) |
 | **Proposed by** | Musa (`@Zintrivious`) |
 | **Steward** | Musa's Claude |
 | **Board thread** | [Planning Board #32, PROPOSAL post](../../../../issues/32#issuecomment-6880453404) |
@@ -11,7 +11,22 @@
 
 ## Summary
 
-Turn the product from "a community fund that pays bills" into **one place to find, apply for and track existing medical financial assistance** ("OSAP for medical bills"). The patient gives their information once. TrumpCare matches programs, prepares the applications, records each program's decision, and keeps one balance that only counts confirmed assistance. The community fund becomes a secondary resource for what's left. Gemini moves from ranking patients to reading bills and policies and preparing applications. The CareCard links a hospital visit to the patient's case.
+**Revision 2 (team discussion, Nov 14).** TrumpCare is a **bill-reduction pipeline** that runs a hospital bill through every source of help in order. First the patient's insurance pays its share. Then the AI applies to all of the hospital's assistance policies. Whatever remains goes to the **community care fund**, where a fixed eligibility algorithm scores the request, Gemini turns the result into a short decision brief, and a **human final reviewer** approves or denies. Because this is a hackathon, we treat funding as solved: hospitals fund the community care fund (it counts toward their nonprofit community-benefit obligations), alongside government programs and donations.
+
+Revision 1 (the "OSAP for medical bills" coordinator across many outside programs) is kept below for history.
+
+## Revision 2: the pipeline
+
+| Step | What happens | Who decides | Existing code that carries over |
+|---|---|---|---|
+| 1. Visit logged | Hospital staff tap the patient's CareCard at the hospital terminal; the visit and its charges are logged as **hospital-attested** | Hospital | Pairing, CareCard taps, sessions, patient profile |
+| 2. Insurance | The insurer's share is applied from the patient's plan on file (deductible, coinsurance, out-of-pocket maximum) and shown as an insurance adjustment | Insurer (simulated, deterministic) | New |
+| 3. Hospital policies | The AI checks the patient against **every** hospital assistance policy (for example charity care by income, self-pay discount, catastrophic cap) and applies to each one that fits. Approved reductions lower the bill in order, never double-counted | Hospital (simulated, rule-based) | Need profile; injection flag; explanations |
+| 4. Community care fund | The remaining balance becomes a fund request, scored by a **fixed, published eligibility algorithm** | Formula (deterministic) | `need-v1` formula, queue, fund ledger |
+| 5. AI decision brief | Gemini interprets the score and the case into a short **summarized decision list** (for example: recommend approve, partial, deny or more info, with reasons tied to the factor values and any flags). It never changes the score; a template is the fallback with no Gemini key | Nobody (advice only) | Rationale number checks; injection flag |
+| 6. Final review | A person approves or denies; approval pays the hospital | **Human final reviewer** | Decision route, whole-dollar approvals, second approval over $500, Nessie payout, Solana receipt |
+
+The patient sees one bill that shrinks step by step: gross charges → after insurance → after hospital assistance → after the community fund → what's left (if anything).
 
 ## Agreed so far
 
@@ -26,6 +41,9 @@ From the proposal's own §17. Not yet confirmed by the team; anyone who disagree
 - **Possible** assistance is never subtracted from the balance; only **confirmed** assistance is.
 - A generated application is never shown as submitted.
 - All demo data is fictional, and simulated decisions are labeled as simulated.
+- **Revision 2:** funding is treated as solved for the hackathon. Hospitals fund the community care fund (nonprofit community benefit), with government programs and donations.
+- **Revision 2:** the order is insurance → hospital policies → community care fund. Each step only sees what the previous steps left.
+- **Revision 2:** the fund's eligibility uses a fixed algorithm; Gemini interprets it into a decision brief; a human final reviewer approves or denies.
 
 ## Open questions
 
@@ -34,36 +52,44 @@ The full list is in §16 of the proposal text below. These are the ones that blo
 | # | Question | Raised by | Current answer / options | Status |
 |---|---|---|---|---|
 | Q1 | Do we switch before the deadline (initial Devpost tonight 12:00 AM, final Sun 9:00 AM)? | Musa's Claude | Only with a hard MVP cut and a fast decision. Musa's Claude: decide by about noon EST. Noureldin: if there's no decision by about 1–2 PM EST, keep the current build (48/48 passing) for the demo and pitch this as the roadmap | Open: needs Omar |
-| Q2 | Which programs are in the demo directory? | Proposal §16D | Fictional, clearly labeled programs (hospital charity care, one nonprofit, the community fund), with hand-written rules carrying a source and review date. Real programs need sourced rules we can't verify by Sunday | Leaning: fictional (Musa's Claude, Noureldin) |
+| Q2 | ~~Which programs are in the demo directory?~~ Revision 2: which **hospital policies** are in the demo? | Proposal §16D | Fictional, clearly labeled programs (hospital charity care, one nonprofit, the community fund), with hand-written rules carrying a source and review date. Real programs need sourced rules we can't verify by Sunday | Leaning: fictional, with sourced hand-written rules (Musa's Claude, Noureldin); now applies to hospital policies |
 | Q3 | Does Gemini still rank the fund's queue? | Proposal §3C | No. The published `need-v1` formula orders the fund's queue; the ranking code can stay unused in `packages/ai` | Leaning: drop it (Musa's Claude, Noureldin) |
 | Q4 | How is "submitted" shown when nothing is actually submitted? | Proposal §5 Stage 6 | "Submitted (simulated)", with the label always visible | Leaning: as stated (Musa's Claude, Noureldin) |
-| Q5 | What happens to the current kiosk, provider and caseworker screens? | Musa's Claude | Reuse: the provider terminal becomes the hospital staff terminal; the caseworker desk records program decisions | Open |
+| Q5 | What happens to the current kiosk, provider and caseworker screens? | Musa's Claude | Revision 2: the provider terminal becomes the hospital intake terminal; the caseworker desk becomes the final reviewer's queue with the decision brief; the kiosk becomes the patient's bill page | Open |
 | Q6 | Product name: keep "TrumpCare"? | Musa's Claude | "TrumpCare" was the popular name for the 2017 AHCA repeal bill and could read as political or satire. Decide separately from the product | Open |
 | Q7 | Does the bill come from Nessie, from a seeded document, or both? | Proposal §3E | A seeded hospital-attested bill, with no OCR. The injection flag stays on the seeded documents and packet text (a tampered seeded bill is still a demo moment). Nessie keeps payouts and donations | Leaning: seeded (Musa's Claude, Noureldin) |
+| Q9 | When the AI "applies" to a hospital policy, who decides it? | Musa's Claude | Suggestion: the policy's rules decide automatically, labeled "hospital decision (simulated)". A hospital staff approval screen is optional if time allows | Open |
+| Q10 | Is the fund's algorithm an eligibility cut-off, a ranking, or both? | Musa's Claude | Suggestion: the `need-v1` score orders the queue, plus a published minimum score for eligibility. The reviewer can still approve below it, with a note | Open |
+| Q11 | Does the decision brief recommend an amount? | Musa's Claude | Suggestion: yes, from a rule (the remaining balance, capped by fund rules). The reviewer can change it; the brief never changes the score | Open |
+| Q12 | Where does insurance data come from, and which lane owns adjudication? | Musa's Claude | Suggestion: a seeded plan per patient (deductible, coinsurance, out-of-pocket max); deterministic adjudication in core (api lane) | Open |
+| Q13 | What does Nessie do now that the bill comes from the hospital? | Musa's Claude | Suggestion: pay the hospital from the fund (existing payout) and take donations; the patient's Nessie account supplies the income-from-deposits check. Bill discovery from Nessie is dropped | Open |
 | Q8 | What if there's no Gemini key by demo time? | Noureldin | Every AI step needs a deterministic path that works without a key; Gemini only improves it. No "Gemini reads policies" in the MVP, because it would show nothing on stage without a key | Leaning: required (Noureldin) |
 
 ## Proposed MVP scope
 
-First draft, from Musa's Claude's reply on #32. The steward updates it as the discussion moves.
+Revision 2, first draft by the steward. It replaces the revision 1 five-screen plan.
 
-- **Build (five screens, mostly reusing what exists):**
-  1. **Hospital staff terminal:** tap the CareCard and attach a $5,000 bill marked "hospital-attested". Reuses pairing, taps and sessions.
-  2. **Patient case page:** the bill with its source badge, plus 3 programs with why each may fit and what's missing. Program requirements are hand-written rules with a source and review date; matching is rule-based (reusing the matcher from closed PR #7); Gemini only explains.
-  3. **Prepare application:** a template fills each packet from the one profile. Gemini may rewrite the text, checked so it can't add amounts, fields or claims. Status runs Ready for review → Submitted (simulated).
-  4. **Program decisions:** the caseworker desk records "charity care: $2,500 reduction" (no money moves) and "nonprofit: $1,000 paid".
-  5. **Balance ledger:** counts only confirmed events. A community fund grant covers the remainder through the existing Nessie payout and Solana receipt.
-- **Cut:** real submission, insurance appeals, OCR of arbitrary uploads (seed the documents), identity verification, the business model (pitch slide only), Gemini ranking the queue, and Gemini reading policy documents.
-- **Lane impact (draft):**
-  - **api:** case, program, application and ledger-event models; attach-bill and record-decision endpoints.
-  - **ai:** the requirements catalog, rule-based matching, template packets with an optional checked Gemini rewrite, and explanations. Classification, explanation checks and injection detection carry over. Noureldin estimates **about 5–6 h** once the api contracts exist (a guess).
-  - **payments:** unchanged, plus bill-reduction events that move no money.
-  - **web:** the five screens; the data layer and the kiosk shell carry over.
+- **Build:**
+  1. **Hospital intake terminal** (today's provider device, renamed): tap the CareCard and log a seeded visit with itemized charges, marked hospital-attested.
+  2. **Insurance step:** deterministic adjudication from the seeded plan, shown as one line on the bill.
+  3. **Hospital policies step:** 3 fictional, labeled policies with hand-written rules (a source and review date each). The AI checks and applies to each; approved reductions post automatically and are labeled simulated. Gemini explains; a template is the fallback.
+  4. **Fund request:** the remaining balance goes in automatically, scored by `need-v1` with a published eligibility minimum.
+  5. **Decision brief:** for each request, a short list (recommendation, suggested amount, reasons tied to the factors, flags) with a template fallback.
+  6. **Final reviewer queue** (today's caseworker desk): the brief beside the score; approve or deny; Nessie pays the hospital; Solana receipt.
+  7. **Patient bill page** (kiosk): the bill shrinking step by step, with what's confirmed and what's pending.
+- **Cut:** real insurers or claims, real hospital policies, OCR, identity verification, appeals, Gemini ranking the queue, and bill discovery from Nessie.
+- **Lane impact (draft, to be confirmed by each lane):**
+  - **api:** visit and line-item models, insurance plan and adjudication, hospital policy catalog and application records, the bill ledger (reductions vs payments), the eligibility minimum, routes.
+  - **ai:** policy matching and application text, the decision brief with checks and a template fallback; classification and the injection flag carry over. Noureldin's revision 1 estimate was about 5–6 h; it needs updating.
+  - **payments:** payout now goes to the hospital as provider; donations unchanged.
+  - **web:** intake terminal, patient bill page, decision brief in the reviewer queue.
 
 ## Risks
 
 - **Time:** a pivot this late can leave two half-finished products. Mitigation: decide fast, freeze the cut list, keep the current journey working until the new one runs end to end.
 - **Becoming "just information"** (§18): the demo must show work being removed, not only recommendations.
 - **Overclaiming:** simulated submissions or decisions shown as real would undercut trust with judges.
+- **Scope:** revision 2 adds insurance and hospital-policy steps; it must still fit before Sun 9:00 AM. Cut first: the insurance UI detail, then the number of policies.
 - **No Gemini key** (Q8): AI steps must run on rules and templates, or the demo shows nothing.
 - **Naming** (Q6).
 
@@ -102,7 +128,7 @@ _No position yet._
 _No position yet._
 
 ### Musa (`@Zintrivious`)
-**Proposer. Agrees** with the direction and prefers it to the community-fund design.
+**Proposer. Agrees.** Revision 2 (Nov 14) comes from the team's discussion: treat funding as solved (hospitals fund it as nonprofits, plus government programs), run the bill through insurance, then every hospital policy (applied by the AI), then the community care fund. The fund uses a fixed eligibility algorithm, Gemini summarizes it into a decision list, and a human final reviewer approves or denies.
 
 Musa's Claude (an opinion): agree, with changes. The pivot only works with the MVP cut above and a decision by about noon EST Saturday. Most current code carries over. Separately, flags the name (Q6).
 
@@ -115,10 +141,11 @@ Musa's Claude (an opinion): agree, with changes. The pivot only works with the M
 - 2026-11-14 11:30 EST, Musa's Claude: created from Musa's proposal (#32) and Musa's Claude's reply; the shared sections are seeded from proposal §16 and §17.
 - 2026-11-14 11:30 EST, Noureldin's Claude: added Noureldin's position (PR #35).
 - 2026-11-14 11:45 EST, Musa's Claude (steward): folded Noureldin's position into Q1–Q4 and Q7, added Q8 (no Gemini key), updated the MVP scope, cut list, ai lane estimate and risks.
+- 2026-11-14 12:15 EST, Musa's Claude (steward): recorded revision 2 from the team discussion relayed by Musa. New summary, the pipeline table, agreed points (funding assumption, order of steps, human final reviewer), Q9–Q13, a new MVP scope and risks. Revision 1 is kept for history.
 
-## Proposal
+## Proposal (revision 1, for history)
 
-Musa's original text, as posted on #32.
+Musa's original text, as posted on #32. Revision 2 above takes precedence where they differ.
 
 ### TrumpCare — The New Vision
 ##### HackUMass XIV | Product Concept & Redesign Proposal
