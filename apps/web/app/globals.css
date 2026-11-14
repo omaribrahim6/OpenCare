@@ -168,3 +168,33 @@ th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--lin
 .steps { display: flex; gap: 6px; margin: 0 0 16px; padding: 0; list-style: none; }
 .steps li { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
 .steps li.done { background: var(--brand); }
+
+h3 { font-size: 1.05rem; margin: 1.25rem 0 0.4rem; }
+
+/* Reviewer queue */
+.queue { display: grid; gap: 16px; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 900px) { .queue { grid-template-columns: 340px 1fr; } .queue-detail { position: sticky; top: 16px; } }
+.queue-list { list-style: none; padding: 0; margin: 0; }
+.queue-row {
+  display: flex; gap: 12px; width: 100%; text-align: left;
+  padding: 14px; font: inherit; color: var(--ink);
+  background: var(--surface); border: 2px solid var(--line); border-radius: var(--radius);
+  cursor: pointer;
+}
+.queue-row.selected { border-color: var(--brand); box-shadow: inset 4px 0 0 var(--brand); }
+.queue-rank { font-size: 1.4rem; font-weight: 800; color: var(--muted); min-width: 2.2ch; }
+.queue-main { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.score { font-size: 1.4rem; font-weight: 800; color: var(--brand); }
+.score small { font-size: 0.8rem; font-weight: 400; color: var(--muted); }
+
+.injection-warning {
+  margin-top: 16px; padding: 14px; border-radius: 10px;
+  border: 2px solid var(--bad); color: var(--ink);
+  background: color-mix(in srgb, var(--bad) 10%, var(--surface));
+}
+.injection-warning strong { color: var(--bad); }
+blockquote {
+  margin: 8px 0 0; padding: 10px 14px; border-left: 4px solid var(--line);
+  background: var(--bg); border-radius: 6px; overflow-wrap: anywhere;
+}
+.untrusted { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9rem; overflow-wrap: anywhere; }
