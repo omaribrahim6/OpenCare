@@ -1,19 +1,30 @@
-// UI types. Stable shapes come from @abdulcare/contracts; the need-ranking shapes below
-// mirror SPEC rev 4 §7 locally until the api lane's migration 003 contracts land.
+// UI types. Every API shape comes from @abdulcare/contracts; only display helpers live here.
 
-import type { Cents, GrantStatus, PatientSummary, Provider, Receipt } from "@abdulcare/contracts";
+import type { ExpenseCategory, InsuranceStatus, PatientSummary } from "@abdulcare/contracts";
 
-export type { Cents, FundSummary, GrantStatus, PatientSummary, Provider, Receipt } from "@abdulcare/contracts";
+export type {
+  Cents,
+  DocumentRecord,
+  DonationResponse,
+  Explanation,
+  ExpenseCategory,
+  FoundBill,
+  FundSummary,
+  Grant,
+  GrantStatus,
+  InsuranceStatus,
+  NeedAssessment,
+  NeedFactor,
+  PatientProfile,
+  PatientSummary,
+  Provider,
+  QueueItem,
+  Receipt,
+  ReviewQueue,
+  SuspiciousContent,
+} from "@abdulcare/contracts";
 
-export const EXPENSE_CATEGORIES = [
-  "pharmacy",
-  "emergency",
-  "hospital",
-  "primary_care",
-  "dental_vision",
-  "other_medical",
-] as const;
-export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
+export { MAX_HARDSHIP_NOTE_CHARS, SECOND_APPROVAL_ABOVE_CENTS } from "@abdulcare/contracts";
 
 export const CATEGORY_LABEL: Record<ExpenseCategory, string> = {
   pharmacy: "Pharmacy",
@@ -24,74 +35,20 @@ export const CATEGORY_LABEL: Record<ExpenseCategory, string> = {
   other_medical: "Other medical",
 };
 
-export interface FoundBill {
-  id: string;
-  source: "nessie_bill" | "nessie_purchase";
-  merchant: string;
-  date: string | null;
-  amountCents: Cents;
-  likelyMedical: boolean;
-  category: ExpenseCategory | null;
-  reason: string;
-}
+export const INSURANCE_LABEL: Record<InsuranceStatus, string> = {
+  uninsured: "Uninsured",
+  underinsured: "Underinsured",
+  insured: "Insured",
+};
 
-export type TapResult =
+export const SUSPICIOUS_FIELD_LABEL = {
+  merchant: "merchant name",
+  description: "bill description",
+  hardship_note: "hardship note",
+} as const;
+
+/** Kiosk-only tap outcomes (the provider's "redemption" outcome is handled on /provider). */
+export type KioskTapResult =
   | { kind: "session"; patient: PatientSummary }
   | { kind: "unknown_card" }
   | { kind: "unpaired_device" };
-
-export interface BillExplanation {
-  summary: string;
-  amountCents: Cents;
-  provider: Provider;
-}
-
-export type InsuranceStatus = "uninsured" | "underinsured" | "insured" | "unknown";
-
-export type FactorKey = "income" | "cost_burden" | "insurance" | "cost_of_care" | "urgency" | "wait_time" | "prior_support";
-
-export interface NeedFactor {
-  key: FactorKey;
-  label: string;
-  /** Human-readable input, e.g. "80% of poverty guideline". */
-  input: string;
-  points: number;
-  maxPoints: number;
-  unknown?: boolean;
-}
-
-export interface NeedAssessment {
-  score: number; // 0–100, "need score", never "eligibility"
-  formulaVersion: string;
-  factors: NeedFactor[];
-  rationale: string;
-  incomePctOfPoverty: number | null;
-  incomeEstimatedFromDeposits: boolean;
-  suspiciousContent: { excerpt: string; field: string } | null;
-}
-
-export interface QueueItem {
-  /** Position in the queue as shown (Gemini's order, or the formula order on fallback). */
-  rank: number;
-  /** Position by formula score alone, for the audit column and disagreement marker. */
-  formulaRank: number;
-  grantId: string;
-  patient: PatientSummary;
-  provider: Provider;
-  bill: { merchant: string; description: string; date: string | null; category: ExpenseCategory };
-  requestedCents: Cents;
-  daysWaiting: number;
-  hardshipNote: string | null;
-  profile: { householdSize: number; monthlyIncomeCents: Cents | null; insurance: InsuranceStatus };
-  assessment: NeedAssessment;
-}
-
-export interface GrantView {
-  id: string;
-  patient: PatientSummary;
-  provider: Provider;
-  requestedCents: Cents;
-  approvedCents: Cents | null;
-  status: GrantStatus;
-  receipt: Receipt | null;
-}
