@@ -14,7 +14,9 @@
     "solana:setup": "tsx scripts/solana-setup.ts",
     "nessie:seed": "tsx scripts/nessie-seed.ts",
     "nessie:check": "tsx scripts/nessie-check.ts",
-    "payments:smoke": "tsx scripts/live-smoke.ts"
+    "payments:smoke": "tsx scripts/live-smoke.ts",
+    "history:seed": "tsx scripts/history-seed.ts",
+    "receipts:backfill": "tsx scripts/history-seed.ts --backfill-only"
   },
   "dependencies": {
     "@abdulcare/contracts": "*",
@@ -23,6 +25,7 @@
     "bs58": "^6.0.0"
   },
   "devDependencies": {
+    "@abdulcare/ai": "*",
     "@electric-sql/pglite": "^0.2.17",
     "@types/node": "^24",
     "tsx": "^4.19.0",
