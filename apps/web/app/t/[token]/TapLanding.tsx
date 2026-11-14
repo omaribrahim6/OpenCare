@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { TapResult } from "@abdulcare/contracts";
+import { EndSessionButton } from "@/components/KioskSession";
 import { tap } from "@/lib/api";
 import { formatCents } from "@/lib/mock";
 
@@ -119,7 +120,7 @@ export function TapLanding({ token }: { token: string }) {
         </Link>
       </div>
       <p className="muted" style={{ marginTop: 24 }}>
-        Not you? <Link href="/?ended=user">End session</Link>
+        Not you? <EndSessionButton label="End session" className="btn secondary" style={{ minHeight: 40 }} />
       </p>
     </main>
   );
