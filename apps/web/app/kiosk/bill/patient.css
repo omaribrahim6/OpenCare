@@ -363,3 +363,18 @@
   .patient-mobile-nav .d-nav { display: flex; flex-wrap: wrap; margin-top: 8px; }
   .patient-mobile-nav .d-nav a { width: auto; }
 }
+
+/* A visit reads as a selectable row on the patient's workspace. */
+.patient-desk .patient-visit {
+  padding-inline: 4px;
+  border: 0;
+  border-bottom: 1px solid #dce6f2;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.patient-desk .patient-visit:hover { background: #eff5ff; }
+.patient-desk .patient-visit:focus-visible {
+  outline: 2px solid #075deb;
+  outline-offset: 3px;
+}

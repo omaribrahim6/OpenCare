@@ -108,3 +108,47 @@
   .d-public .ledger-table td:last-child { background: #fff; }
   .d-public .ledger-table tr.lc-clickable:hover td:last-child { background: #f0f6ff; }
 }
+
+/* Separate public records and staff form sections with rules. */
+.d-public { background: #fcfdff; }
+.d-public .d-public-bar { border-bottom: 1px solid #dce6f2; }
+.d-public .d-fund-workspace { background: transparent; }
+.d-public .d-fund-workspace > .g-card {
+  padding-inline: 0;
+  border: 0;
+  border-top: 1px solid #dce6f2;
+  border-radius: 0;
+  background: transparent;
+}
+.d-public .lc-summary > div {
+  padding-inline: 13px 5px;
+  border-inline-start: 1px solid #dce6f2;
+  border-radius: 0;
+  background: transparent;
+}
+.d-public .lc-summary > div:first-child {
+  padding-inline-start: 0;
+  border-inline-start: 0;
+}
+.station.portal-screen {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.station.portal-screen .portal-panel {
+  padding-inline: 0;
+  border: 0;
+  border-top: 1px solid #dce6f2;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.station-demo .stack a { box-shadow: none; }
+@media (max-width: 620px) {
+  .d-public .lc-summary > div:nth-child(odd) {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+  .d-public .lc-summary > div:nth-child(n+3) { border-top: 1px solid #dce6f2; }
+}
