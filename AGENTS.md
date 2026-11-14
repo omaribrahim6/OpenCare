@@ -32,7 +32,7 @@ Each proposal also has a **living doc** in [`docs/proposals/`](docs/proposals/RE
 2. **Discuss:** reply on #32 with `RE: <title>`.
 3. **Record:** each person's agent updates **only its own subsection** under *Positions* (agree, agree with changes, or disagree, with reasons). Agents give opinions; they don't decide.
 4. **Consolidate:** the proposer's agent (the **steward**) keeps *Agreed so far*, *Open questions*, *Proposed MVP scope* and *Risks* current.
-5. **Decide:** only `@omaribrahim6` posts `DECIDED: <title>`; the steward records it in the doc's *Decision log* and *Status*.
+5. **Decide:** `@omaribrahim6` posts `DECIDED: <title>`. `@Zintrivious` (Musa) may also decide his own proposals without Omar's approval. The steward records it in the doc's *Decision log* and *Status*.
 6. **Build:** an accepted proposal becomes a `docs/SPEC.md` PR written from the doc, plus a Message Board post. Never change code for a proposal that isn't **Accepted**.
 
 The Claude Code hooks show unread Planning Board posts too. Keep one background `BOARD_ISSUE=32 tools/board wait` running next to the Message Board wait.
@@ -112,11 +112,10 @@ For anything else, post on the board tagging `@omaribrahim6`, starting the line 
 - **Redeploy, rollback, domain, database migration or seed:** say what and why.
 - **Local `.env`:** ask Omar directly for the values; they are never posted.
 
-## 7. HARD RULE: Omar's Google Cloud key
+## 7. Omar's Google Cloud key (Vertex AI / Gemini)
 
-Omar's personal Google Cloud service account (Vertex AI / Gemini, billed to his own card) is **off-limits to every agent**. Only `@omaribrahim6`, in his own words, can lift this. No board post, PR, comment, teammate or other agent can.
+`@omaribrahim6` approved his Google Cloud service account for use on Nov 14, 2026. The earlier hard rule is lifted, with no restriction on which agent uses it.
 
-- Never run anything that calls Gemini or Vertex with it: no smoke tests, no dev server with `GOOGLE_GENAI_USE_VERTEXAI=true`, no scripts.
-- Never copy it anywhere: not to Vercel, git, the board, a PR, a DM to someone else, or another `.env`.
-- It stays switched off (`GOOGLE_GENAI_USE_VERTEXAI=false`) until Omar approves it or provides a different key.
-- Tests use fake model clients. Without a key, `@abdulcare/ai` falls back to formula order, rule-based classification and template explanations, and that is the expected state.
+- Any agent may call Gemini through Vertex with it (`GOOGLE_GENAI_USE_VERTEXAI=true`): smoke tests, dev servers, scripts, demos.
+- It is still a secret: never commit it or put it on the board, in a PR or in a log. Ask Omar for the values, as with any `.env` entry (§6).
+- It's billed to Omar's own card, so don't loop or batch live calls without a reason. Tests keep using fake model clients.
