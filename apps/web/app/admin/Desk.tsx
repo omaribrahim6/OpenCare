@@ -87,7 +87,6 @@ export function Desk({ initialView }: { initialView: DeskView }) {
   const available = queue?.availableCents ?? 0;
   const requested = items.reduce((a, it) => a + it.grant.requestedCents, 0);
   const flagged = items.filter((it) => it.suspiciousContent).length;
-  const fits = items.filter((it) => it.grant.requestedCents <= available).length;
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -205,9 +204,9 @@ export function Desk({ initialView }: { initialView: DeskView }) {
 
   const loading = load.phase === "loading";
   const tiles = [
-    { icon: "wallet" as const, label: "Available budget", value: usd(available), cap: "Ready to grant" },
+    { icon: "wallet" as const, label: "Available budget", value: money(available), cap: "Ready to grant" },
     { icon: "inbox" as const, label: "Waiting for review", value: String(items.length), cap: items.length === 1 ? "Request in the queue" : "Requests in the queue" },
-    { icon: "dollar" as const, label: "Requested", value: usd(requested), cap: "Across this queue" },
+    { icon: "dollar" as const, label: "Requested", value: money(requested), cap: "Across this queue" },
     { icon: "shield" as const, label: "Flagged", value: String(flagged), cap: flagged === 1 ? "Request with suspicious text" : "Requests with suspicious text" },
   ];
 
@@ -261,7 +260,6 @@ export function Desk({ initialView }: { initialView: DeskView }) {
             <BudgetChart
               items={items}
               available={available}
-              fits={fits}
               metric={metric}
               setMetric={setMetric}
               selectedId={selected?.grant.id ?? null}
@@ -412,17 +410,20 @@ export function Desk({ initialView }: { initialView: DeskView }) {
   );
 }
 
-function niceTop(max: number, unit: number): number {
-  const raw = Math.max(max, unit * 4) / 4;
-  const pow = Math.pow(10, Math.floor(Math.log10(raw)));
-  const f = raw / pow;
-  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * pow * 4;
+/** Money for headline figures: exact under $1M, compact above ($1.77B), so a huge budget stays readable. */
+function money(cents: number): string {
+  return Math.abs(cents) >= 100_000_000 ? usdCompact(cents) : usd(cents);
 }
 
+const CHART_ROWS = 8;
+
+/**
+ * Queue at a glance: the top requests in need order as horizontal bars, scaled to the requests
+ * themselves (not the budget), with a line where the budget runs out if everything above were paid.
+ */
 function BudgetChart({
   items,
   available,
-  fits,
   metric,
   setMetric,
   selectedId,
@@ -430,39 +431,48 @@ function BudgetChart({
 }: {
   items: QueueItem[];
   available: number;
-  fits: number;
   metric: Metric;
   setMetric: (m: Metric) => void;
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
-  const shown = items.slice(0, 12);
-  const values = shown.map((it) => (metric === "amount" ? it.grant.requestedCents : it.assessment.score));
-  // Leave headroom above the tallest bar for its tooltip.
-  const top = metric === "amount" ? niceTop(Math.max(...values, available) * 1.45, 2500) : 140;
-  const selIndex = Math.max(0, shown.findIndex((it) => it.grant.id === selectedId));
-  const sel = shown[selIndex];
-  const guide = metric === "amount" ? available : values[selIndex];
-  const pct = (v: number) => `${Math.min(100, (v / top) * 100)}%`;
-  const fmt = (v: number) => (metric === "amount" ? usdCompact(v) : String(v));
-  const PLOT_H = 192; // 232 chart height minus the 40px label gutter
+  const ranked = [...items].sort((a, b) => a.rank - b.rank);
+  // How many requests, taken in need order, the budget pays in full.
+  let running = 0;
+  let covered = 0;
+  for (const it of ranked) {
+    running += it.grant.requestedCents;
+    if (running > available) break;
+    covered++;
+  }
+  const total = ranked.reduce((a, it) => a + it.grant.requestedCents, 0);
+  const all = covered === ranked.length;
+  const shown = ranked.slice(0, CHART_ROWS);
+  const value = (it: QueueItem) => (metric === "amount" ? it.grant.requestedCents : it.assessment.score);
+  const max = metric === "amount" ? Math.max(...shown.map(value), 1) : 100;
+  const label = (it: QueueItem) => (metric === "amount" ? usd(value(it)) : `${value(it)}`);
 
   return (
-    <section className="d-card" aria-labelledby="bc-kicker">
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+    <section className="d-card d-rank-card" aria-labelledby="bc-title">
+      <div className="d-rank-head">
         <div>
-          <p id="bc-kicker" className="d-kicker">
-            Available budget
-          </p>
-          <p className="d-figure">{usd(available)}</p>
+          <h2 id="bc-title">Queue by need</h2>
           <p className="d-note">
-            <Icon name="trend" />
+            <Icon name="wallet" />
             <span>
-              Covers <b>{fits} of {items.length}</b> waiting {items.length === 1 ? "request" : "requests"} on their own
+              {all ? (
+                <>
+                  Budget <b>{money(available)}</b> covers all {ranked.length} {ranked.length === 1 ? "request" : "requests"} ({money(total)})
+                </>
+              ) : (
+                <>
+                  Budget <b>{money(available)}</b> covers the top <b>{covered} of {ranked.length}</b> in need order
+                </>
+              )}
             </span>
           </p>
         </div>
-        <div className="tabs" role="tablist" aria-label="Chart shows">
+        <div className="tabs" role="tablist" aria-label="Bars show">
           <button role="tab" aria-selected={metric === "amount"} onClick={() => setMetric("amount")}>
             Amount
           </button>
@@ -472,53 +482,42 @@ function BudgetChart({
         </div>
       </div>
 
-      <div className="d-chart">
-        <div className="d-chart-y" aria-hidden="true">
-          {(metric === "amount" ? [1, 0.75, 0.5, 0.25, 0].map((k) => top * k) : [100, 75, 50, 25, 0]).map((v) => (
-            <span key={v} style={{ top: (1 - v / top) * PLOT_H }}>
-              {fmt(v)}
-            </span>
-          ))}
-        </div>
-        <div className="d-chart-plot" role="group" aria-label={metric === "amount" ? "Requested amount by rank" : "Need score by rank"}>
-          <div className="d-guide" style={{ bottom: `calc(40px + ${(Math.min(guide, top) / top) * PLOT_H}px)` }}>
-            {metric === "amount" && <em>Budget</em>}
-          </div>
-          {shown.map((it, i) => {
-            const v = values[i];
-            const on = i === selIndex;
-            const over = metric === "amount" && v > available;
-            return (
-              <button
-                key={it.grant.id}
-                className={`d-bar${on ? " on" : ""}${over ? " over" : ""}`}
-                onClick={() => onSelect(it.grant.id)}
-                aria-pressed={on}
-                aria-label={`Rank ${it.rank}, ${cleanName(it.grant.patient.displayName)}, ${metric === "amount" ? usd(v) : `need score ${v}`}`}
-              >
-                <i className="cap" />
-                <i style={{ height: `max(10px, calc(${pct(v)} - 10px))` }} />
-                <span>#{it.rank}</span>
-              </button>
-            );
-          })}
-          {sel && (
-            <div
-              className="d-tip"
-              style={{
-                left: `${((selIndex + 0.5) / shown.length) * 100}%`,
-                bottom: `calc(40px + ${(Math.min(values[selIndex], top) / top) * PLOT_H}px)`,
-              }}
-            >
-              <small>{cleanName(sel.grant.patient.displayName)}</small>
-              <div>
-                <span>{metric === "amount" ? "Requested" : "Need score"}</span>
-                <span>{metric === "amount" ? usd(values[selIndex]) : values[selIndex]}</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <ol className="d-rank" aria-label={metric === "amount" ? "Requested amount, highest need first" : "Need score out of 100, highest need first"}>
+        {shown.map((it, i) => {
+          const on = it.grant.id === selectedId;
+          const beyond = i >= covered;
+          const name = cleanName(it.grant.patient.displayName);
+          return (
+            <Fragment key={it.grant.id}>
+              {i === covered && !all && (
+                <li className="d-rank-cut" aria-label="The budget runs out here">
+                  <span>Budget runs out here</span>
+                </li>
+              )}
+              <li>
+                <button
+                  className={`d-rank-row${on ? " on" : ""}${beyond ? " beyond" : ""}`}
+                  onClick={() => onSelect(it.grant.id)}
+                  aria-pressed={on}
+                  aria-label={`Rank ${it.rank}, ${name}, ${metric === "amount" ? `requested ${usd(value(it))}` : `need score ${value(it)} of 100`}${beyond ? ", beyond the budget" : ""}`}
+                >
+                  <span className="d-rank-n">#{it.rank}</span>
+                  <span className="d-rank-name">{name}</span>
+                  <span className="d-rank-track" aria-hidden="true">
+                    <i style={{ width: `${Math.max(2, (value(it) / max) * 100)}%` }} />
+                  </span>
+                  <span className="d-rank-val">{label(it)}</span>
+                </button>
+              </li>
+            </Fragment>
+          );
+        })}
+      </ol>
+      {ranked.length > CHART_ROWS && (
+        <p className="d-rank-more">
+          Top {CHART_ROWS} of {ranked.length}. The full queue is in the table below.
+        </p>
+      )}
     </section>
   );
 }
