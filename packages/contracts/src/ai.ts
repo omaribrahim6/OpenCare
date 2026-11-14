@@ -1,68 +1,24 @@
-// AI shapes, taken from the ai lane's original types (packages/ai re-exports or imports these).
-// All money is integer cents (SPEC §8). Unknown values are null, never guessed (SPEC §3, §7).
+// AI shapes (SPEC §7, rev 5). The ai lane implements NeedEngine (bottom of this file);
+// packages/core calls it and stores the results. All money is integer cents. Unknown is null.
 
 import type { Cents } from "./grants";
 
-export const DOCUMENT_TYPES = [
-  "pharmacy_receipt",
-  "medical_bill",
-  "explanation_of_benefits",
-  "prescription_receipt",
-  "lab_bill",
-  "dental_bill",
-  "vision_bill",
-  "other",
+export const EXPENSE_CATEGORIES = [
+  "pharmacy",
+  "emergency",
+  "hospital",
+  "primary_care",
+  "dental_vision",
+  "other_medical",
 ] as const;
-export type DocumentType = (typeof DOCUMENT_TYPES)[number];
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 
-/** One extracted value plus the source text that supports it. */
-export interface Field<T> {
-  value: T | null;
-  /** Short verbatim excerpt from the source that supports the value. Null when value is null. */
-  evidence: string | null;
-}
+/** A patient's insurance as recorded in their profile. Null means unknown. */
+export const INSURANCE_STATUSES = ["uninsured", "underinsured", "insured"] as const;
+export type InsuranceStatus = (typeof INSURANCE_STATUSES)[number];
 
-export interface ExtractedFields {
-  provider: Field<string>;
-  documentType: Field<DocumentType>;
-  /** ISO 4217, e.g. "USD". */
-  currency: Field<string>;
-  /** Amount the patient is asked to pay. */
-  totalCents: Field<Cents>;
-  /** ISO date YYYY-MM-DD. */
-  date: Field<string>;
-}
-
-export type FieldName = keyof ExtractedFields;
-
-export interface ExtractionResult {
-  /** False when the image is unreadable or not a bill: show retake/manual review. */
-  readable: boolean;
-  fields: ExtractedFields;
-  missing: FieldName[];
-  supportingText: string[];
-  /** Why the source may be unreliable, including suspicious embedded instructions (SPEC §7). */
-  warnings: string[];
-  source: "scan" | "nessie";
-}
-
-/** Fields after the patient reviewed and corrected them. */
-export interface ConfirmedFields {
-  provider: string | null;
-  documentType: DocumentType | null;
-  currency: string | null;
-  totalCents: Cents | null;
-  date: string | null;
-}
-
-export interface Explanation {
-  summary: string;
-  points: string[];
-  questionsToAsk: string[];
-  disclaimer: string;
-  /** True when a template was used because the AI was unavailable or failed checks. */
-  fallback: boolean;
-}
+// ---------------------------------------------------------------------------
+// Bill discovery and the patient explanation
 
 /** A Nessie purchase or bill, reduced to what the classifier needs. */
 export interface TransactionInput {
@@ -78,40 +34,116 @@ export interface TransactionInput {
 export interface TransactionClassification {
   id: string;
   likelyMedical: boolean;
+  /** Null when not medical or unclear. */
+  category: ExpenseCategory | null;
   reason: string;
   basis: "ai" | "rules";
 }
 
-/** What the patient tells the kiosk, all optional. */
-export interface PatientInfo {
-  householdSize?: number;
-  annualIncomeCents?: Cents;
-  /** Two-letter US state code. */
-  state?: string;
-  insured?: boolean;
-  age?: number;
+/** Plain-language explanation of the selected bill for the patient (SPEC §7 job 4). */
+export interface Explanation {
+  summary: string;
+  points: string[];
+  questionsToAsk: string[];
+  disclaimer: string;
+  /** True when a template was used because the AI was unavailable or failed checks. */
+  fallback: boolean;
 }
 
-export type CriterionStatus = "met" | "not_met" | "unknown";
+/** Text that looks like instructions aimed at the system (SPEC §7 injection flag). */
+export interface SuspiciousContent {
+  field: "merchant" | "description" | "hardship_note";
+  excerpt: string;
+}
 
-export interface CriterionResult {
-  id: string;
+// ---------------------------------------------------------------------------
+// Need assessment (SPEC §7 job 2): deterministic, versioned, auditable
+
+export const FACTOR_KEYS = [
+  "income",
+  "cost_burden",
+  "insurance",
+  "cost_of_care",
+  "urgency",
+  "wait_time",
+  "prior_support",
+] as const;
+export type FactorKey = (typeof FACTOR_KEYS)[number];
+
+export interface NeedFactor {
+  key: FactorKey;
   label: string;
-  status: CriterionStatus;
-  detail: string;
+  /** Human-readable input, e.g. "80% of poverty guideline". Never a name or free text. */
+  input: string;
+  points: number;
+  /** Negative for prior support, which subtracts. */
+  maxPoints: number;
+  /** True when the input was missing and the factor scored its midpoint. */
+  unknown: boolean;
 }
 
-export interface ProgramMatch {
-  programId: string;
-  name: string;
-  fictional: boolean;
-  fit: "possible" | "needs_info" | "unlikely";
-  possibleFit: boolean;
-  reasons: string[];
-  criteria: CriterionResult[];
-  missingInfo: string[];
-  /** Max the program could cover for this bill, or null if the bill amount is unknown. */
-  maxCents: Cents | null;
-  /** A match is a possible fit, never a guarantee (SPEC §3). */
-  note: string;
+/** Everything the formula needs. Core gathers it; it holds no names, IDs or free text. */
+export interface NeedInput {
+  householdSize: number | null;
+  /** Monthly household income from the patient's profile. */
+  profileIncomeCents: Cents | null;
+  /** Monthly income estimated from the last 90 days of Nessie deposits, if available. */
+  depositIncomeCents: Cents | null;
+  insurance: InsuranceStatus | null;
+  billCents: Cents;
+  category: ExpenseCategory | null;
+  daysWaiting: number;
+  /** Grants paid to this patient by the fund in the last 90 days. */
+  priorPaidCount90d: number;
+  priorPaidCents90d: Cents;
+}
+
+export interface NeedAssessment {
+  /** 0–100 formula score. Label it "need score", never "eligibility". */
+  score: number;
+  formulaVersion: string;
+  factors: NeedFactor[];
+  incomePctOfPoverty: number | null;
+  incomeSource: "profile" | "deposits" | null;
+  /** Both incomes, when profile and deposits differ by more than 25%. */
+  incomeMismatch: { profileCents: Cents; depositCents: Cents } | null;
+}
+
+// ---------------------------------------------------------------------------
+// Queue ranking (SPEC §7 job 3): Gemini sets the order, the formula is the guardrail
+
+/** One anonymized pending request, as Gemini sees it. */
+export interface RankingRow {
+  /** "A", "B", "C"… never a grant or patient ID. */
+  label: string;
+  score: number;
+  factors: NeedFactor[];
+  incomePctOfPoverty: number | null;
+  billCents: Cents;
+  daysWaiting: number;
+}
+
+export interface QueueRanking {
+  /** "formula" when Gemini failed validation, timed out or errored. */
+  source: "gemini" | "formula";
+  /** Every label exactly once, highest priority first. */
+  order: string[];
+  /** Label → 2–3 sentence rationale comparing the request with the others. */
+  rationales: Record<string, string>;
+  /** Model and prompt version when source is "gemini". */
+  model: string | null;
+}
+
+/**
+ * Implemented by @abdulcare/ai. Core never calls Gemini itself; route handlers pass an engine in.
+ * - assessNeed: pure and synchronous; same input, same output.
+ * - rankQueue: Gemini with guardrails (permutation, numbers match, timeout); falls back to formula order.
+ * - detectSuspicious: flags injected instructions in untrusted text; never affects score or rank.
+ */
+export interface NeedEngine {
+  assessNeed(input: NeedInput): NeedAssessment;
+  rankQueue(rows: RankingRow[]): Promise<QueueRanking>;
+  detectSuspicious(
+    fields: { field: SuspiciousContent["field"]; text: string }[],
+  ): Promise<SuspiciousContent | null>;
 }

@@ -1,16 +1,21 @@
-// Request and response bodies for the routes in SPEC §9.
+// Request and response bodies for the routes in SPEC §9 (rev 5).
 // Routes live in apps/web/app/api/. Every error response is ApiError with a non-2xx status.
 
-import type { ConfirmedFields, Explanation, PatientInfo, ProgramMatch } from "./ai";
+import type { Explanation } from "./ai";
 import type { Cents } from "./grants";
 import type {
   Device,
   DeviceRole,
   DocumentRecord,
+  DocumentSource,
+  Donation,
   FoundBill,
   FundSummary,
   Grant,
+  PatientProfile,
   PatientSummary,
+  Provider,
+  ReviewQueue,
 } from "./records";
 
 export type ErrorCode =
@@ -42,8 +47,9 @@ export type TapResult =
   | { kind: "unpaired_device" };
 
 // ---------------------------------------------------------------------------
-// POST /api/devices/pair: staff pairs this browser as a kiosk, provider or reviewer device.
+// Devices
 
+// POST /api/devices/pair: staff pairs this browser as a kiosk, provider or caseworker device.
 export interface PairDeviceRequest {
   role: DeviceRole;
   pin: string;
@@ -67,73 +73,66 @@ export interface EndSessionResponse {
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/patients/me/bills (kiosk, active patient session)
+// Patient (kiosk, active patient session)
 
+// GET /api/patients/me: who is checked in, and their profile from enrollment (read-only).
+export interface CurrentPatientResponse {
+  patient: PatientSummary;
+  profile: PatientProfile;
+}
+
+// GET /api/patients/me/bills: likely medical Nessie bills and purchases, classified.
 export interface BillsResponse {
   bills: FoundBill[];
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/documents (kiosk, active patient session)
+// POST /api/documents (kiosk session): copy the chosen Nessie item; the server re-reads it
+// from Nessie, so the client only sends its ID.
 
-export type CreateDocumentRequest =
-  | {
-      source: "scan";
-      /** JPEG/PNG as base64 (no data: prefix). Keep under 4 MB (Vercel body limit 4.5 MB). */
-      imageBase64: string;
-      mimeType: "image/jpeg" | "image/png";
-    }
-  | { source: "nessie_bill" | "nessie_purchase"; nessieId: string };
-
+export interface CreateDocumentRequest {
+  source: DocumentSource;
+  nessieId: string;
+}
 export interface DocumentResponse {
   document: DocumentRecord;
-}
-
-// GET /api/documents/:id
-// -> DocumentResponse
-
-// GET /api/documents/:id/image (kiosk session owner or reviewer): the raw image bytes.
-
-// PATCH /api/documents/:id/review (kiosk, owner session)
-export interface ReviewDocumentRequest {
-  confirmed: ConfirmedFields;
-  patientInfo?: PatientInfo;
-}
-export interface ReviewDocumentResponse {
-  document: DocumentRecord;
   explanation: Explanation;
-  matches: ProgramMatch[];
 }
+
+// GET /api/documents/:id (owner session or caseworker) -> { document }
 
 // ---------------------------------------------------------------------------
-// POST /api/grants (kiosk, owner session)
+// Grants
 
+// POST /api/grants (kiosk session): creates the request and its need assessment.
 export interface CreateGrantRequest {
   documentId: string;
   providerId: string;
-  programId: string;
   requestedCents: Cents;
+  /** Optional, at most MAX_HARDSHIP_NOTE_CHARS. Untrusted: never scored or ranked. */
+  hardshipNote?: string;
 }
 export interface GrantResponse {
   grant: Grant;
 }
 
-// GET /api/grants?status=pending_review (reviewer device)
+// GET /api/grants?status=… (caseworker device) or the session patient's own grants (kiosk)
 export interface GrantListResponse {
   grants: Grant[];
 }
 
-// GET /api/grants/:id (kiosk owner, reviewer, or the grant's provider device)
+// GET /api/grants/:id (kiosk owner, caseworker, or the grant's provider device)
 // -> GrantResponse. Polling this reconciles a pending payout or receipt.
 
-// POST /api/grants/:id/decision (reviewer device)
+// POST /api/grants/:id/decision (caseworker device)
+// Above SECOND_APPROVAL_ABOVE_CENTS, the first approval leaves the grant pending_review with
+// awaitingSecondApproval = true; a second caseworker device approving the same amount approves it.
 export type GrantDecisionRequest =
   | { decision: "approve"; approvedCents: Cents; note?: string }
   | { decision: "reject"; note?: string };
 // -> GrantResponse
 
-// POST /api/grants/:id/cancel (reviewer device; only before payment starts)
-// -> GrantResponse
+// POST /api/grants/:id/cancel (caseworker device; only before payment starts) -> GrantResponse
 
 // POST /api/grants/:id/redeem (provider device, after the patient's card tap)
 export interface RedeemGrantRequest {
@@ -143,11 +142,27 @@ export interface RedeemGrantRequest {
 // -> GrantResponse (status payment_pending or paid). Repeating the call never pays twice.
 
 // ---------------------------------------------------------------------------
-// GET /api/fund/summary (public, aggregate only)
+// GET /api/review/queue (caseworker device): Gemini-ranked pending requests (SPEC §7 job 3).
 
+export type ReviewQueueResponse = ReviewQueue;
+
+// ---------------------------------------------------------------------------
+// Fund (public, aggregate only)
+
+// GET /api/fund/summary
 export type FundSummaryResponse = FundSummary;
+
+// POST /api/fund/donations: anonymous card donation, a Nessie deposit into the fund account.
+export interface CreateDonationRequest {
+  /** Between $1 and $10,000. */
+  amountCents: Cents;
+}
+export interface DonationResponse {
+  donation: Donation;
+  fund: FundSummary;
+}
 
 // GET /api/providers (paired devices): providers a patient can choose.
 export interface ProviderListResponse {
-  providers: { id: string; name: string; kind: string }[];
+  providers: Provider[];
 }
