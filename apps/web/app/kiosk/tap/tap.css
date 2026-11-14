@@ -2,25 +2,25 @@
    Next applies imported CSS to the whole app. */
 
 /* Safari tints the status bar with the root background, so the purple runs up behind the clock. */
-html:has(.kt) { background: #c9c1f0; overflow-x: clip; }
+html:has(.kt) { background: #d4e5ff; overflow-x: clip; }
 body:has(.kt) {
   min-height: 100svh;
   overflow-x: clip;
-  background: linear-gradient(168deg, #c9c1f0, #ece8f8 72%, #f7f6fb) fixed;
+  background: linear-gradient(168deg, #d4e5ff, #e8eef8 72%, #f6f8fb) fixed;
 }
 
 .kt {
-  --lav-top: #c9c1f0;
-  --violet: #654dc7;
-  --violet-hi: #8f7bea;
-  --violet-soft: #ded4fa;
-  --ink: #191822;
-  --v-rgb: 101 77 199;
-  --ring-rgb: 173 154 234;
-  --rose-rgb: 241 194 186;
-  --sky-rgb: 169 205 238;
-  --scrim-rgb: 240 237 250;
-  --display: var(--font-kiosk-display), var(--font-ui), system-ui, sans-serif;
+  --lav-top: #d4e5ff;
+  --violet: #075deb;
+  --violet-hi: #5a9aff;
+  --violet-soft: #d9e9ff;
+  --ink: #111c2b;
+  --v-rgb: 7 93 235;
+  --ring-rgb: 149 191 255;
+  --rose-rgb: 211 228 255;
+  --sky-rgb: 172 206 251;
+  --scrim-rgb: 239 246 255;
+  --display: var(--font-ui), system-ui, sans-serif;
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
@@ -32,7 +32,7 @@ body:has(.kt) {
   color: var(--ink);
   -webkit-tap-highlight-color: transparent;
 }
-.kt:lang(ar) { --display: var(--font-kiosk-arabic), var(--font-ui), system-ui, sans-serif; }
+.kt:lang(ar) { --display: var(--font-ui), system-ui, sans-serif; }
 
 /* ------------------------------------------------------------ backdrop */
 .kt-backdrop { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
@@ -158,12 +158,12 @@ body:has(.kt) {
 }
 .kt-w1 {
   height: 46%;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 100' preserveAspectRatio='none'%3E%3Cpath d='M0 40 C 133 0 267 0 400 40 S 667 80 800 40 V100 H0Z' fill='%23d9d0f8' fill-opacity='.7'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 100' preserveAspectRatio='none'%3E%3Cpath d='M0 40 C 133 0 267 0 400 40 S 667 80 800 40 V100 H0Z' fill='%23d3e6ff' fill-opacity='.7'/%3E%3C/svg%3E");
   animation: kt-wave 14s linear infinite;
 }
 .kt-w2 {
   height: 34%;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 100' preserveAspectRatio='none'%3E%3Cpath d='M0 50 C 133 90 267 90 400 50 S 667 10 800 50 V100 H0Z' fill='%23c4b7f3' fill-opacity='.55'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 100' preserveAspectRatio='none'%3E%3Cpath d='M0 50 C 133 90 267 90 400 50 S 667 10 800 50 V100 H0Z' fill='%23bad7ff' fill-opacity='.55'/%3E%3C/svg%3E");
   animation: kt-wave 9s linear infinite reverse;
 }
 .kt-w3 {
@@ -244,7 +244,7 @@ body:has(.kt) {
   place-content: center;
   justify-items: center;
   gap: calc(var(--r) * 0.1);
-  background: radial-gradient(circle at 50% 30%, #fff 0%, #f6f3ff 55%, var(--violet-soft) 100%);
+  background: radial-gradient(circle at 50% 30%, #fff 0%, #f4f8ff 55%, var(--violet-soft) 100%);
   border: 3px solid var(--violet);
   box-shadow:
     0 0 0 calc(var(--r) * 0.07) rgb(var(--v-rgb) / 0.1),
@@ -298,7 +298,7 @@ body:has(.kt) {
   font-size: max(13px, calc(var(--r) * 0.14));
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #3d2c8f;
+  color: #2c528f;
   padding-inline-start: 0.2em;
   text-align: center;
   max-width: calc(var(--r) * 1.6);
@@ -316,7 +316,7 @@ body:has(.kt) {
   max-width: 12.5em;
   text-align: center;
   font-family: var(--display);
-  font-weight: 750;
+  font-weight: 660;
   font-size: clamp(33px, 9.6vw, 46px);
   line-height: 1.03;
   letter-spacing: -0.035em;
@@ -363,7 +363,7 @@ body:has(.kt) {
   margin: 10px 0 0;
   font-size: 15px;
   font-weight: 550;
-  color: #4b3fa0;
+  color: #194d9b;
   text-align: center;
 }
 

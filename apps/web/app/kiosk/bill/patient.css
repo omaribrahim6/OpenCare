@@ -1,9 +1,9 @@
 .patient-workspace {
-  --insurance: #6954cb;
-  --hospital: #a48ce9;
+  --insurance: #075deb;
+  --hospital: #8cafe9;
   --fund: #b06a38;
   --payment: #477c9e;
-  --remaining: #bbb9c9;
+  --remaining: #abbcd7;
   color: var(--d-text);
 }
 
@@ -87,7 +87,7 @@
   text-decoration: none;
 }
 
-.patient-visit:hover { border-color: #a991ef; background: #faf8ff; }
+.patient-visit:hover { border-color: #91b5ef; background: #f8fbff; }
 
 .patient-visit-icon {
   display: grid;
@@ -95,7 +95,7 @@
   height: 43px;
   place-items: center;
   border-radius: 12px;
-  background: #eeebfa;
+  background: #ebf1fa;
   color: var(--d-teal);
 }
 
@@ -194,7 +194,7 @@
   cursor: pointer;
 }
 
-.patient-legend button[aria-pressed="true"] { background: #f0ebfc; border-color: var(--d-line); }
+.patient-legend button[aria-pressed="true"] { background: #ebf1fc; border-color: var(--d-line); }
 .patient-legend strong, .patient-legend small { display: block; }
 .patient-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; }
 
@@ -203,7 +203,7 @@
   margin: 12px 0 0;
   padding: 10px 12px;
   border-radius: 8px;
-  background: #f5f3fa;
+  background: #f3f6fa;
   font-size: .9rem;
 }
 
@@ -225,7 +225,7 @@
 .patient-plan dd { margin: 0; font-weight: 650; text-align: right; }
 
 .patient-action {
-  background: #f0ebfc;
+  background: #ebf1fc;
   border-color: var(--d-line);
 }
 
@@ -277,7 +277,7 @@
 
 .patient-visit-heading {
   padding: clamp(18px, 4vw, 28px);
-  background: #eeebfa;
+  background: #ebf1fa;
 }
 
 .patient-visit-heading h1 { margin: 0; font-size: clamp(1.65rem, 4vw, 2.5rem); }
@@ -296,7 +296,7 @@
   border-radius: 0;
   border-bottom: 1px solid var(--d-line);
   background: white;
-  color: #191822;
+  color: #111c2b;
 }
 
 .patient-balance > div > span,
