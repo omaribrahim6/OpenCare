@@ -197,7 +197,7 @@
 .ln-donor-list { list-style: none; margin: 0; padding: 0; display: grid; }
 .ln-donor-list li {
   display: grid;
-  grid-template-columns: 16px 40px minmax(0, 1fr) auto;
+  grid-template-columns: 16px 46px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 11px 0;
@@ -220,8 +220,8 @@
 .ln-donor-anon .ln-donor-name strong { color: var(--ln-ink-2); }
 
 .ln-mark {
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
   display: grid;
   place-items: center;
   border-radius: 12px;
@@ -230,6 +230,13 @@
   letter-spacing: -.01em;
 }
 .ln-mark svg { width: 18px; height: 18px; }
+.ln-mark-logo {
+  overflow: hidden;
+  border: 1px solid #ecebf1;
+  border-radius: 12px;
+  background: #fff;
+}
+.ln-mark-logo img { width: 100%; height: 100%; object-fit: contain; }
 .ln-mark-state_program { background: #e9e6ff; color: #4b3bb0; box-shadow: inset 0 0 0 2px #d3ccff; }
 .ln-mark-federal_program { background: #e3eefb; color: #2b5a98; box-shadow: inset 0 0 0 2px #c9dcf4; }
 .ln-mark-hospital { background: #fde9ee; color: #a3324a; }
@@ -277,7 +284,7 @@
 .ln-claim-list li:last-child { border-bottom: 0; }
 .ln-claim-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 110px 110px;
+  grid-template-columns: 46px minmax(0, 1fr) 110px 110px;
   align-items: center;
   gap: 14px;
   padding: 13px 8px;
@@ -318,7 +325,7 @@
   .ln-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ln-stats div { padding: 12px 14px; }
   .ln-stats dd { font-size: 19px; }
-  .ln-claim-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .ln-claim-row { grid-template-columns: 46px minmax(0, 1fr) auto; }
   .ln-claim-row > .ln-claim-num:not(.ln-claim-paid) { display: none; }
   .ln-nav a { padding: 8px 10px; font-size: 14px; }
   .ln-nav .ln-nav-quiet { display: none; }
