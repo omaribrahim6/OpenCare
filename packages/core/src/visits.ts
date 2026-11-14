@@ -122,7 +122,13 @@ export interface LogVisitInput {
    * records each application as "prepared"; the patient applies them with applyVisitPolicies.
    */
   applyPolicies?: boolean;
+  /**
+   * The admin panel's hospital-intake tab (a reviewer device, simulated hospital staff) may log any
+   * hospital's templates; hospital devices only log their own.
+   */
+  anyHospital?: boolean;
 }
+
 
 const POLICY_LABEL = (name: string) => `${name} (hospital decision, simulated)`;
 
@@ -143,14 +149,14 @@ export async function logVisit(
     return getBill(db, existing.id);
   }
 
-  if (!input.device.providerId) throw new CoreError("forbidden", "This device isn't linked to a hospital");
+  if (!input.anyHospital && !input.device.providerId) throw new CoreError("forbidden", "This device isn't linked to a hospital");
   const { rows: tRows } = await db.query<TemplateRow>(
     "select id, hospital_id, label, category, description, line_items, total_cents from visit_templates where id = $1",
     [input.templateId],
   );
   if (!tRows[0]) throw new CoreError("not_found", "Unknown visit template");
   const template = toTemplate(tRows[0]);
-  if (template.hospitalId !== input.device.providerId) {
+  if (!input.anyHospital && template.hospitalId !== input.device.providerId) {
     throw new CoreError("forbidden", "This visit template belongs to another hospital");
   }
   const { profile } = await getPatientWithProfile(db, input.patientId);
