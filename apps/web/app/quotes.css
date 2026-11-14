@@ -54,3 +54,18 @@
 @media (prefers-reduced-motion: reduce) {
   .ln-quote { transition: none; }
 }
+
+.ln-quotes {
+  margin-top: 26px;
+  padding: 14px 0 0;
+  border: 0;
+  border-top: 1px solid var(--ln-line);
+  border-radius: 0;
+  background: transparent;
+}
+.ln-quote-portrait { height: 118px; }
+.ln-quote-portrait img { width: 105px; }
+@media (max-width: 490px) {
+  .ln-quote-portrait { height: 94px; }
+  .ln-quote-portrait img { width: 78px; }
+}

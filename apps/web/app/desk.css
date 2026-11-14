@@ -1548,3 +1548,48 @@ body:has(.d-public) {
 .desk .d-table tbody tr.row:hover { background: #f0f6ff; }
 .d-login .d-btn-teal { border-color: #075deb; background: #075deb; }
 .d-login .d-btn-teal:hover:not(:disabled) { background: #004abe; }
+
+/* Use the desk surface for sections and leave boundaries on controls and dialogs. */
+.desk { background: #fcfdff; }
+.desk .d-main { background: #fcfdff; }
+.desk .d-side { background: #f5f8fd; }
+.desk .d-head { background: #fcfdff; }
+.desk .d-card {
+  padding-inline: 0;
+  border: 0;
+  border-top: 1px solid var(--d-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.desk .d-tile,
+.desk .d-tile:nth-child(n) {
+  padding-inline: 14px;
+  border: 0;
+  border-inline-start: 1px solid var(--d-line);
+  border-radius: 0;
+  background: transparent;
+}
+.desk .d-tile:first-child { padding-inline-start: 0; border-inline-start: 0; }
+.desk .d-next { border-top-color: var(--d-line); }
+.d-login { background: #fcfdff; }
+.d-login-card {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+@media (min-width: 901px) {
+  .desk .d-next {
+    padding-inline-start: 18px;
+    border-inline-start: 1px solid var(--d-line);
+  }
+}
+@media (max-width: 1180px) {
+  .desk .d-tile:nth-child(odd) { padding-inline-start: 0; border-inline-start: 0; }
+  .desk .d-tile:nth-child(n+3) { border-top: 1px solid var(--d-line); }
+}
+@media (max-width: 560px) {
+  .desk .d-tile:nth-child(n) { padding-inline: 0; border-inline-start: 0; }
+  .desk .d-tile:nth-child(n+2) { border-top: 1px solid var(--d-line); }
+}
