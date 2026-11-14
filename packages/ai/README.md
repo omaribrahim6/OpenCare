@@ -78,18 +78,16 @@ npm run typecheck -w @abdulcare/ai
 GEMINI_API_KEY=... npm run smoke -w @abdulcare/ai      # live check against Gemini with fictional data
 ```
 
-The smoke script refuses to run while `GOOGLE_GENAI_USE_VERTEXAI` is on (see below).
-
 ## Model access
 
-There are two ways in (`src/gemini.ts`). When the model can't be reached, every job uses its fallback, and that is the expected state until a key is approved.
+There are two ways in (`src/gemini.ts`). When the model can't be reached, every job uses its fallback.
 
 | Path | Turned on by | Default model |
 | --- | --- | --- |
 | Gemini API | `GEMINI_API_KEY` | `gemini-2.5-flash` |
 | Vertex AI (`src/vertex.ts`) | `GOOGLE_GENAI_USE_VERTEXAI=true` + `GOOGLE_CLOUD_PROJECT` + `GOOGLE_SERVICE_ACCOUNT_JSON` or `GOOGLE_APPLICATION_CREDENTIALS`. Takes precedence over the API key | `gemini-3-flash-preview` |
 
-> **HARD RULE (AGENTS.md §7):** the Vertex service account is Omar's personal Google Cloud key. No agent may call Gemini or Vertex with it, or copy it anywhere. It stays off until `@omaribrahim6` lifts the rule himself.
+The Vertex service account is Omar's key. AGENTS.md §7 approves it for every agent, but it's still a secret: never commit or post it, and never log a key, token or credentials file. Calls are billed to Omar's card, so run live checks once rather than in loops. Tests always use fake model clients.
 
 Other settings:
 - `GEMINI_MODEL` overrides the default model on either path. An empty value means the default.

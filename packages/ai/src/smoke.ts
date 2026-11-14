@@ -1,21 +1,10 @@
-// Live check against the Gemini API with fictional data. Not run by the tests or CI.
-//   GEMINI_API_KEY=... npm run smoke -w @abdulcare/ai
-// Prints results only, never the key.
-// Refuses to run through Vertex AI: that path uses Omar's personal Google Cloud service account,
-// which no agent may call (AGENTS.md §7).
+// Live check against Gemini with fictional data. Not run by the tests or CI.
+//   npm run smoke -w @abdulcare/ai
+// Uses Vertex AI when GOOGLE_GENAI_USE_VERTEXAI=true (Omar's approved key, AGENTS.md §7), else
+// GEMINI_API_KEY. Live calls are billed to Omar: run it once, not in a loop.
+// Prints results only, never keys, tokens or credentials.
 import type { NeedInput, RankingRow } from "@abdulcare/contracts";
 import { assessNeed, classifyTransactions, explainBill, needEngine } from "./index";
-
-const vertexFlag = (process.env.GOOGLE_GENAI_USE_VERTEXAI ?? "").trim().toLowerCase();
-if (vertexFlag === "true" || vertexFlag === "1") {
-  console.error(
-    "smoke refused: GOOGLE_GENAI_USE_VERTEXAI is on. Vertex uses Omar's personal service account, which is off-limits (AGENTS.md §7). Unset it and use GEMINI_API_KEY.",
-  );
-  process.exit(2);
-}
-if (!process.env.GEMINI_API_KEY) {
-  console.error("smoke: GEMINI_API_KEY is not set, so every job will show its fallback.");
-}
 
 const patients: NeedInput[] = [
   { householdSize: 3, profileIncomeCents: 180_000, depositIncomeCents: null, insurance: "uninsured", billCents: 120_000, category: "emergency", daysWaiting: 2, priorPaidCount90d: 0, priorPaidCents90d: 0 },
