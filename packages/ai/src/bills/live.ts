@@ -28,6 +28,20 @@ export interface LiveDeps {
 
 const DEFAULT_TIMEOUTS = { application: 6_000, brief: 12_000, explanation: 10_000 };
 
+/**
+ * Why a Gemini step fell back, for server logs. Only the reason category: numbers and quoted text
+ * are masked, so no case data, prompt or model text is logged.
+ */
+export function logFallback(feature: "brief" | "explanation" | "application", reason: string): void {
+  const masked = reason.replace(/"[^"]*"/g, '"…"').replace(/\$?\d[\d,.]*/g, "#").slice(0, 120);
+  console.warn(`[ai] ${feature} used the template: ${masked}`);
+}
+
+function errorReason(err: unknown): string {
+  const e = err as { name?: string; status?: number; message?: string };
+  return e?.status ? `${e.name ?? "Error"} ${e.status}` : `${e?.name ?? "Error"}: ${(e?.message ?? "").slice(0, 80)}`;
+}
+
 function modelName(client: ModelClient): string {
   return `${client.model ?? "unknown-model"}/${BILL_PROMPT_VERSION}`;
 }
@@ -64,9 +78,13 @@ export async function writeApplicationLive(input: ApplicationTextInput, deps: Li
       maxLength: 1600,
       mustInclude: [usd(input.evaluation.reductionCents), safePolicyName(input.policy.name)],
     });
-    if (problem) return template;
+    if (problem) {
+      logFallback("application", problem);
+      return template;
+    }
     return { text: text.includes(SIMULATED_FOOTER) ? text : `${text}\n\n${SIMULATED_FOOTER}`, source: "gemini", model: modelName(client) };
-  } catch {
+  } catch (err) {
+    logFallback("application", errorReason(err));
     return template;
   }
 }
@@ -120,7 +138,10 @@ export async function writeBriefLive(input: BriefInput, deps: LiveDeps = {}): Pr
       deps.timeouts?.brief ?? DEFAULT_TIMEOUTS.brief,
     );
     const reasons = asRecord(parseModelJson(raw)).reasons;
-    if (!Array.isArray(reasons) || reasons.length < 2 || reasons.length > 3) return template;
+    if (!Array.isArray(reasons) || reasons.length < 2 || reasons.length > 3) {
+      logFallback("brief", "wrong number of reasons");
+      return template;
+    }
     const allowed = allowedNumbers([
       data.needScore,
       data.positionInQueue,
@@ -132,9 +153,14 @@ export async function writeBriefLive(input: BriefInput, deps: LiveDeps = {}): Pr
       ...input.path.flatMap((s) => [dollars(s.reductionCents), dollars(s.balanceCents), s.label]),
     ]);
     const clean = reasons.map((r) => cleanUntrusted(r, 400));
-    if (clean.some((r) => checkText(r, { allowed, noDecisions: true, maxLength: 400 }) !== null)) return template;
+    const problem = clean.map((r) => checkText(r, { allowed, noDecisions: true, maxLength: 400 })).find((p) => p !== null);
+    if (problem) {
+      logFallback("brief", problem);
+      return template;
+    }
     return { ...template, reasons: clean, source: "gemini", model: modelName(client), checked: true };
-  } catch {
+  } catch (err) {
+    logFallback("brief", errorReason(err));
     return template;
   }
 }
@@ -183,11 +209,16 @@ export async function explainBillLive(input: BillExplanationInput, deps: LiveDep
     ]);
     const opts = { allowed, noDecisions: true, maxLength: 600 };
     const mustInclude = input.remainingCents > 0 ? [usd(input.remainingCents)] : [];
-    if (checkText(summary, { ...opts, mustInclude }) !== null) return template;
+    const problem = checkText(summary, { ...opts, mustInclude });
+    if (problem) {
+      logFallback("explanation", problem);
+      return template;
+    }
     // A question that fails the checks is dropped on its own; the summary is what matters.
     const safeQuestions = questions.filter((q) => checkText(q, opts) === null);
     return { ...template, summary, questionsToAsk: safeQuestions.length ? safeQuestions : template.questionsToAsk, fallback: false };
-  } catch {
+  } catch (err) {
+    logFallback("explanation", errorReason(err));
     return template;
   }
 }
