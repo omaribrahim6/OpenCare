@@ -378,3 +378,5 @@
   outline: 2px solid #075deb;
   outline-offset: 3px;
 }
+
+.patient-desk .patient-status { padding: 0; border-radius: 0; background: transparent; }
