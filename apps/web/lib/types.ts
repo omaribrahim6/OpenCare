@@ -1,6 +1,6 @@
 // UI types. Every API shape comes from @abdulcare/contracts; only display helpers live here.
 
-import type { ExpenseCategory, InsuranceStatus, PatientSummary } from "@abdulcare/contracts";
+import type { ExpenseCategory, InsuranceStatus } from "@abdulcare/contracts";
 
 export type {
   Cents,
@@ -46,9 +46,3 @@ export const SUSPICIOUS_FIELD_LABEL = {
   description: "bill description",
   hardship_note: "hardship note",
 } as const;
-
-/** Kiosk-only tap outcomes (the provider's "redemption" outcome is handled on /provider). */
-export type KioskTapResult =
-  | { kind: "session"; patient: PatientSummary }
-  | { kind: "unknown_card" }
-  | { kind: "unpaired_device" };

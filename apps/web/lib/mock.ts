@@ -3,13 +3,25 @@
 // All people, places and amounts are fictional.
 
 import type {
+  CreateDocumentRequest,
+  CreateGrantRequest,
+  CurrentDeviceResponse,
+  DocumentResponse,
+  GrantDecisionRequest,
+  GrantListResponse,
+  GrantResponse,
+  PairDeviceRequest,
+  PairDeviceResponse,
+  ProviderListResponse,
+  TapResult,
+} from "@abdulcare/contracts";
+import type {
   DocumentRecord,
   DonationResponse,
   Explanation,
   FoundBill,
   FundSummary,
   Grant,
-  KioskTapResult,
   NeedAssessment,
   NeedFactor,
   PatientProfile,
@@ -30,10 +42,20 @@ export const DEMO_PROVIDER: Provider = {
 
 const delay = (ms = 250) => new Promise((r) => setTimeout(r, ms));
 
-/** Card tap (/t/[token]). Demo tokens: "demo" → patient, "unpaired" → unpaired phone, else unknown card. */
-export async function resolveTap(token: string): Promise<KioskTapResult> {
+/**
+ * Card tap (/t/[token]). Demo tokens: "demo" → kiosk session, "provider" → provider redemption,
+ * "unpaired" → unpaired phone, anything else → unknown card.
+ */
+export async function resolveTap(token: string): Promise<TapResult> {
   await delay();
   if (token === "demo") return { kind: "session", patient: DEMO_PATIENT };
+  if (token === "provider") {
+    return {
+      kind: "redemption",
+      patient: DEMO_PATIENT,
+      redeemableGrants: demoGrant.status === "approved" ? [demoGrant] : [],
+    };
+  }
   if (token === "unpaired") return { kind: "unpaired_device" };
   return { kind: "unknown_card" };
 }
@@ -124,7 +146,7 @@ export async function chooseBill(
   };
 }
 
-const DEMO_GRANT: Grant = {
+let demoGrant: Grant = {
   id: "grt_001",
   patient: DEMO_PATIENT,
   bill: toDocument(BILLS[0]),
@@ -143,7 +165,101 @@ const DEMO_GRANT: Grant = {
 
 export async function getMyGrant(): Promise<Grant | null> {
   await delay();
-  return DEMO_GRANT;
+  return demoGrant;
+}
+
+// Devices --------------------------------------------------------------------------------------
+
+let mockDevice: CurrentDeviceResponse["device"] = null;
+
+export async function pairDevice(req: PairDeviceRequest): Promise<PairDeviceResponse> {
+  await delay();
+  mockDevice = { id: "dev_mock", role: req.role, label: req.label, providerId: req.providerId ?? null };
+  return { device: mockDevice };
+}
+
+export async function currentDevice(): Promise<CurrentDeviceResponse> {
+  await delay(100);
+  return { device: mockDevice };
+}
+
+// Kiosk request flow (stateful, so the whole journey can be clicked through locally) ------------
+
+export async function createDocument(req: CreateDocumentRequest): Promise<DocumentResponse> {
+  const { document, explanation } = await chooseBill(req.nessieId);
+  return { document, explanation };
+}
+
+export async function listProviders(): Promise<ProviderListResponse> {
+  await delay(100);
+  return { providers: [DEMO_PROVIDER] };
+}
+
+export async function createGrant(req: CreateGrantRequest): Promise<GrantResponse> {
+  await delay();
+  const bill = BILLS.find((b) => `doc_${b.id}` === req.documentId) ?? BILLS[0];
+  demoGrant = {
+    ...demoGrant,
+    bill: toDocument(bill),
+    requestedCents: req.requestedCents,
+    hardshipNote: req.hardshipNote ?? null,
+    status: "pending_review",
+    approvedCents: null,
+    approvals: [],
+    receipt: null,
+    createdAt: new Date().toISOString(),
+  };
+  return { grant: demoGrant };
+}
+
+export async function listMyGrants(): Promise<GrantListResponse> {
+  await delay();
+  return { grants: [demoGrant] };
+}
+
+export async function getGrantById(id: string): Promise<GrantResponse> {
+  await delay();
+  if (id !== demoGrant.id) throw new Error("not_found");
+  return { grant: demoGrant };
+}
+
+export async function decideGrant(id: string, req: GrantDecisionRequest): Promise<GrantResponse> {
+  await delay();
+  const item = QUEUE.find((q) => q.grant.id === id);
+  const base = id === demoGrant.id ? demoGrant : item?.grant;
+  if (!base) throw new Error("not_found");
+  const decided: Grant =
+    req.decision === "approve"
+      ? {
+          ...base,
+          status: "approved",
+          approvedCents: req.approvedCents,
+          approvals: [{ reviewerLabel: "Caseworker (mock)", approvedCents: req.approvedCents, at: new Date().toISOString() }],
+          decidedAt: new Date().toISOString(),
+        }
+      : { ...base, status: "rejected", decidedAt: new Date().toISOString() };
+  if (id === demoGrant.id) demoGrant = decided;
+  if (item) item.grant = decided;
+  return { grant: decided };
+}
+
+export async function redeemGrant(id: string): Promise<GrantResponse> {
+  await delay(1200);
+  if (id !== demoGrant.id || (demoGrant.status !== "approved" && demoGrant.status !== "paid")) {
+    throw new Error("invalid_state");
+  }
+  demoGrant = {
+    ...demoGrant,
+    status: "paid",
+    paidAt: new Date().toISOString(),
+    receipt: {
+      nessiePaymentId: "mock_pay_9c21",
+      solanaSignature: "5xQmockSignature",
+      explorerUrl: null,
+      receiptStatus: "receipt_confirmed",
+    },
+  };
+  return { grant: demoGrant };
 }
 
 // ---------------------------------------------------------------------------
