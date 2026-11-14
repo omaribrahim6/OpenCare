@@ -71,7 +71,10 @@ export interface NeedAssessment {
 }
 
 export interface QueueItem {
+  /** Position in the queue as shown (Gemini's order, or the formula order on fallback). */
   rank: number;
+  /** Position by formula score alone, for the audit column and disagreement marker. */
+  formulaRank: number;
   grantId: string;
   patient: PatientSummary;
   provider: Provider;
