@@ -6,3 +6,4 @@ export * from "./transactions";
 export * from "./solana";
 export * from "./redeem";
 export * from "./donations";
+export * from "./decisions";
