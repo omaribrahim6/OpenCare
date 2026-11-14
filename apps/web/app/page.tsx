@@ -7,7 +7,7 @@ import { unstable_cache } from "next/cache";
 import type { FundSummary, LedgerEntry, TopDonorsResponse } from "@abdulcare/contracts";
 import { getDb, getFundSummary, listLedger, listTopDonors } from "@abdulcare/core";
 import { Icon } from "@/components/Icon";
-import { DONOR_KIND_LABEL, DonorMark } from "@/components/landing/DonorMark";
+import { DONOR_KIND_LABEL, DonorMark, logoIdForName } from "@/components/landing/DonorMark";
 import { cleanName, usd, usdCompact } from "@/lib/format";
 import { CATEGORY_LABEL } from "@/lib/types";
 import "./landing.css";
@@ -130,7 +130,7 @@ export default async function Landing() {
               {donors.donors.map((d, i) => (
                 <li key={d.id}>
                   <span className="ln-rank">{i + 1}</span>
-                  <DonorMark name={d.name} kind={d.kind} />
+                  <DonorMark id={d.id} name={d.name} kind={d.kind} />
                   <span className="ln-donor-name">
                     <strong>{d.name}</strong>
                     <small>
@@ -161,7 +161,7 @@ export default async function Landing() {
           ) : (
             <p className="ln-empty">Donor totals are unavailable right now.</p>
           )}
-          <p className="ln-fine">Funders and amounts are demo data. Logos are generated initials, not real brands.</p>
+          <p className="ln-fine">Funders and amounts are demo data. Logos were generated for these fictional organizations and aren&rsquo;t real brands.</p>
         </aside>
 
         <section className="ln-card ln-fund" aria-labelledby="ln-fund-title">
@@ -207,6 +207,7 @@ export default async function Landing() {
               {claims.map((c) => (
                 <li key={c.reference}>
                   <Link href="/fund" className="ln-claim-row">
+                  <DonorMark id={logoIdForName(c.hospital)} name={cleanName(c.hospital ?? "Hospital")} kind="hospital" />
                   <span className="ln-claim-what">
                     <strong>{cleanName(c.hospital ?? "Hospital")}</strong>
                     <small>
