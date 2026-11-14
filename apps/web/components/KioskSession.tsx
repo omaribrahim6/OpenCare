@@ -55,6 +55,7 @@ export function KioskSession({
         <Logo href={null} />
         <EndSessionButton style={{ minHeight: 44 }} />
       </div>
+      {totalSteps > 0 && (
       <ol className="steps" aria-label={`Step ${step} of ${totalSteps}`}>
         {["Bills", "Request help", "Status"].slice(0, totalSteps).map((label, i) => (
           <li key={label} className={i < step ? "done" : ""} aria-current={i + 1 === step ? "step" : undefined}>
@@ -62,6 +63,7 @@ export function KioskSession({
           </li>
         ))}
       </ol>
+      )}
       {secondsLeft !== null && (
         <div className="card" role="alert">
           <strong>Still there?</strong> This session ends in {secondsLeft} seconds. Tap anywhere to keep going.

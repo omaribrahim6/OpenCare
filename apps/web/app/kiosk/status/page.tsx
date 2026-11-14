@@ -1,12 +1,6 @@
-import { KioskSession } from "@/components/KioskSession";
-import { RequestStatus } from "./RequestStatus";
+import { redirect } from "next/navigation";
 
-// Screen 4: Request status.
-export default async function RequestStatusPage({ searchParams }: { searchParams: Promise<{ new?: string }> }) {
-  const { new: isNew } = await searchParams;
-  return (
-    <KioskSession step={3} totalSteps={3}>
-      <RequestStatus justSent={Boolean(isNew)} />
-    </KioskSession>
-  );
+// Revision 6: the status lives on the bill page.
+export default function StatusPage() {
+  redirect("/kiosk/bill");
 }
