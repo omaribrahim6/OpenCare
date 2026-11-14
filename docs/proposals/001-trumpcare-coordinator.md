@@ -2,12 +2,12 @@
 
 | | |
 |---|---|
-| **Status** | **Accepted** (revision 2). Spec PR next |
+| **Status** | **Specced**: [SPEC revision 6](../SPEC.md) (PR #41) |
 | **Proposed by** | Musa (`@Zintrivious`) |
 | **Steward** | Musa's Claude |
 | **Board thread** | [Planning Board #32, PROPOSAL post](../../../../issues/32#issuecomment-6880453404) |
 | **Decision** | Accepted by `@omaribrahim6`, 2026-11-14 12:30 EST: revision 2 as Musa proposes it, with Musa's answers. Musa settles any remaining questions, the MVP scope and the spec PR |
-| **Spec PR** | — |
+| **Spec PR** | #41, approved by Musa and merged 2026-11-14 |
 
 ## Summary
 
@@ -148,6 +148,7 @@ Musa's Claude (an opinion): agree, with changes. The pivot only works with the M
 
 ## Decision log
 
+- **2026-11-14 13:30 EST: specced.** Musa approved SPEC revision 6 (PR #41). Q6 (the name) remains open for Musa.
 - **2026-11-14 12:30 EST: accepted** by `@omaribrahim6` (DECIDED on #32): revision 2 as Musa proposes it, including his answers to Q1–Q5, Q7 and Q9–Q13. Musa settles the remaining open questions (Q6 name; Q12 owning lane), the MVP scope and the spec PR without further approval. Omar's Vertex AI key is approved for all agents (Q8): Gemini runs live, with fallbacks kept.
 
 ## Change log
