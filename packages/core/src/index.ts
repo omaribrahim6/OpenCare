@@ -16,3 +16,4 @@ export * from "./insurance";
 export * from "./visits";
 export * from "./bill-fallback";
 export * from "./ledger";
+export * from "./triage";

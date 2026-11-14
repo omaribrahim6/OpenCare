@@ -25,9 +25,13 @@ import type { Db } from "./db";
 import { getGrant, listGrants } from "./grants";
 import { getPatientWithProfile } from "./profiles";
 import { CoreError, sha256 } from "./util";
+import { triageCase } from "./triage";
 import { getBill } from "./visits";
 
 const DAY_MS = 86_400_000;
+
+/** How many requests at the top of the queue get a model-written brief; the rest use the template. */
+export const MODEL_BRIEFS = 8;
 
 /** Gemini placing a request this many positions from formula order is flagged for the caseworker. */
 export const DISAGREEMENT_POSITIONS = 2;
@@ -216,39 +220,59 @@ export async function getReviewQueue(
   const byLabel = new Map(rows.map((r, i) => [r.label, assessed[i]]));
 
   // Rev 6: formula order only. Gemini writes the brief, never the order.
+  // Only the top of the queue gets a model-written brief (in parallel), so a long backlog stays
+  // inside the route's time limit; the rest get the template brief, which never calls a model.
   const ranking = formulaRanking(rows);
-  const items: QueueItem[] = [];
-  for (const [i, label] of ranking.order.entries()) {
-    const a = byLabel.get(label)!;
-    const bill = a.grant.visit ? await getBill(db, a.grant.visit.id) : null;
-    const suspicious = a.suspicious ?? bill?.suspiciousContent ?? null;
-    const remainingCents = bill ? bill.remainingCents : a.grant.requestedCents;
-    const brief = await getDecisionBrief(db, opts.bills, a.grant.id, {
-      path: bill?.steps ?? [],
-      remainingCents,
-      assessment: a.assessment,
-      factors: a.assessment.factors,
-      rank: i + 1,
-      queueLength: rows.length,
-      daysWaiting: a.days,
-      suspiciousContent: suspicious,
-      secondApprovalAboveCents: SECOND_APPROVAL_ABOVE_CENTS,
-    });
-    items.push({
-      rank: i + 1,
-      formulaRank: i + 1,
-      disagreesWithFormula: false,
-      grant: a.grant,
-      profile: a.profile,
-      daysWaiting: a.days,
-      assessment: a.assessment,
-      rationale: brief.reasons.join(" "),
-      suspiciousContent: suspicious,
-      brief,
-      path: bill?.steps ?? [],
-      remainingCents,
-    });
-  }
+  const { rows: work } = await db.query<{ id: string; employment: string | null }>(
+    "select id, employment from patients where id = any($1)",
+    [assessed.map((a) => a.grant.patient.id)],
+  );
+  const employment = new Map(work.map((r) => [r.id, r.employment]));
+  const items: QueueItem[] = await Promise.all(
+    ranking.order.map(async (label, i) => {
+      const a = byLabel.get(label)!;
+      const bill = a.grant.visit ? await getBill(db, a.grant.visit.id) : null;
+      const suspicious = a.suspicious ?? bill?.suspiciousContent ?? null;
+      const remainingCents = bill ? bill.remainingCents : a.grant.requestedCents;
+      const brief = await getDecisionBrief(db, i < MODEL_BRIEFS ? opts.bills : undefined, a.grant.id, {
+        path: bill?.steps ?? [],
+        remainingCents,
+        assessment: a.assessment,
+        factors: a.assessment.factors,
+        rank: i + 1,
+        queueLength: rows.length,
+        daysWaiting: a.days,
+        suspiciousContent: suspicious,
+        secondApprovalAboveCents: SECOND_APPROVAL_ABOVE_CENTS,
+      });
+      const insight = bill
+        ? triageCase({
+            bill,
+            remainingCents,
+            assessment: a.assessment,
+            profile: a.profile,
+            suspicious,
+            priorPaidCount90d: a.input.priorPaidCount90d,
+            employment: employment.get(a.grant.patient.id) ?? null,
+          })
+        : undefined;
+      return {
+        rank: i + 1,
+        formulaRank: i + 1,
+        disagreesWithFormula: false,
+        grant: a.grant,
+        profile: a.profile,
+        daysWaiting: a.days,
+        assessment: a.assessment,
+        rationale: brief.reasons.join(" "),
+        suspiciousContent: suspicious,
+        brief,
+        path: bill?.steps ?? [],
+        remainingCents,
+        insight,
+      };
+    }),
+  );
 
   return { source: "formula", model: null, availableCents, items, rankedAt: now.toISOString() };
 }
