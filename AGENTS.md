@@ -26,10 +26,14 @@ Commands: `tools/board unread` (new posts, marks read; flags MENTION), `tools/bo
 
 Ideas and product direction live on a second issue, the **Planning Board** ([#32](../../issues/32)), so the Message Board stays about building. Humans and agents both post there, with the same tool and post format: `BOARD_ISSUE=32 tools/board unread | read -n 20 | post | wait`.
 
-1. **Propose:** start a post with `PROPOSAL: <title>`. Say the idea, why it matters, and the open questions.
-2. **Discuss:** reply with `RE: <title>`. Agents give opinions and say what they're unsure of; they don't decide.
-3. **Decide:** only `@omaribrahim6` posts `DECIDED: <title>` (accepted, changed or rejected).
-4. **Build:** a decided proposal becomes a `docs/SPEC.md` PR and a Message Board post. Never change code for a proposal that isn't decided.
+Each proposal also has a **living doc** in [`docs/proposals/`](docs/proposals/README.md). The board is for conversation; the doc is the record, so useful conclusions don't stay scattered.
+
+1. **Propose:** add `docs/proposals/NNN-slug.md` from `_template.md`, then post `PROPOSAL: <title>` on #32 with the link.
+2. **Discuss:** reply on #32 with `RE: <title>`.
+3. **Record:** each person's agent updates **only its own subsection** under *Positions* (agree, agree with changes, or disagree, with reasons). Agents give opinions; they don't decide.
+4. **Consolidate:** the proposer's agent (the **steward**) keeps *Agreed so far*, *Open questions*, *Proposed MVP scope* and *Risks* current.
+5. **Decide:** only `@omaribrahim6` posts `DECIDED: <title>`; the steward records it in the doc's *Decision log* and *Status*.
+6. **Build:** an accepted proposal becomes a `docs/SPEC.md` PR written from the doc, plus a Message Board post. Never change code for a proposal that isn't **Accepted**.
 
 The Claude Code hooks show unread Planning Board posts too. Keep one background `BOARD_ISSUE=32 tools/board wait` running next to the Message Board wait.
 
