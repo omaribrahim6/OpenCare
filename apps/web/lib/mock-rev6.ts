@@ -1,6 +1,6 @@
 // Mocks for the SPEC revision 6 pipeline, typed with @abdulcare/contracts: hospital intake →
 // insurance → hospital policies → fund request → decision brief → approval pays the hospital.
-// Stateful in memory so the whole demo can be clicked through without the API.
+// Fictional browser state supports the separate patient, intake and reviewer screens.
 // All people, plans, policies and visits are fictional.
 
 import type {
@@ -11,6 +11,8 @@ import type {
   Explanation,
   Grant,
   GrantDecisionRequest,
+  GrantListResponse,
+  GrantStatus,
   GrantResponse,
   HospitalPolicy,
   InsuranceAdjudication,
@@ -169,7 +171,7 @@ function evaluate(visitId: string, balanceCents: number): PolicyApplication[] {
       reason = eligible ? `The balance is capped at ${money(cap)}.` : "The balance is already under the cap.";
     }
     out.push({
-      id: `app_${policy.id}`,
+      id: `${visitId}_${policy.id}`,
       visitId,
       policy,
       evaluation: { policyId: policy.id, eligible, criteria, missing: [], reductionCents: reduction, reason },
@@ -177,21 +179,55 @@ function evaluate(visitId: string, balanceCents: number): PolicyApplication[] {
         ? `Application to ${policy.name} at ${DEMO_HOSPITAL.name}. Household of ${PROFILE.householdSize}; monthly income ${money(PROFILE.monthlyIncomeCents)} (${pct}% of the poverty guideline). Balance: ${money(left)}.`
         : `Not needed: ${reason}`,
       textSource: "template",
-      status: eligible ? "approved_simulated" : "denied_simulated",
-      reductionCents: reduction,
-      decidedAt: now(),
+      status: "prepared",
+      reductionCents: 0,
+      decidedAt: null,
     });
     left -= reduction;
   }
   return out;
 }
 
-let visitBill: Omit<Bill, "events" | "steps" | "fundPaidCents" | "remainingCents" | "pendingCents"> & { baseEvents: BillEvent[] } | null = null;
-let demoGrant: Grant | null = null;
+type VisitBill = Omit<Bill, "events" | "steps" | "fundPaidCents" | "remainingCents" | "pendingCents"> & { baseEvents: BillEvent[] };
+type DemoVisit = { bill: VisitBill; grant: Grant | null };
+const VISITS_KEY = "abdulcare-demo-visits";
+const PLAN_KEY = "abdulcare-demo-plan";
 let intakePatient: PatientSummary | null = null;
 
-function assemble(): Bill | null {
-  if (!visitBill) return null;
+function visits(): DemoVisit[] {
+  const stored = localStorage.getItem(VISITS_KEY);
+  if (stored) return JSON.parse(stored) as DemoVisit[];
+  const history = createDemoBill(TEMPLATES[1], "visit_history", "2026-10-19T12:00:00Z", PLAN);
+  history.patientPaidCents = history.insurance!.patientResponsibilityCents;
+  history.baseEvents.push({
+    ...history.baseEvents[0],
+    id: "ev_patient",
+    type: "patient_payment",
+    amountCents: history.patientPaidCents,
+    source: { kind: "patient", label: "Patient payment", id: null },
+    label: "Patient payment",
+  });
+  return [
+    { bill: createDemoBill(TEMPLATES[0], "visit_demo", "2026-11-14T12:00:00Z", PLAN), grant: null },
+    { bill: history, grant: null },
+  ];
+}
+
+function saveVisits(records: DemoVisit[]) {
+  localStorage.setItem(VISITS_KEY, JSON.stringify(records));
+}
+
+export function getDemoPlan(): InsurancePlan {
+  const stored = localStorage.getItem(PLAN_KEY);
+  return stored ? (JSON.parse(stored) as InsurancePlan) : PLAN;
+}
+
+export function saveDemoPlan(plan: InsurancePlan) {
+  localStorage.setItem(PLAN_KEY, JSON.stringify(plan));
+}
+
+function assemble(record: DemoVisit): Bill {
+  const { bill: visitBill, grant: demoGrant } = record;
   const { baseEvents, ...rest } = visitBill;
   const events = [...baseEvents];
   if (demoGrant && ["pending_review", "approved", "payment_pending", "paid"].includes(demoGrant.status)) {
@@ -199,7 +235,7 @@ function assemble(): Bill | null {
     events.push({
       id: "ev_fund",
       type: "fund_grant",
-      amountCents: paid ? (demoGrant.approvedCents ?? 0) : demoGrant.requestedCents,
+      amountCents: demoGrant.approvedCents ?? demoGrant.requestedCents,
       source: { kind: "fund", label: "Community care fund", id: null },
       status: paid ? "confirmed" : "pending",
       simulated: false,
@@ -230,9 +266,9 @@ function explain(bill: Bill): Explanation {
     summary: `Your ${bill.visit.description.toLowerCase()} at ${bill.visit.hospital.name} cost ${money(bill.chargesCents)}. Insurance paid ${money(bill.insurerPaidCents)}, and the hospital's assistance took off ${money(bill.hospitalAssistanceCents)}.`,
     points: [
       ins
-        ? `After insurance you owed ${money(ins.patientResponsibilityCents)}: your ${money(ins.patientDeductibleCents)} deductible plus ${PLAN.coinsurancePct}% of the rest.`
+        ? `After insurance you owed ${money(ins.patientResponsibilityCents)}: your ${money(ins.patientDeductibleCents)} deductible plus ${bill.plan?.coinsurancePct}% of the rest.`
         : "You don't have insurance, so the hospital's self-pay discount was checked.",
-      `Because your household income is ${PROFILE.incomePctOfPoverty}% of the poverty guideline, the hospital's charity care forgave part of that.`,
+      ...(bill.hospitalAssistanceCents ? ["The hospital reduced your balance through simulated financial assistance."] : []),
       bill.remainingCents > 0
         ? `${money(bill.remainingCents)} is left. The community care fund can pay it directly to the hospital.`
         : "Nothing is left to pay.",
@@ -264,15 +300,9 @@ export async function getIntakePatient() {
   return { patient: intakePatient };
 }
 
-export async function createVisit(templateId: string, patientId?: string): Promise<VisitResponse> {
-  await delay(900);
-  const patient = patientId === base.DEMO_PATIENT.id || !patientId ? base.DEMO_PATIENT : base.DEMO_PATIENT;
-  const t = TEMPLATES.find((x) => x.id === templateId) ?? TEMPLATES[0];
-  const at = now();
-  const visitId = "visit_demo";
-  const ins = adjudicate(t.totalCents, PLAN);
+function createDemoBill(t: VisitTemplate, visitId: string, at: string, plan: InsurancePlan): VisitBill {
+  const ins = adjudicate(t.totalCents, plan);
   const applications = evaluate(visitId, ins.patientResponsibilityCents);
-  const hospitalOff = applications.reduce((a, x) => a + x.reductionCents, 0);
   const baseEvents: BillEvent[] = [
     {
       id: "ev_charge",
@@ -289,32 +319,18 @@ export async function createVisit(templateId: string, patientId?: string): Promi
       id: "ev_ins",
       type: "insurance_adjustment",
       amountCents: ins.insurerPaysCents,
-      source: { kind: "insurer", label: PLAN.payerName, id: null },
+      source: { kind: "insurer", label: plan.payerName, id: null },
       status: "confirmed",
       simulated: true,
       reference: null,
-      label: `${PLAN.payerName} paid its share (simulated)`,
+      label: `${plan.payerName} paid its share (simulated)`,
       createdAt: at,
     },
-    ...applications
-      .filter((x) => x.status === "approved_simulated" && x.reductionCents > 0)
-      .map<BillEvent>((x) => ({
-        id: `ev_${x.policy.id}`,
-        type: "hospital_assistance",
-        amountCents: x.reductionCents,
-        source: { kind: "policy", label: x.policy.name, id: x.policy.id },
-        status: "confirmed",
-        simulated: true,
-        reference: x.id,
-        label: `${x.policy.name} (hospital decision, simulated)`,
-        createdAt: at,
-      })),
   ];
-  demoGrant = null;
-  visitBill = {
+  return {
     visit: {
       id: visitId,
-      patient,
+      patient: base.DEMO_PATIENT,
       hospital: DEMO_HOSPITAL,
       date: at.slice(0, 10),
       category: t.category,
@@ -324,35 +340,80 @@ export async function createVisit(templateId: string, patientId?: string): Promi
       attestedBy: "Hospital intake (mock)",
       createdAt: at,
     },
-    plan: PLAN,
+    plan,
     insurance: ins,
     applications,
     chargesCents: t.totalCents,
     insurerPaidCents: ins.insurerPaysCents,
-    hospitalAssistanceCents: hospitalOff,
+    hospitalAssistanceCents: 0,
     patientPaidCents: 0,
     suspiciousContent: null,
     baseEvents,
   };
-  return { bill: assemble()! };
 }
 
-// Patient app ------------------------------------------------------------------------------------
+export async function createVisit(templateId: string, patientId: string | undefined, visitId: string): Promise<VisitResponse> {
+  await delay(450);
+  const t = TEMPLATES.find((x) => x.id === templateId);
+  if (!t || (patientId && patientId !== base.DEMO_PATIENT.id)) throw new Error("Choose a demo patient and visit template.");
+  const records = visits();
+  const existing = records.find((record) => record.bill.visit.id === visitId);
+  if (existing) return { bill: assemble(existing) };
+  const record = { bill: createDemoBill(t, visitId, now(), getDemoPlan()), grant: null };
+  saveVisits([record, ...records]);
+  return { bill: assemble(record) };
+}
 
-export async function getMyBill(): Promise<PatientBillResponse> {
-  await delay();
-  const bill = assemble();
-  return { bill, explanation: bill ? explain(bill) : null, grant: demoGrant };
+export async function getMyVisits(): Promise<PatientBillResponse[]> {
+  await delay(100);
+  return visits().map((record) => {
+    const bill = assemble(record);
+    return { bill, explanation: explain(bill), grant: record.grant };
+  });
+}
+
+export async function applyForSavings(visitId: string): Promise<void> {
+  await delay(450);
+  const records = visits();
+  const record = records.find((v) => v.bill.visit.id === visitId);
+  if (!record) throw new Error("This visit could not be found.");
+  const { bill } = record;
+  if (record.grant || assemble(record).remainingCents === 0) return;
+  for (const application of bill.applications) {
+    const { evaluation } = application;
+    if (application.status !== "prepared" || !evaluation.eligible || evaluation.reductionCents <= 0) continue;
+    application.status = "approved_simulated";
+    application.reductionCents = evaluation.reductionCents;
+    application.decidedAt = now();
+    bill.hospitalAssistanceCents += application.reductionCents;
+    bill.baseEvents.push({
+      id: `ev_${application.id}`,
+      type: "hospital_assistance",
+      amountCents: application.reductionCents,
+      source: { kind: "policy", label: application.policy.name, id: application.policy.id },
+      status: "confirmed",
+      simulated: true,
+      reference: application.id,
+      label: application.policy.name,
+      createdAt: application.decidedAt,
+    });
+  }
+  saveVisits(records);
 }
 
 export async function requestHelp(visitId: string, hardshipNote?: string): Promise<GrantResponse> {
-  await delay(500);
-  const bill = assemble();
-  if (!bill || bill.visit.id !== visitId) throw new Error("Log the hospital visit first.");
-  if (demoGrant && demoGrant.status === "pending_review") return { grant: demoGrant, bill };
   const doc = (await base.createDocument({ source: "nessie_bill", nessieId: "bill_pharm" })).document;
-  demoGrant = {
-    id: "grt_visit_demo",
+  const records = visits();
+  const record = records.find((v) => v.bill.visit.id === visitId);
+  if (!record) throw new Error("This visit could not be found.");
+  const bill = assemble(record);
+  if (record.grant) return { grant: record.grant, bill };
+  if (bill.remainingCents <= 0) throw new Error("This visit has no remaining balance.");
+  if (bill.applications.some((a) => a.status === "prepared" && a.evaluation.eligible && a.evaluation.reductionCents > 0)) {
+    throw new Error("Apply for hospital savings first.");
+  }
+  record.grant = {
+    id: `grt_${visitId}`,
     patient: base.DEMO_PATIENT,
     visit: {
       id: bill.visit.id,
@@ -375,7 +436,8 @@ export async function requestHelp(visitId: string, hardshipNote?: string): Promi
     paidAt: null,
     receipt: null,
   };
-  return { grant: demoGrant, bill: assemble()! };
+  saveVisits(records);
+  return { grant: record.grant, bill: assemble(record) };
 }
 
 // Admin panel ------------------------------------------------------------------------------------
@@ -414,16 +476,17 @@ export async function getReviewQueue(): Promise<ReviewQueue> {
       const path: BillStep[] = [{ label: "Remaining", reductionCents: 0, balanceCents: remaining, simulated: false, status: "confirmed" }];
       return { ...it, path, remainingCents: remaining, brief: briefFor(it, path, remaining) };
     });
-  const bill = assemble();
-  if (demoGrant?.status === "pending_review" && bill) {
-    const template = q.items.find((it) => it.grant.id === "grt_001");
-    if (template) {
+  const records = visits();
+  const template = q.items.find((it) => it.grant.id === "grt_001");
+  if (template) {
+    for (const record of records) {
+      if (record.grant?.status !== "pending_review") continue;
+      const bill = assemble(record);
       const it: QueueItem = {
         ...template,
-        grant: demoGrant,
+        grant: record.grant,
         daysWaiting: 0,
-        rationale:
-          "Income is 135% of the poverty guideline and the patient is underinsured. After insurance and the hospital's charity care, $432.00 remains, about 0.31 months of income. No prior support from the fund.",
+        rationale: `Monthly household income is ${money(PROFILE.monthlyIncomeCents)}. After insurance and hospital assistance, ${money(bill.remainingCents)} remains.`,
         path: bill.steps,
         remainingCents: bill.remainingCents,
       };
@@ -433,16 +496,30 @@ export async function getReviewQueue(): Promise<ReviewQueue> {
   }
   items = items
     .filter((it) => it.grant.status === "pending_review")
-    .sort((a, b) => b.assessment.score - a.assessment.score || b.daysWaiting - a.daysWaiting)
+    .sort((a, b) => b.assessment.score - a.assessment.score || b.daysWaiting - a.daysWaiting || a.grant.createdAt.localeCompare(b.grant.createdAt))
     .map((it, i) => ({ ...it, rank: i + 1, formulaRank: i + 1, disagreesWithFormula: false }));
-  return { ...q, source: "formula", model: null, items };
+  return { ...q, availableCents: demoBudget(q.availableCents, records), source: "formula", model: null, items };
+}
+
+function demoBudget(availableCents: number, records: DemoVisit[]) {
+  const paid = records.reduce((sum, { grant }) => sum + (grant?.status === "paid" ? (grant.approvedCents ?? 0) : 0), 0);
+  return Math.max(0, availableCents - paid);
 }
 
 /** Approval pays the hospital directly (no provider tap): approve → paid with a receipt. */
 export async function decideGrant(id: string, req: GrantDecisionRequest): Promise<GrantResponse> {
-  if (demoGrant && id === demoGrant.id) {
-    await delay(1200);
-    demoGrant =
+  await delay(450);
+  const { availableCents } = await base.getReviewQueue(true);
+  const records = visits();
+  const record = records.find(({ grant }) => grant?.id === id);
+  if (record?.grant) {
+    const demoGrant = record.grant;
+    if (demoGrant.status !== "pending_review") return { grant: demoGrant };
+    if (req.decision === "approve" && (req.approvedCents <= 0 || req.approvedCents % 100 !== 0 ||
+      req.approvedCents > Math.min(demoBudget(availableCents, records), assemble(record).remainingCents))) {
+      throw new Error("Enter a whole-dollar amount within the balance and available fund budget.");
+    }
+    record.grant =
       req.decision === "approve"
         ? {
             ...demoGrant,
@@ -452,15 +529,22 @@ export async function decideGrant(id: string, req: GrantDecisionRequest): Promis
             decidedAt: now(),
             paidAt: now(),
             receipt: {
-              nessiePaymentId: "mock_pay_7d41",
+              nessiePaymentId: `mock_pay_${id}`,
               solanaSignature: "4vJmockReceiptSignature",
               explorerUrl: null,
               receiptStatus: "receipt_confirmed",
             },
           }
         : { ...demoGrant, status: "rejected", decidedAt: now() };
-    return { grant: demoGrant };
+    saveVisits(records);
+    return { grant: record.grant };
   }
   const r = await base.decideGrant(id, req);
   return r.grant.status === "approved" ? base.redeemGrant(id).catch(() => r) : r;
+}
+
+export async function listGrants(status?: GrantStatus): Promise<GrantListResponse> {
+  const original = await base.listGrants(status);
+  const grants = visits().flatMap(({ grant }) => grant && (!status || grant.status === status) ? [grant] : []);
+  return { ...original, grants: [...grants, ...original.grants.filter((grant) => grant.id !== "grt_001")] };
 }

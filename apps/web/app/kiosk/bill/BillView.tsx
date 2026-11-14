@@ -1,184 +1,263 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { EndSessionButton } from "@/components/KioskSession";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/Icon";
 import { LoadError, NoSession } from "@/components/NoSession";
 import { ReadAloud } from "@/components/ReadAloud";
-import { getMyBill, isNoSession } from "@/lib/api";
-import { explorerTx, shortSig, stepLabel, usd } from "@/lib/format";
-import type { PatientBillResponse } from "@/lib/rev6";
+import { applyForDemoSavings, getPatientWorkspace, isNoSession, LIVE } from "@/lib/api";
+import { cleanName, explorerTx, shortDate, usd } from "@/lib/format";
+import type { Bill, InsurancePlan, PatientBillResponse } from "@/lib/rev6";
 import { POLICY_STATUS_LABEL } from "@/lib/rev6";
+import { InsuranceProfile } from "./InsuranceProfile";
 import { RequestHelpForm } from "./RequestHelpForm";
-
-type State = { phase: "loading" } | { phase: "no_session" } | { phase: "error" } | { phase: "done"; data: PatientBillResponse };
 
 const IN_FLIGHT = ["pending_review", "approved", "payment_pending"];
 
-/** Patient app: the bill shrinking step by step, then "Request help", then the result. */
-export function BillView({ justSent }: { justSent: boolean }) {
+type VisitData = PatientBillResponse & { bill: Bill };
+type State =
+  | { phase: "loading" | "no_session" | "error" }
+  | { phase: "ready"; visits: VisitData[]; plan: InsurancePlan | null };
+
+function visitStatus({ bill, grant }: VisitData) {
+  if (bill.remainingCents === 0) return bill.patientPaidCents > 0 ? "Paid" : "Fully covered";
+  if (grant && IN_FLIGHT.includes(grant.status)) return "Fund request pending";
+  if (bill.pendingCents > 0 || bill.applications.some((a) => a.status === "submitted_simulated")) return "Coverage pending";
+  if (bill.chargesCents > bill.remainingCents) return "Partially covered";
+  return "No coverage yet";
+}
+
+export function BillView({ visitId, showInsurance }: { visitId?: string; showInsurance: boolean }) {
   const [state, setState] = useState<State>({ phase: "loading" });
-
-  const load = useCallback(() => {
-    getMyBill()
-      .then((data) => setState({ phase: "done", data }))
-      .catch((e) => setState({ phase: isNoSession(e) ? "no_session" : "error" }));
+  const version = useRef(0);
+  const load = useCallback(async (background = false) => {
+    const request = ++version.current;
+    try {
+      const { visits, plan } = await getPatientWorkspace();
+      if (request !== version.current) return;
+      setState({ phase: "ready", visits: visits.filter((visit): visit is VisitData => visit.bill !== null), plan });
+    } catch (error) {
+      if (request !== version.current) return;
+      if (isNoSession(error)) setState({ phase: "no_session" });
+      else if (!background) setState({ phase: "error" });
+    }
   }, []);
-  useEffect(load, [load]);
+  useEffect(() => {
+    void load();
+    return () => { version.current++; };
+  }, [load]);
 
-  // While the request waits for review or the payout runs, check again so the $0 shows up live.
-  const waiting = state.phase === "done" && state.data.grant != null && IN_FLIGHT.includes(state.data.grant.status);
+  const waiting = state.phase === "ready" && state.visits.some(({ bill, grant }) =>
+    bill.pendingCents > 0 || (grant && IN_FLIGHT.includes(grant.status)),
+  );
   useEffect(() => {
     if (!waiting) return;
-    const t = setInterval(load, 4000);
-    return () => clearInterval(t);
+    const timer = window.setInterval(() => void load(true), 4000);
+    return () => window.clearInterval(timer);
   }, [waiting, load]);
 
-  if (state.phase === "loading") {
-    return (
-      <p role="status" aria-live="polite" className="card">
-        Loading your bill…
-      </p>
-    );
-  }
+  if (state.phase === "loading") return <p role="status" className="patient-panel">Loading your visits…</p>;
   if (state.phase === "no_session") return <NoSession />;
-  if (state.phase === "error") return <LoadError message="We couldn't load your bill just now." onRetry={load} />;
+  if (state.phase !== "ready") return <LoadError message="We couldn't load your visits." onRetry={() => void load()} />;
 
-  const { bill, explanation: ex, grant } = state.data;
-  if (!bill) {
-    return (
-      <>
-        <h1>No hospital bill yet</h1>
-        <p className="card">
-          When the hospital logs your visit with your CareCard, your bill shows up here with insurance and the
-          hospital&apos;s assistance already applied.
-        </p>
-        <EndSessionButton label="Done, end session" className="btn secondary block" />
-      </>
-    );
-  }
+  const selected = state.visits.find(({ bill }) => bill.visit.id === visitId);
+  return (
+    <div className="patient-workspace">
+      <nav className="patient-nav" aria-label="Patient">
+        <Link href="/kiosk/bill" aria-current={!showInsurance ? "page" : undefined}><Icon name="bill" /> My visits</Link>
+        <Link href="/kiosk/bill?view=insurance" aria-current={showInsurance ? "page" : undefined}><Icon name="shield" /> Insurance</Link>
+      </nav>
+      {showInsurance ? (
+        <InsuranceProfile plan={state.plan} onSave={() => void load(true)} />
+      ) : selected ? (
+        <VisitBill key={selected.bill.visit.id} data={selected} refresh={load} />
+      ) : (
+        <>
+          <h1>My visits</h1>
+          {visitId && <p role="status">That bill is unavailable in this session.</p>}
+          {!state.visits.length && <p className="patient-panel">Visits appear here after hospital staff log them with your CareCard.</p>}
+          <ul className="patient-visits">
+            {state.visits.map((data) => {
+              const { bill } = data;
+              return (
+                <li key={bill.visit.id}>
+                  <Link className="patient-visit" href={`/kiosk/bill?visit=${encodeURIComponent(bill.visit.id)}`}>
+                    <span className="patient-visit-icon"><Icon name="hospital" size={22} /></span>
+                    <span className="patient-visit-info">
+                      <strong>{cleanName(bill.visit.hospital.name)}</strong>
+                      <small>{shortDate(bill.visit.date)} · {bill.visit.description}</small>
+                      <span className="patient-status" data-paid={bill.remainingCents === 0}>{visitStatus(data)}</span>
+                    </span>
+                    <span className="patient-visit-amount"><strong>{usd(bill.remainingCents)}</strong><small>Balance</small></span>
+                    <Icon name="chevronRight" size={16} className="patient-chevron" />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          {!LIVE && <p className="patient-demo muted"><Icon name="info" size={15} /> Fictional demo visits and insurance</p>}
+        </>
+      )}
+    </div>
+  );
+}
 
-  const paid = grant?.status === "paid";
-  const inFlight = grant != null && IN_FLIGHT.includes(grant.status);
-  const remaining = bill.remainingCents;
-  const spoken = ex ? [ex.summary, ...ex.points].join(" ") : "";
+function Coverage({ bill, grant }: VisitData) {
+  const [selected, setSelected] = useState("remaining");
+  const pending = (type: Bill["events"][number]["type"]) =>
+    bill.events.filter((event) => event.type === type && event.status === "pending").reduce((total, event) => total + event.amountCents, 0);
+  const pendingFund = pending("fund_grant") || (grant && IN_FLIGHT.includes(grant.status) ? grant.approvedCents ?? grant.requestedCents : 0);
+  const parts = [
+    { id: "insurance", label: "Insurance", cents: bill.insurerPaidCents, waiting: pending("insurance_adjustment"), detail: bill.plan ? `Coverage from ${cleanName(bill.plan.payerName)}.` : "No insurance plan was used for this visit." },
+    { id: "hospital", label: "Hospital assistance", cents: bill.hospitalAssistanceCents, waiting: pending("hospital_assistance"), detail: "Savings approved by the hospital in this simulation." },
+    { id: "fund", label: "Community care", cents: bill.fundPaidCents, waiting: pendingFund, detail: "Grants paid directly to the hospital." },
+    ...(bill.patientPaidCents > 0 ? [{ id: "payment", label: "You paid", cents: bill.patientPaidCents, waiting: 0, detail: "Payments you already made toward this visit." }] : []),
+    { id: "remaining", label: "Still owed", cents: bill.remainingCents, waiting: 0, detail: "Your balance after confirmed coverage and payments." },
+  ];
+  const active = parts.find((part) => selected === part.id) ?? parts[parts.length - 1];
+  return (
+    <section className="patient-panel patient-coverage" aria-labelledby="coverage-title">
+      <div className="patient-section-header">
+        <h2 id="coverage-title">How your bill is covered</h2>
+        <span>{usd(bill.chargesCents)} original bill</span>
+      </div>
+      <div className="patient-bar" role="group" aria-label="Bill coverage breakdown">
+        {parts.filter(({ cents }) => cents > 0).map(({ id, label, cents }) => (
+          <button
+            type="button"
+            key={id}
+            data-part={id}
+            aria-label={`${label}, ${usd(cents)}`}
+            aria-pressed={id === active.id}
+            onClick={() => setSelected(id)}
+            style={{ flexGrow: cents }}
+          />
+        ))}
+      </div>
+      <div className="patient-legend">
+        {parts.map(({ id, label, cents, waiting }) => (
+          <button type="button" key={id} aria-pressed={id === active.id} onClick={() => setSelected(id)}>
+            <span className="patient-dot" data-part={id} />
+            <span>{label}<strong>{usd(cents)}</strong>{waiting > 0 && <small>{usd(waiting)} pending</small>}</span>
+          </button>
+        ))}
+      </div>
+      <p className="patient-coverage-detail" aria-live="polite">
+        <strong>{active.label}</strong> · {active.detail}
+        {active.waiting > 0 && ` ${usd(active.waiting)} is pending.`}
+      </p>
+    </section>
+  );
+}
+
+function VisitBill({ data, refresh }: { data: VisitData; refresh: () => Promise<void> }) {
+  const { bill, explanation, grant } = data;
+  const [applying, setApplying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [applied, setApplied] = useState(false);
+  const eligible = bill.applications.filter((a) => a.status === "prepared" && a.evaluation.eligible && a.evaluation.reductionCents > 0);
+  const approvals = bill.applications.filter((a) => a.status === "approved_simulated");
+  const pendingPolicy = bill.applications.some((a) => a.status === "submitted_simulated");
+  const canApply = !LIVE && !grant && bill.remainingCents > 0 && eligible.length > 0;
+  const estimated = eligible.reduce((total, application) => total + application.evaluation.reductionCents, 0);
+  const receipt = grant?.status === "paid" ? grant.receipt : null;
 
   return (
     <>
-      {justSent && grant?.status === "pending_review" && (
-        <p className="card" role="status">
-          <strong>Request sent.</strong> A reviewer at the community care fund will look at it. This page updates on its
-          own.
-        </p>
-      )}
-
-      <h1>{paid && remaining === 0 ? "Your bill is paid" : "Your hospital bill"}</h1>
-      <p className="muted" style={{ marginTop: -4 }}>
-        {bill.visit.description} · {bill.visit.hospital.name} · {bill.visit.date}
-      </p>
-
-      <section className={`card bill-total${paid ? " paid" : ""}`} aria-live="polite">
-        <span className="muted">{paid ? "You owe" : inFlight ? "Waiting for the fund" : "Left to pay"}</span>
-        <strong className="big">{usd(remaining)}</strong>
-        {paid && grant?.receipt?.solanaSignature && (
-          <a
-            className="bill-receipt"
-            href={grant.receipt.explorerUrl ?? explorerTx(grant.receipt.solanaSignature)}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Public receipt {shortSig(grant.receipt.solanaSignature)}
-          </a>
-        )}
+      <Link href="/kiosk/bill" className="patient-back"><Icon name="arrowLeft" size={16} /> All visits</Link>
+      <h1>{cleanName(bill.visit.hospital.name)}</h1>
+      <p className="patient-visit-subtitle muted">{shortDate(bill.visit.date)} · {bill.visit.description}</p>
+      <section className="patient-balance" aria-live="polite" aria-label="Visit balance">
+        <span>Amount you still owe</span>
+        <strong>{usd(bill.remainingCents)}</strong>
+        <span className="patient-status" data-paid={bill.remainingCents === 0}>{visitStatus(data)}</span>
       </section>
 
-      <section className="card">
-        <h2 style={{ marginTop: 0 }}>How your bill got smaller</h2>
-        <ol className="bill-steps">
-          {bill.steps.map((s, i) => (
-            <li key={`${s.label}-${i}`} className={`bill-step${i === 0 ? " charge" : ""} ${s.status}`}>
-              <span>
-                <strong>{stepLabel(s.label)}</strong>
-                <small>
-                  {s.status === "pending" ? "Waiting for review" : s.simulated ? "Simulated decision" : i === 0 ? `${bill.visit.lineItems.length} items` : "Confirmed"}
-                </small>
-              </span>
-              <em>{i === 0 ? usd(s.balanceCents) : `${s.status === "pending" ? "" : "−"}${usd(s.reductionCents)}`}</em>
-            </li>
-          ))}
-          <li className="bill-step total">
-            <span>
-              <strong>{paid ? "You owe" : "Left to pay"}</strong>
-            </span>
-            <em>{usd(remaining)}</em>
-          </li>
-        </ol>
+      <Coverage {...data} />
 
-        <details style={{ marginTop: 12 }}>
-          <summary style={{ cursor: "pointer" }}>Hospital assistance we applied for</summary>
-          <ul className="bill-policies">
-            {bill.applications.map((a) => (
-              <li key={a.id}>
-                <strong>{a.policy.name}</strong>: {POLICY_STATUS_LABEL[a.status]}
-                {a.reductionCents > 0 ? `, ${usd(a.reductionCents)} off` : ""}
-                <br />
-                <small className="muted">{a.evaluation.reason}</small>
+      {canApply && (
+        <section className="patient-panel patient-action" aria-labelledby="savings-title">
+          <h2 id="savings-title">Save {usd(estimated)} on this bill</h2>
+          <ul className="patient-lines">
+            {eligible.map((application) => (
+              <li key={application.id}>
+                <span>{application.policy.name}</span><strong>{usd(application.evaluation.reductionCents)}</strong>
               </li>
             ))}
           </ul>
+          <p className="muted">Apply for all eligible policies in one step. The hospital decisions are simulated.</p>
+          <button type="button" className="btn" disabled={applying} onClick={async () => {
+            setApplying(true);
+            setError(null);
+            try {
+              await applyForDemoSavings(bill.visit.id);
+              await refresh();
+              setApplied(true);
+            } catch (error) {
+              setError(error instanceof Error ? error.message : "We couldn't apply for savings. Try again.");
+            } finally {
+              setApplying(false);
+            }
+          }}>
+            {applying ? "Submitting applications…" : "Apply for savings"} <Icon name="arrowRight" />
+          </button>
+          {error && <p role="alert">{error}</p>}
+        </section>
+      )}
+
+      {approvals.length > 0 && (
+        <section className="patient-panel" aria-live="polite">
+          <h2>{applied ? "Savings applied" : "Hospital savings"}</h2>
+          <ul className="patient-lines">
+            {approvals.map((application) => (
+              <li key={application.id}>
+                <span>{application.policy.name}<small>{POLICY_STATUS_LABEL[application.status]}</small></span>
+                <strong>{usd(application.reductionCents)}</strong>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {pendingPolicy && <p className="patient-panel" role="status">Hospital assistance is pending a simulated decision.</p>}
+
+      {!canApply && !pendingPolicy && !grant && bill.remainingCents > 0 && (
+        <section className="patient-panel patient-action">
+          <h2>Get help with the rest</h2>
+          <p className="muted">Ask the community care fund to cover {usd(bill.remainingCents)}. A reviewer will look at your request.</p>
+          <RequestHelpForm visitId={bill.visit.id} remainingCents={bill.remainingCents} onSent={() => void refresh()} />
+        </section>
+      )}
+
+      {grant && (
+        <section className="patient-panel" aria-live="polite">
+          <h2>Community care request</h2>
+          {grant.status === "pending_review" && <p>Request sent for {usd(grant.requestedCents)}. A reviewer will look at it.</p>}
+          {(grant.status === "approved" || grant.status === "payment_pending") && <p>Approved. Hospital payment is pending.</p>}
+          {grant.status === "paid" && <p>The fund paid {usd(grant.approvedCents)} directly to the hospital.</p>}
+          {grant.status === "rejected" && <p>The fund declined this request. Ask the hospital about other payment options.</p>}
+          {grant.status === "canceled" && <p>This request was cancelled.</p>}
+          {receipt?.nessiePaymentId && <p className="muted">Payment reference {receipt.nessiePaymentId}</p>}
+          {receipt?.solanaSignature && (LIVE ? (
+            <a href={receipt.explorerUrl ?? explorerTx(receipt.solanaSignature)} target="_blank" rel="noreferrer">View public receipt</a>
+          ) : <p className="muted">Demo receipt recorded</p>)}
+        </section>
+      )}
+
+      <details className="patient-panel patient-details">
+        <summary>Itemized charges</summary>
+        <ul className="patient-lines">
+          {bill.visit.lineItems.map((item, index) => <li key={index}><span>{item.description}</span><strong>{usd(item.cents)}</strong></li>)}
+        </ul>
+      </details>
+      {explanation && (
+        <details className="patient-panel patient-details">
+          <summary>Read or hear the bill explanation</summary>
+          <p>{explanation.summary}</p>
+          <ul>{explanation.points.map((point) => <li key={point}>{point}</li>)}</ul>
+          <ReadAloud text={[explanation.summary, ...explanation.points].join(" ")} />
         </details>
-      </section>
-
-      {ex && (
-        <section className="card">
-          <p style={{ marginTop: 0 }}>{ex.summary}</p>
-          {ex.points.length > 0 && (
-            <ul>
-              {ex.points.map((p) => (
-                <li key={p}>{p}</li>
-              ))}
-            </ul>
-          )}
-          <p className="muted" style={{ fontSize: "0.85rem" }}>
-            {ex.disclaimer}
-          </p>
-          <ReadAloud text={spoken} />
-        </section>
       )}
-
-      {!grant && remaining > 0 && (
-        <section className="card">
-          <h2 style={{ marginTop: 0 }}>Get help with the rest</h2>
-          <p>
-            The community care fund can pay the {usd(remaining)} that&apos;s left, directly to {bill.visit.hospital.name}.
-            Everyone can ask. A person reviews every request, and those with the greatest need are seen first.
-          </p>
-          <RequestHelpForm visitId={bill.visit.id} remainingCents={remaining} onSent={load} />
-        </section>
-      )}
-
-      {grant?.status === "rejected" && (
-        <p className="card" role="status">
-          The fund wasn&apos;t able to cover this request. Ask hospital staff about a payment plan.
-        </p>
-      )}
-
-      {paid && (
-        <p className="card" role="status">
-          The community care fund paid {usd(grant?.approvedCents)} to {bill.visit.hospital.name}
-          {remaining === 0 ? ". There's nothing else to do." : `. ${usd(remaining)} is still yours to pay.`}
-        </p>
-      )}
-
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <button className="btn secondary" onClick={load}>
-          Refresh
-        </button>
-        <EndSessionButton label="Done, end session" className="btn secondary" />
-      </div>
-      <p className="muted" style={{ fontSize: "0.8rem", textAlign: "center" }}>
-        <Link href="/kiosk">Back to the start</Link>
-      </p>
     </>
   );
 }

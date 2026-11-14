@@ -3,18 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Device } from "@abdulcare/contracts";
-import { Icon, type IconName } from "../Icon";
+import { Icon } from "../Icon";
 import { LogoMark } from "../Logo";
 
 export type DeskView = "queue" | "decided";
 
-const STATIONS: { href: string; icon: IconName; label: string }[] = [
-  { href: "/", icon: "wallet", label: "Community fund" },
-  { href: "/kiosk", icon: "tap", label: "Patient kiosk" },
-  { href: "/intake", icon: "hospital", label: "Hospital intake" },
-];
-
-/** Caseworker frame: sidebar (device, review nav, other stations) and the page header. */
 export function DeskShell({
   view,
   onView,
@@ -43,10 +36,10 @@ export function DeskShell({
   return (
     <div className="desk">
       <aside className={`d-side${menu ? " open" : ""}`}>
-        <Link href="/" className="d-logo">
+        <div className="d-logo">
           <LogoMark />
-          AbdulCare
-        </Link>
+          Fund admin
+        </div>
 
         <div className="d-device">
           <span className="d-device-icon">
@@ -84,16 +77,6 @@ export function DeskShell({
             <Icon name="checkCircle" />
             Decided
           </button>
-        </nav>
-
-        <p className="d-section">Stations</p>
-        <nav className="d-nav" aria-label="Stations">
-          {STATIONS.map((s) => (
-            <Link key={s.href} href={s.href}>
-              <Icon name={s.icon} />
-              {s.label}
-            </Link>
-          ))}
         </nav>
 
         <p className="d-side-foot">Prototype. Fictional patients, Nessie sandbox money and Solana devnet receipts.</p>
