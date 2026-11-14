@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Rejects commit messages that don't follow Conventional Commits:
+#   <type>(<scope>): <summary>      e.g. feat(web): add RFID check-in screen
+# Enabled by `git config core.hooksPath .githooks` (tools/preflight and the Claude Code hook set it).
+# Also used by tools/preflight to check commits already on a branch.
+
+msg_file="$1"
+subject="$(head -n 1 "$msg_file" | tr -d '\r')"
+
+# Git-generated subjects are fine.
+case "$subject" in
+  "Merge "*|"Revert \""*|"fixup! "*|"squash! "*|"amend! "*) exit 0 ;;
+esac
+
+types='feat|fix|refactor|perf|test|docs|style|build|ci|chore|revert'
+scopes='web|api|ai|payments|contracts|repo|docs|agents|tooling|deps'
+
+fail() {
+  cat >&2 <<EOF
+commit-msg: rejected: "$subject"
+  $1
+
+  Format:  <type>(<scope>): <summary>
+  Types:   ${types//|/, }
+  Scopes:  ${scopes//|/, }
+  Example: feat(api): validate extracted bill totals as integer cents
+EOF
+  exit 1
+}
+
+printf '%s' "$subject" | grep -qE "^(${types})(\((${scopes})\))?!?: [^ ]" \
+  || fail "Subject must start with a type, an optional scope from the list, a colon, and a space."
+
+[ "${#subject}" -le 72 ] || fail "Subject is ${#subject} characters; keep it at 72 or fewer."
+
+summary="${subject#*: }"
+case "$summary" in
+  *.) fail "Don't end the summary with a period." ;;
+esac
+printf '%s' "$summary" | grep -qiE '^(wip|update|updates|changes|stuff|misc|fix|fixes|tmp|test)$' \
+  && fail "Summary is too vague. Say what changed, e.g. \"handle duplicate RFID taps\"."
+
+exit 0
