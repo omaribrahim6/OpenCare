@@ -33,13 +33,14 @@ The full list is in §16 of the proposal text below. These are the ones that blo
 
 | # | Question | Raised by | Current answer / options | Status |
 |---|---|---|---|---|
-| Q1 | Do we switch before the deadline (initial Devpost tonight 12:00 AM, final Sun 9:00 AM)? | Musa's Claude | Only with a hard MVP cut and a decision by about noon EST Sat | Open |
-| Q2 | Which programs are in the demo directory? | Proposal §16D | Hospital charity care, one nonprofit, the community fund. Real program names need sourced rules, so fictional is safer | Open |
-| Q3 | Does Gemini still rank the fund's queue? | Proposal §3C | Suggestion: no. The published formula orders the fund's queue; Gemini explains and prepares applications | Open |
-| Q4 | How is "submitted" shown when nothing is actually submitted? | Proposal §5 Stage 6 | "Submitted (simulated)", with the label always visible | Open |
+| Q1 | Do we switch before the deadline (initial Devpost tonight 12:00 AM, final Sun 9:00 AM)? | Musa's Claude | Only with a hard MVP cut and a fast decision. Musa's Claude: decide by about noon EST. Noureldin: if there's no decision by about 1–2 PM EST, keep the current build (48/48 passing) for the demo and pitch this as the roadmap | Open: needs Omar |
+| Q2 | Which programs are in the demo directory? | Proposal §16D | Fictional, clearly labeled programs (hospital charity care, one nonprofit, the community fund), with hand-written rules carrying a source and review date. Real programs need sourced rules we can't verify by Sunday | Leaning: fictional (Musa's Claude, Noureldin) |
+| Q3 | Does Gemini still rank the fund's queue? | Proposal §3C | No. The published `need-v1` formula orders the fund's queue; the ranking code can stay unused in `packages/ai` | Leaning: drop it (Musa's Claude, Noureldin) |
+| Q4 | How is "submitted" shown when nothing is actually submitted? | Proposal §5 Stage 6 | "Submitted (simulated)", with the label always visible | Leaning: as stated (Musa's Claude, Noureldin) |
 | Q5 | What happens to the current kiosk, provider and caseworker screens? | Musa's Claude | Reuse: the provider terminal becomes the hospital staff terminal; the caseworker desk records program decisions | Open |
 | Q6 | Product name: keep "TrumpCare"? | Musa's Claude | "TrumpCare" was the popular name for the 2017 AHCA repeal bill and could read as political or satire. Decide separately from the product | Open |
-| Q7 | Does the bill come from Nessie, from a seeded document, or both? | Proposal §3E | Seeded hospital-attested bill for the demo; Nessie keeps payouts and donations | Open |
+| Q7 | Does the bill come from Nessie, from a seeded document, or both? | Proposal §3E | A seeded hospital-attested bill, with no OCR. The injection flag stays on the seeded documents and packet text (a tampered seeded bill is still a demo moment). Nessie keeps payouts and donations | Leaning: seeded (Musa's Claude, Noureldin) |
+| Q8 | What if there's no Gemini key by demo time? | Noureldin | Every AI step needs a deterministic path that works without a key; Gemini only improves it. No "Gemini reads policies" in the MVP, because it would show nothing on stage without a key | Leaning: required (Noureldin) |
 
 ## Proposed MVP scope
 
@@ -47,14 +48,14 @@ First draft, from Musa's Claude's reply on #32. The steward updates it as the di
 
 - **Build (five screens, mostly reusing what exists):**
   1. **Hospital staff terminal:** tap the CareCard and attach a $5,000 bill marked "hospital-attested". Reuses pairing, taps and sessions.
-  2. **Patient case page:** the bill with its source badge, plus 3 programs with why each may fit and what's missing. Rules are deterministic; Gemini explains.
-  3. **Prepare application:** Gemini fills each packet from the one profile. Status runs Ready for review → Submitted (simulated).
+  2. **Patient case page:** the bill with its source badge, plus 3 programs with why each may fit and what's missing. Program requirements are hand-written rules with a source and review date; matching is rule-based (reusing the matcher from closed PR #7); Gemini only explains.
+  3. **Prepare application:** a template fills each packet from the one profile. Gemini may rewrite the text, checked so it can't add amounts, fields or claims. Status runs Ready for review → Submitted (simulated).
   4. **Program decisions:** the caseworker desk records "charity care: $2,500 reduction" (no money moves) and "nonprofit: $1,000 paid".
   5. **Balance ledger:** counts only confirmed events. A community fund grant covers the remainder through the existing Nessie payout and Solana receipt.
-- **Cut:** real submission, insurance appeals, OCR of arbitrary uploads (seed the documents), identity verification, the business model (pitch slide only), and Gemini ranking the queue.
+- **Cut:** real submission, insurance appeals, OCR of arbitrary uploads (seed the documents), identity verification, the business model (pitch slide only), Gemini ranking the queue, and Gemini reading policy documents.
 - **Lane impact (draft):**
   - **api:** case, program, application and ledger-event models; attach-bill and record-decision endpoints.
-  - **ai:** policy-to-requirements, packet generation, explanations; classification and injection detection stay.
+  - **ai:** the requirements catalog, rule-based matching, template packets with an optional checked Gemini rewrite, and explanations. Classification, explanation checks and injection detection carry over. Noureldin estimates **about 5–6 h** once the api contracts exist (a guess).
   - **payments:** unchanged, plus bill-reduction events that move no money.
   - **web:** the five screens; the data layer and the kiosk shell carry over.
 
@@ -63,6 +64,7 @@ First draft, from Musa's Claude's reply on #32. The steward updates it as the di
 - **Time:** a pivot this late can leave two half-finished products. Mitigation: decide fast, freeze the cut list, keep the current journey working until the new one runs end to end.
 - **Becoming "just information"** (§18): the demo must show work being removed, not only recommendations.
 - **Overclaiming:** simulated submissions or decisions shown as real would undercut trust with judges.
+- **No Gemini key** (Q8): AI steps must run on rules and templates, or the demo shows nothing.
 - **Naming** (Q6).
 
 ## Positions
@@ -111,6 +113,8 @@ Musa's Claude (an opinion): agree, with changes. The pivot only works with the M
 ## Change log
 
 - 2026-11-14 11:30 EST, Musa's Claude: created from Musa's proposal (#32) and Musa's Claude's reply; the shared sections are seeded from proposal §16 and §17.
+- 2026-11-14 11:30 EST, Noureldin's Claude: added Noureldin's position (PR #35).
+- 2026-11-14 11:45 EST, Musa's Claude (steward): folded Noureldin's position into Q1–Q4 and Q7, added Q8 (no Gemini key), updated the MVP scope, cut list, ai lane estimate and risks.
 
 ## Proposal
 
