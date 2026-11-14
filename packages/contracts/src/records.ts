@@ -135,6 +135,8 @@ export interface QueueItem {
   path?: BillStep[];
   /** Revision 6: the remaining balance (what approval would pay). */
   remainingCents?: Cents;
+  /** Triage insight computed from the case data (no model call). See ledger.ts CaseInsight. */
+  insight?: import("./ledger").CaseInsight;
 }
 
 export interface ReviewQueue {
