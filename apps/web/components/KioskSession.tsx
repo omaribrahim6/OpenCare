@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { endSession } from "@/lib/api";
-import { Logo } from "./Logo";
+import { Logo, LogoMark } from "./Logo";
 
 const IDLE_MS = 90_000;
 const WARN_MS = 15_000;
@@ -17,11 +17,15 @@ export function KioskSession({
   totalSteps = 4,
   demo = false,
   children,
+  navigation,
+  title,
 }: {
   step: number;
   totalSteps?: number;
   demo?: boolean;
   children: React.ReactNode;
+  navigation?: React.ReactNode;
+  title?: string;
 }) {
   const router = useRouter();
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
@@ -50,6 +54,30 @@ export function KioskSession({
       events.forEach((e) => window.removeEventListener(e, bump));
     };
   }, [router, demo]);
+
+  if (navigation) {
+    return (
+      <div className="desk patient-desk">
+        <aside className="d-side">
+          <div className="d-logo"><LogoMark /> Patient</div>
+          {navigation}
+        </aside>
+        <main className="d-main">
+          <header className="d-head">
+            <strong>{title}</strong>
+            <EndSessionButton demo={demo} className="d-btn patient-end-session" />
+          </header>
+          <div className="patient-mobile-nav">{navigation}</div>
+          <div className="d-body">
+            {secondsLeft !== null && (
+              <p className="patient-panel" role="alert">Session ends in {secondsLeft} seconds. Tap anywhere to stay signed in.</p>
+            )}
+            {children}
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <main className="page station station-session">

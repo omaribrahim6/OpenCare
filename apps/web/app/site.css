@@ -1333,6 +1333,8 @@
   margin: 6px auto 0;
 }
 
+.v-gauge { container-type: inline-size; }
+.v-gauge-value .v-amount { font-size: min(9cqi, 44px); }
 .v-gauge svg { display: block; width: 100%; }
 .v-gauge-value { position: absolute; bottom: 11%; left: 0; right: 0; text-align: center; }
 .v-gauge-value > span:last-child { font-size: 12px; color: var(--v-muted); }

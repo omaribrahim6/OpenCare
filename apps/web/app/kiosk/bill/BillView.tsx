@@ -69,10 +69,6 @@ export function BillView({ visitId, showInsurance, demo }: { visitId?: string; s
   return (
     <div className="patient-workspace">
       {(demo || !LIVE) && <p className="patient-demo muted"><Icon name="info" size={15} /> Demo · fictional data and simulated requests</p>}
-      <nav className="patient-nav" aria-label="Patient">
-        <Link href={visitHref(demo)} aria-current={!showInsurance ? "page" : undefined}><Icon name="bill" /> My visits</Link>
-        <Link href={visitHref(demo, { view: "insurance" })} aria-current={showInsurance ? "page" : undefined}><Icon name="shield" /> Insurance</Link>
-      </nav>
       {showInsurance ? (
         <InsuranceProfile demo={demo} plan={state.plan} onSave={() => void load(true)} />
       ) : selected ? (
