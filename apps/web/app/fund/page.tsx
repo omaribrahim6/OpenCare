@@ -1,10 +1,45 @@
-import { FORMULA_WEIGHTS, formatCents, getFundSummary } from "@/lib/mock";
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { LoadError } from "@/components/NoSession";
+import { getFundSummary } from "@/lib/api";
+import { FORMULA_WEIGHTS, formatCents } from "@/lib/mock";
+import type { FundSummary } from "@/lib/types";
 import { SECOND_APPROVAL_ABOVE_CENTS } from "@/lib/types";
 import { DonateButton } from "./DonateButton";
 
+const explorer = (sig: string) => `https://explorer.solana.com/tx/${encodeURIComponent(sig)}?cluster=devnet`;
+const shortSig = (sig: string) => (sig.length > 16 ? `${sig.slice(0, 6)}…${sig.slice(-6)}` : sig);
+
 // Screen 7: Fund dashboard. Aggregates only; no patient-level information.
-export default async function FundDashboard() {
-  const s = await getFundSummary();
+export default function FundDashboard() {
+  const [s, setSummary] = useState<FundSummary | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  const load = useCallback(() => {
+    setFailed(false);
+    getFundSummary()
+      .then(setSummary)
+      .catch(() => setFailed(true));
+  }, []);
+
+  useEffect(load, [load]);
+
+  if (!s) {
+    return (
+      <main className="page wide">
+        <h1>Community care fund</h1>
+        {failed ? (
+          <LoadError message="The fund summary didn't load." onRetry={load} />
+        ) : (
+          <p role="status" className="card">
+            Loading the fund…
+          </p>
+        )}
+      </main>
+    );
+  }
+
   const secondApprovalAbove = s.rules?.secondApprovalAboveCents ?? SECOND_APPROVAL_ABOVE_CENTS;
   const tiles = [
     { label: `Donated (${s.donationCount ?? 0} donations)`, value: formatCents(s.totalCents) },
@@ -21,7 +56,7 @@ export default async function FundDashboard() {
         reference, never patient information.
       </p>
       <div style={{ marginBottom: 16 }}>
-        <DonateButton />
+        <DonateButton onDonated={(fund) => setSummary(fund)} />
       </div>
       <div className="grid2">
         {tiles.map((t) => (
@@ -79,17 +114,26 @@ export default async function FundDashboard() {
             </tr>
           </thead>
           <tbody>
-            {s.recent.map((e) => (
-              <tr key={e.reference}>
+            {s.recent.map((e, i) => (
+              <tr key={`${e.reference}-${i}`}>
                 <td>{e.type[0].toUpperCase() + e.type.slice(1)}</td>
                 <td><code>{e.reference}</code></td>
                 <td>{formatCents(e.amountCents)}</td>
-                <td><code>{e.solanaSignature ?? "—"}</code></td>
+                <td>
+                  {e.solanaSignature ? (
+                    <a href={explorer(e.solanaSignature)} target="_blank" rel="noreferrer">
+                      <code>{shortSig(e.solanaSignature)}</code>
+                    </a>
+                  ) : (
+                    "Pending"
+                  )}
+                </td>
                 <td>{new Date(e.at).toLocaleString("en-US")}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        {s.recent.length === 0 && <p className="muted">No activity yet.</p>}
       </div>
     </main>
   );
