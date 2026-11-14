@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { Device } from "@abdulcare/contracts";
 import { DeskShell, type DeskView } from "@/components/desk/DeskShell";
@@ -9,13 +8,13 @@ import { ApiRequestError, currentDevice, getBriefedQueue, LIVE } from "@/lib/api
 import { cleanName, initials, usd, usdCompact, usdParts } from "@/lib/format";
 import type { Grant, NeedFactor, QueueItem, ReviewQueue } from "@/lib/types";
 import { CATEGORY_LABEL } from "@/lib/types";
+import { AdminGate } from "./AdminGate";
 import { CaseDrawer } from "./CaseDrawer";
 import { FundWorkspace } from "./FundWorkspace";
 import { Decided } from "./Decided";
 
 type Load =
   | { phase: "loading" }
-  | { phase: "not_reviewer" }
   | { phase: "error"; message: string }
   | { phase: "done"; queue: ReviewQueue };
 
@@ -25,10 +24,12 @@ type Metric = "amount" | "need";
 const topFactors = (factors: NeedFactor[], n = 3) =>
   [...factors].filter((f) => f.maxPoints > 0).sort((a, b) => b.points - a.points).slice(0, n);
 
-/** Caseworker desk (SPEC §4 screen 5): the need-ranked queue, why each request ranks there, and the decision. */
+/** Admin (SPEC §4 screen 5): behind a staff PIN, the need-ranked queue, why each request ranks there, and the decision. */
 export function Desk({ initialView }: { initialView: DeskView }) {
   const [view, setView] = useState<DeskView>(initialView);
-  const [device, setDevice] = useState<Device | null>(null);
+  // undefined while checking; only a reviewer device gets past the PIN screen.
+  const [device, setDevice] = useState<Device | null | undefined>(undefined);
+  const [expired, setExpired] = useState(false);
   const [load, setLoad] = useState<Load>({ phase: "loading" });
   const [refreshing, setRefreshing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -52,19 +53,24 @@ export function Desk({ initialView }: { initialView: DeskView }) {
       return getBriefedQueue()
         .then((queue) => setLoad({ phase: "done", queue }))
         .catch((e) =>
-          setLoad(
-            e instanceof ApiRequestError && (e.status === 401 || e.status === 403)
-              ? { phase: "not_reviewer" }
-              : { phase: "error", message: e instanceof Error ? e.message : "The queue didn't load." },
-          ),
-        )
+        {
+          if (e instanceof ApiRequestError && (e.status === 401 || e.status === 403)) {
+            // The device cookie was revoked or expired: back to the PIN screen.
+            setDevice(null);
+            setExpired(true);
+            setLoad({ phase: "loading" });
+          } else {
+            setLoad({ phase: "error", message: e instanceof Error ? e.message : "The queue didn't load." });
+          }
+        })
         .finally(() => setRefreshing(false));
     },
     [],
   );
+  const isReviewer = device?.role === "reviewer";
   useEffect(() => {
-    fetchQueue();
-  }, [fetchQueue]);
+    if (isReviewer) fetchQueue();
+  }, [isReviewer, fetchQueue]);
 
   useEffect(() => {
     if (!toast) return;
@@ -144,7 +150,7 @@ export function Desk({ initialView }: { initialView: DeskView }) {
       view={view}
       onView={setView}
       title={view === "queue" ? "Review queue" : view === "decided" ? "Decided" : "Community fund"}
-      device={device}
+      device={device ?? null}
       pending={queue ? items.length : null}
       actions={actions}
     >
@@ -158,24 +164,26 @@ export function Desk({ initialView }: { initialView: DeskView }) {
     </DeskShell>
   );
 
-  if (view === "ledger") return shell(<FundWorkspace key="ledger" initialTab="ledger" />);
-
-  if (load.phase === "not_reviewer") {
-    return shell(
-      <div className="d-card d-gate">
-        <div>
-          <span className="d-tile-icon" style={{ width: 48, height: 48, borderRadius: 12 }}>
-            <Icon name="lock" size={22} />
-          </span>
-          <h2>Staff access required</h2>
-          <p>Use your staff PIN to authorize this browser to review requests and manage the fund.</p>
-          <Link className="d-btn d-btn-teal" href="/pair">
-            <Icon name="key" /> Set up staff access
-          </Link>
-        </div>
-      </div>,
+  if (device === undefined) {
+    return (
+      <main className="d-login" aria-busy="true">
+        <span className="spinner" aria-label="Checking staff access" />
+      </main>
     );
   }
+  if (!isReviewer) {
+    return (
+      <AdminGate
+        expired={expired}
+        onSignedIn={(d) => {
+          setDevice(d);
+          setExpired(false);
+        }}
+      />
+    );
+  }
+
+  if (view === "ledger") return shell(<FundWorkspace key="ledger" initialTab="ledger" />);
 
   if (load.phase === "error") {
     return shell(
