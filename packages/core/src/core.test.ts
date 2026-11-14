@@ -152,13 +152,13 @@ describe("card taps", () => {
     assert.equal((await getSessionPatient(db, second.sessionSecret, kiosk))?.id, "pat_2");
   });
 
-  test("a provider tap lists only that patient's approved grants for that provider", async () => {
-    const grantId = await approvedGrant();
+  test("rev 6: a legacy provider device is a hospital terminal, so its tap selects the patient for intake", async () => {
     const { token } = await issueCard(db, "pat_1");
-    const { result } = await resolveTap(db, token, provider);
-    assert.equal(result.kind, "redemption");
-    if (result.kind === "redemption") assert.deepEqual(result.redeemableGrants.map((g) => g.id), [grantId]);
+    const { result, sessionSecret } = await resolveTap(db, token, provider);
+    assert.equal(result.kind, "intake");
+    assert.equal((await getSessionPatient(db, sessionSecret, provider))?.id, "pat_1");
   });
+
 });
 
 describe("documents and profiles", () => {
