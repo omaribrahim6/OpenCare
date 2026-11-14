@@ -110,17 +110,22 @@ export interface CriterionResult {
   detail: string;
 }
 
+// Field names line up with apps/web/lib/types.ts ProgramMatch; criteria and fit are extra detail.
 export interface ProgramMatch {
   programId: string;
-  programName: string;
+  name: string;
   fictional: boolean;
   /** possible: all known criteria met; needs_info: nothing failed but some unknown; unlikely: a criterion failed. */
   fit: "possible" | "needs_info" | "unlikely";
+  /** fit !== "unlikely". */
+  possibleFit: boolean;
+  /** One plain-language line per criterion (the details of `criteria`). */
+  reasons: string[];
   criteria: CriterionResult[];
   /** Questions to ask the patient to resolve unknown criteria. */
   missingInfo: string[];
-  /** Max the program could cover for this bill, integer cents, or null if unknown. */
-  maxCoverCents: number | null;
+  /** Max the program could cover for this bill, integer cents, or null if the bill amount is unknown. */
+  maxCents: number | null;
   /** Always present: a match is a possible fit, never a guarantee (SPEC §3). */
   note: string;
 }
