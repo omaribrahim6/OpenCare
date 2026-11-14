@@ -49,9 +49,12 @@ export interface CheckOptions {
   /** Reject decision words (approve, deny, eligible…). Briefs and explanations: yes. */
   noDecisions?: boolean;
   maxLength?: number;
-  /** Strings that must appear verbatim (e.g. the amounts that matter). */
-  mustInclude?: string[];
+  /** What the text must still say: amounts (matched by value) and names (matched loosely). */
+  mustInclude?: Required[];
 }
+
+/** A required amount or name. The label goes in the fallback reason, so it carries no case data. */
+export type Required = { label: string; cents: number } | { label: string; text: string };
 
 /** Null when the text passes, otherwise the reason it was rejected. */
 export function checkText(text: string, opts: CheckOptions): string | null {
@@ -61,18 +64,19 @@ export function checkText(text: string, opts: CheckOptions): string | null {
   if (opts.noDecisions && DECISION.test(text)) return "makes a decision or eligibility claim";
   for (const re of [...MEDICAL, ...COVERAGE]) if (re.test(text)) return `forbidden claim: ${re.source}`;
   for (const n of numbersIn(text)) if (!opts.allowed.has(n)) return `number ${n} is not in the case data`;
-  for (const s of opts.mustInclude ?? []) if (!includesLoosely(text, s)) return `missing "${s}"`;
+  for (const r of opts.mustInclude ?? []) if (!mentions(text, r)) return `missing the ${r.label}`;
   return null;
 }
 
 /**
- * Case-insensitive, and "$1,728.00" also matches "$1,728". Safe because the number check above
- * already rejects any amount (such as $1,728.50) that is not in the case data.
+ * Amounts match by value, so "$1,728.00", "$1,728", "$1728.00" and "1,728 dollars" all cite 172800
+ * cents. That is safe because the number check above already rejects any number (such as $1,728.50)
+ * that is not in the case data. Names ignore case and punctuation: "charity-care" cites "Charity care".
  */
-function includesLoosely(text: string, needle: string): boolean {
-  const t = text.toLowerCase();
-  const n = needle.toLowerCase();
-  return t.includes(n) || (/\.00$/.test(n) && t.includes(n.slice(0, -3)));
+function mentions(text: string, r: Required): boolean {
+  if ("cents" in r) return numbersIn(text).includes(dollars(r.cents));
+  const norm = (x: string) => ` ${x.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()} `;
+  return norm(text).includes(norm(r.text));
 }
 
 export function withDeadline<T>(p: Promise<T>, ms: number): Promise<T> {
