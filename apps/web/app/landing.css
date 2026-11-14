@@ -1,0 +1,335 @@
+/* Public landing page (/). Same palette as the violet fund dashboard (site.css .violet). */
+
+.landing {
+  --ln-violet: #7968df;
+  --ln-violet-ink: #5141b3;
+  --ln-violet-soft: #efebff;
+  --ln-ink: #191822;
+  --ln-ink-2: #393742;
+  --ln-muted: #64636d;
+  --ln-line: #eceaf2;
+  --ln-bg: #f1f2f4;
+  --ln-surface: #fff;
+  --ln-ok: #1f8a57;
+  --ln-radius: 20px;
+  min-height: 100dvh;
+  padding: clamp(16px, 2.6vw, 36px);
+  color: var(--ln-ink);
+  background:
+    radial-gradient(1200px 520px at 8% -10%, #e9e4ff 0%, transparent 60%),
+    radial-gradient(900px 480px at 100% 0%, #e7f1ff 0%, transparent 55%),
+    var(--ln-bg);
+  font-family: var(--font-sans);
+}
+
+.landing a { color: inherit; text-decoration: none; }
+.landing a:focus-visible { outline: 2px solid var(--ln-violet); outline-offset: 3px; border-radius: 10px; }
+
+/* Header */
+.ln-top {
+  max-width: 1280px;
+  margin: 0 auto clamp(16px, 2vw, 24px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.ln-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -.02em;
+}
+.ln-brand .v-brand { width: 38px; height: 38px; grid-template-columns: repeat(2, 12px); grid-template-rows: repeat(2, 12px); }
+.ln-nav { display: flex; align-items: center; gap: 4px; }
+.ln-nav a {
+  white-space: nowrap;
+  padding: 9px 14px;
+  border-radius: 999px;
+  color: var(--ln-ink-2);
+  font-size: 14.5px;
+  font-weight: 520;
+  transition: background .15s ease, color .15s ease;
+}
+.ln-nav a:hover { background: var(--ln-surface); color: var(--ln-violet-ink); }
+.ln-nav .ln-nav-quiet { color: var(--ln-muted); }
+
+/* Grid */
+.ln-grid {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  grid-template-areas:
+    "hero donors"
+    "fund donors"
+    "claims donors";
+  grid-template-rows: auto auto 1fr;
+  gap: 14px;
+}
+.ln-hero { grid-area: hero; }
+.ln-donors { grid-area: donors; align-self: start; position: sticky; top: 20px; }
+.ln-fund { grid-area: fund; }
+.ln-claims { grid-area: claims; align-self: start; }
+
+.ln-card {
+  min-width: 0;
+  padding: clamp(20px, 2.4vw, 32px);
+  border: 1px solid var(--ln-line);
+  border-radius: var(--ln-radius);
+  background: var(--ln-surface);
+  animation: ln-rise .5s ease both;
+}
+.ln-donors { animation-delay: .06s; }
+.ln-fund { animation-delay: .1s; }
+.ln-claims { animation-delay: .14s; }
+
+@keyframes ln-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.ln-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+.ln-card h2 { margin: 0; color: var(--ln-ink-2); font-size: 17px; font-weight: 600; letter-spacing: -.02em; }
+.ln-tag {
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: #f4f3f8;
+  color: var(--ln-muted);
+  font-size: 12px;
+  font-weight: 560;
+}
+.ln-fine { margin: 16px 0 0; color: var(--ln-muted); font-size: 12.5px; line-height: 1.5; }
+.ln-empty { margin: 8px 0; color: var(--ln-muted); font-size: 14px; }
+.ln-link { display: inline-flex; align-items: center; gap: 4px; color: var(--ln-violet-ink) !important; font-size: 14px; font-weight: 560; }
+.ln-link svg { width: 15px; height: 15px; }
+.ln-link:hover { text-decoration: underline; }
+
+/* Hero */
+.ln-eyebrow {
+  display: inline-flex;
+  margin: 0 0 18px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--ln-violet-soft);
+  color: var(--ln-violet-ink);
+  font-size: 13px;
+  font-weight: 560;
+}
+.ln-hero h1 {
+  max-width: 17ch;
+  margin: 0;
+  font-size: clamp(32px, 4.4vw, 58px);
+  font-weight: 650;
+  line-height: 1.02;
+  letter-spacing: -.045em;
+  text-wrap: balance;
+}
+.ln-lede {
+  max-width: 62ch;
+  margin: 18px 0 0;
+  color: var(--ln-muted);
+  font-size: clamp(15.5px, 1.25vw, 17.5px);
+  line-height: 1.6;
+}
+.ln-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+.ln-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 20px;
+  border: 1px solid #e3e1ec;
+  border-radius: 999px;
+  background: var(--ln-surface);
+  color: var(--ln-ink) !important;
+  font-size: 15px;
+  font-weight: 580;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.ln-btn svg { width: 17px; height: 17px; }
+.ln-btn:hover { transform: translateY(-1px); background: #faf9fd; }
+.ln-btn-primary {
+  border-color: transparent;
+  background: var(--ln-ink);
+  color: #fff !important;
+  box-shadow: 0 8px 22px rgba(25, 24, 34, .18);
+}
+.ln-btn-primary:hover { background: #2a2836; box-shadow: 0 10px 26px rgba(25, 24, 34, .24); }
+
+/* The shrinking bill */
+.ln-path {
+  list-style: none;
+  margin: 30px 0 0;
+  padding: 18px 0 0;
+  border-top: 1px solid var(--ln-line);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.ln-path li { display: grid; align-content: start; gap: 4px; min-width: 0; }
+.ln-path-bar {
+  display: block;
+  height: 8px;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  background: #f1eff7;
+  position: relative;
+  overflow: hidden;
+}
+.ln-path-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--w);
+  border-radius: inherit;
+  background: linear-gradient(90deg, #a79af8, var(--ln-violet));
+}
+.ln-path .is-zero .ln-path-bar::after { background: var(--ln-ok); }
+.ln-path-label { color: var(--ln-muted); font-size: 12.5px; font-weight: 520; }
+.ln-path strong { font-size: clamp(18px, 1.7vw, 24px); font-weight: 650; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.ln-path .is-zero strong { color: var(--ln-ok); }
+.ln-path small { color: var(--ln-muted); font-size: 12px; line-height: 1.4; }
+
+/* Donors */
+.ln-donor-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.ln-donor-list li {
+  display: grid;
+  grid-template-columns: 16px 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid #f3f2f7;
+}
+.ln-donor-list li:last-child { border-bottom: 0; }
+.ln-rank { color: #a9a7b3; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.ln-donor-name { display: grid; gap: 2px; min-width: 0; }
+.ln-donor-name strong {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 580;
+  line-height: 1.3;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.ln-donor-name small { color: var(--ln-muted); font-size: 12px; }
+.ln-donor-amount { font-size: 15px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.ln-donor-anon .ln-donor-name strong { color: var(--ln-ink-2); }
+
+.ln-mark {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+.ln-mark svg { width: 18px; height: 18px; }
+.ln-mark-state_program { background: #e9e6ff; color: #4b3bb0; box-shadow: inset 0 0 0 2px #d3ccff; }
+.ln-mark-federal_program { background: #e3eefb; color: #2b5a98; box-shadow: inset 0 0 0 2px #c9dcf4; }
+.ln-mark-hospital { background: #fde9ee; color: #a3324a; }
+.ln-mark-foundation { background: #e2f4ec; color: #1d7451; border-radius: 50% 50% 12px 12px; }
+.ln-mark-corporate { background: #fbf0dc; color: #8a5a0c; border-radius: 8px; }
+.ln-mark-community { background: #f3e8fb; color: #7a3b9e; border-radius: 50%; }
+.ln-mark-individual,
+.ln-mark-anon { background: #eef0f2; color: #4a4f57; border-radius: 50%; }
+
+/* Fund */
+.ln-fund {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "main cta"
+    "stats stats";
+  gap: 22px 24px;
+  align-items: end;
+}
+.ln-fund-main { grid-area: main; min-width: 0; }
+.ln-big {
+  margin: 12px 0 0;
+  font-size: clamp(48px, 6.4vw, 84px);
+  font-weight: 650;
+  line-height: .95;
+  letter-spacing: -.05em;
+  font-variant-numeric: tabular-nums;
+}
+.ln-exact { margin: 12px 0 0; color: var(--ln-muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.ln-fund-cta { grid-area: cta; }
+.ln-stats {
+  grid-area: stats;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+.ln-stats div { padding: 14px 16px; border-radius: 14px; background: #f7f6fb; }
+.ln-stats dt { color: var(--ln-muted); font-size: 12.5px; }
+.ln-stats dd { margin: 4px 0 0; font-size: 22px; font-weight: 650; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+
+/* Claims */
+.ln-claim-list { list-style: none; margin: 0; padding: 0; }
+.ln-claim-list li { border-bottom: 1px solid #f3f2f7; }
+.ln-claim-list li:last-child { border-bottom: 0; }
+.ln-claim-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px 110px;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 8px;
+  margin: 0 -8px;
+  border-radius: 12px;
+  transition: background .15s ease;
+}
+.ln-claim-row:hover { background: #f8f7fc; }
+.ln-claim-what { display: grid; gap: 2px; min-width: 0; }
+.ln-claim-what strong { overflow: hidden; font-size: 14.5px; font-weight: 580; white-space: nowrap; text-overflow: ellipsis; }
+.ln-claim-what small { color: var(--ln-muted); font-size: 12.5px; }
+.ln-claim-num { display: grid; justify-items: end; font-size: 15px; font-weight: 620; font-variant-numeric: tabular-nums; }
+.ln-claim-num small { color: var(--ln-muted); font-size: 11.5px; font-weight: 500; }
+.ln-claim-paid { color: var(--ln-ok); }
+
+.ln-foot {
+  max-width: 1280px;
+  margin: 22px auto 0;
+  color: #8c8a96;
+  font-size: 12.5px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 1040px) {
+  .ln-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "hero" "fund" "donors" "claims";
+    grid-template-rows: none;
+  }
+  .ln-donors { position: static; }
+}
+@media (max-width: 720px) {
+  .ln-path { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 18px; }
+  .ln-fund { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "stats" "cta"; }
+  .ln-fund-cta { justify-self: start; }
+  .ln-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ln-stats div { padding: 12px 14px; }
+  .ln-stats dd { font-size: 19px; }
+  .ln-claim-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .ln-claim-row > .ln-claim-num:not(.ln-claim-paid) { display: none; }
+  .ln-nav a { padding: 8px 10px; font-size: 14px; }
+  .ln-nav .ln-nav-quiet { display: none; }
+}
+@media (max-width: 420px) {
+  .ln-brand { gap: 9px; font-size: 17px; }
+  .ln-brand .v-brand { width: 32px; height: 32px; grid-template-columns: repeat(2, 10px); grid-template-rows: repeat(2, 10px); }
+  .ln-nav a { padding: 8px 8px; font-size: 13.5px; }
+  .ln-actions .ln-btn { width: 100%; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ln-card { animation: none; }
+  .ln-btn { transition: none; }
+}
