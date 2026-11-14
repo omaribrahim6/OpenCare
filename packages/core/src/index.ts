@@ -6,6 +6,8 @@ export * from "./util";
 export * from "./devices";
 export * from "./cards";
 export * from "./documents";
+export * from "./profiles";
 export * from "./grants";
 export * from "./attempts";
 export * from "./fund";
+export * from "./need";
