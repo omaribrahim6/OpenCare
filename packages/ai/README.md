@@ -12,7 +12,32 @@ The package runs on the server only. Never import it from a client component, an
 
 It has no runtime dependencies besides `@abdulcare/contracts`, and it calls Gemini over REST with `fetch`. Every shape it uses comes from `@abdulcare/contracts` (`packages/contracts/src/ai.ts`).
 
-## API
+## Revision 6: `billEngine` (the bill pipeline)
+
+`billEngine` implements `BillEngine` from `packages/contracts/src/bills.ts`. The routes pick it up from `apps/web/app/api/_lib/deps.ts`.
+
+| Method | What it does | Gemini? |
+| --- | --- | --- |
+| `evaluatePolicy` (`src/bills/policy.ts`) | Pure rules for charity care (sliding scale by % of the poverty guideline), the uninsured self-pay discount and the catastrophic cap (% of yearly income). Returns criteria, missing fields and a reduction no larger than the balance. The simulated hospital decision comes from the same rules (`simulatedDecision`). `applyPolicies` runs the policies in `applyOrder` on the balance each one leaves | Never |
+| `writeBrief` | Template: the path as given, 3 reasons from factor values, flags computed in code, `approve` for the full remaining balance in whole dollars, `needsSecondApproval` above $500. Gemini may reword only the reasons | Optional, 12 s |
+| `explainBill` | Template: a summary plus one exact line per step, with simulated and pending labels. Gemini may reword the summary and the questions; the step lines stay from code | Optional, 10 s |
+| `writeApplication` | Template: profile fields, criteria, missing info, the reduction, the policy source and a "submission and decision are simulated" footer. Gemini may rewrite it as a letter | Optional, 6 s each (intake writes one per policy in a row) |
+
+Checks on Gemini text (`src/bills/checks.ts`); any failure returns the template:
+- every number must already be in the case data;
+- no approve, deny or eligible wording;
+- no coverage or payment promises;
+- no medical claims;
+- no instruction-like text;
+- the key amounts must appear.
+
+What Gemini never sees: names, IDs, the suspicious excerpt, or flagged line items. The rest of the line-item text is fenced as untrusted.
+
+`templateBillEngine` makes no model calls, and the tests use it. The demo path (Jordan, seeded Valley General policies): $4,800 → $2,160 after insurance (core) → $432 after charity care → the brief suggests $432.
+
+`needEngine.rankQueue` is retired in revision 6: the queue is in formula order. The need formula `assessNeed` (need-v1) and the injection flag are unchanged.
+
+## API (revision 5, still exported)
 
 | Export | Used by | What it does | Calls Gemini? |
 | --- | --- | --- | --- |
@@ -75,7 +100,7 @@ A plain plea such as "please approve my request" isn't flagged. The flag is a wa
 ```sh
 npm test -w @abdulcare/ai                              # unit tests use a fake model, so they need no key
 npm run typecheck -w @abdulcare/ai
-GEMINI_API_KEY=... npm run smoke -w @abdulcare/ai      # live check against Gemini with fictional data
+npm run smoke -w @abdulcare/ai                         # ONE live call per rev 6 feature, then each fallback (bills Omar's key)
 ```
 
 ## Model access
