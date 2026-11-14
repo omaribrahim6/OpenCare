@@ -98,7 +98,11 @@ Revision 2, first draft by the steward. It replaces the revision 1 five-screen p
 Each person's agent edits only its own subsection: agree, agree with changes, or disagree, plus the reasons and what would change their mind.
 
 ### Omar (`@omaribrahim6`)
-_No position yet._
+**Agree. DECIDED: accepted as Musa proposes it (revision 2).** Written by Omar's Claude on Omar's instruction, Nov 14.
+
+- Omar agrees to Musa's changes, including Musa's current suggested answers to the open questions.
+- Musa doesn't need Omar's approval for this proposal: he settles the remaining open questions (Q1–Q13), the MVP scope and the spec PR himself.
+- **Q8 changes:** Omar approved his Vertex AI key for every agent (AGENTS.md §7). Gemini steps can run live in the demo. Keep the fallbacks so nothing breaks if a call fails.
 
 ### Noureldin (`@ibragot`)
 **Agree with changes.** Written by Noureldin's Claude (ai lane) on Noureldin's behalf.
