@@ -121,6 +121,7 @@ function factors(
 const QUEUE: QueueItem[] = [
   {
     rank: 1,
+    formulaRank: 1,
     grantId: "grt_014",
     patient: { id: "pat_b", displayName: "Avery Chen (fictional)" },
     provider: { id: "prov_er", name: "Mercy Valley ER (fictional)", kind: "hospital" },
@@ -142,7 +143,7 @@ const QUEUE: QueueItem[] = [
         ["None in 90 days", 0],
       ),
       rationale:
-        "Household income is 81% of the poverty guideline, and this $1,200.00 bill equals 0.67 months of income. The patient is uninsured and has had no prior support from the fund.",
+        "Lowest income in the queue at 81% of the poverty guideline, and this $1,200.00 emergency bill equals 0.67 months of income. Uninsured, with no prior support from the fund.",
       incomePctOfPoverty: 81,
       incomeEstimatedFromDeposits: false,
       suspiciousContent: null,
@@ -150,6 +151,67 @@ const QUEUE: QueueItem[] = [
   },
   {
     rank: 2,
+    formulaRank: 4,
+    grantId: "grt_031",
+    patient: { id: "pat_e", displayName: "Riley Morgan (fictional)" },
+    provider: { id: "prov_clinic", name: "Northside Walk-in Clinic (fictional)", kind: "clinic" },
+    bill: { merchant: "Northside Walk-in Clinic", description: "Follow-up visit", date: "2026-11-08", category: "primary_care" },
+    requestedCents: 30000,
+    daysWaiting: 6,
+    hardshipNote: null,
+    profile: { householdSize: 4, monthlyIncomeCents: 220000, insurance: "insured" },
+    assessment: {
+      score: 44,
+      formulaVersion: "need-v1",
+      factors: factors(
+        ["92% of poverty guideline", 30],
+        ["0.14 months of income", 7],
+        ["Insured", 0],
+        ["$300.00", 6],
+        ["Primary care", 5],
+        ["6 days", 6],
+        ["2 grants in 90 days", -10],
+      ),
+      rationale:
+        "Second-lowest income in the queue at 92% of the poverty guideline, and the longest wait at 6 days. The formula lowered it for 2 grants in 90 days, but its income is far below the requests ranked after it.",
+      incomePctOfPoverty: 92,
+      incomeEstimatedFromDeposits: false,
+      suspiciousContent: null,
+    },
+  },
+  {
+    rank: 3,
+    formulaRank: 2,
+    grantId: "grt_027",
+    patient: { id: "pat_d", displayName: "Morgan Ellis (fictional)" },
+    provider: { id: "prov_hosp", name: "Valley General Hospital (fictional)", kind: "hospital" },
+    bill: { merchant: "Valley General Hospital", description: "Outpatient imaging", date: "2026-11-09", category: "hospital" },
+    requestedCents: 35000,
+    daysWaiting: 5,
+    hardshipNote: "Car repair this month too, money is tight.",
+    profile: { householdSize: 2, monthlyIncomeCents: 100000, insurance: "underinsured" },
+    assessment: {
+      score: 62,
+      formulaVersion: "need-v1",
+      factors: factors(
+        ["175% of poverty guideline", 18],
+        ["0.35 months of income", 18],
+        ["Underinsured", 8],
+        ["$350.00", 6],
+        ["Hospital", 7],
+        ["5 days", 5],
+        ["None in 90 days", 0],
+      ),
+      rationale:
+        "Income is 175% of the poverty guideline, and this $350.00 bill equals 0.35 months of income, the second-highest cost burden in the queue. Underinsured, with no prior support from the fund.",
+      incomePctOfPoverty: 175,
+      incomeEstimatedFromDeposits: false,
+      suspiciousContent: null,
+    },
+  },
+  {
+    rank: 4,
+    formulaRank: 3,
     grantId: "grt_001",
     patient: DEMO_PATIENT,
     provider: DEMO_PROVIDER,
@@ -171,14 +233,15 @@ const QUEUE: QueueItem[] = [
         ["None in 90 days", 0],
       ),
       rationale:
-        "Household income is 135% of the poverty guideline. This $45.00 pharmacy bill is small relative to income, but the patient is underinsured and the medication is ongoing.",
+        "Income is 135% of the poverty guideline, higher than the three requests above. This $45.00 pharmacy bill is 0.03 months of income, but the patient is underinsured and the medication is ongoing.",
       incomePctOfPoverty: 135,
       incomeEstimatedFromDeposits: true,
       suspiciousContent: null,
     },
   },
   {
-    rank: 3,
+    rank: 5,
+    formulaRank: 5,
     grantId: "grt_022",
     patient: { id: "pat_c", displayName: "Sam Okafor (fictional)" },
     provider: { id: "prov_dental", name: "Brightside Dental (fictional)", kind: "dental" },
@@ -205,7 +268,7 @@ const QUEUE: QueueItem[] = [
         ["1 grant in 90 days", -4],
       ),
       rationale:
-        "Household income is 289% of the poverty guideline, and this $180.00 bill is a small share of monthly income. The patient is insured.",
+        "Highest income in the queue at 289% of the poverty guideline. This $180.00 bill is 0.03 months of income, the patient is insured, and the fund paid 1 grant to this patient in the last 90 days.",
       incomePctOfPoverty: 289,
       incomeEstimatedFromDeposits: false,
       suspiciousContent: {
@@ -216,9 +279,20 @@ const QUEUE: QueueItem[] = [
   },
 ];
 
-export async function getReviewQueue(): Promise<QueueItem[]> {
+export interface ReviewQueueResult {
+  /** "gemini" = Gemini's order passed the guardrails; "formula" = fallback (SPEC §7 job 3). */
+  order: "gemini" | "formula";
+  availableCents: number;
+  items: QueueItem[];
+}
+
+/** Pass formulaFallback to preview the fallback state (/review?order=formula). */
+export async function getReviewQueue(formulaFallback = false): Promise<ReviewQueueResult> {
   await delay();
-  return QUEUE;
+  const items = formulaFallback
+    ? [...QUEUE].sort((a, b) => a.formulaRank - b.formulaRank).map((it) => ({ ...it, rank: it.formulaRank }))
+    : [...QUEUE].sort((a, b) => a.rank - b.rank);
+  return { order: formulaFallback ? "formula" : "gemini", availableCents: 195500, items };
 }
 
 export async function getFundSummary(): Promise<FundSummary> {
@@ -235,6 +309,31 @@ export async function getFundSummary(): Promise<FundSummary> {
       { type: "payout", reference: "po_7f3a91", amountCents: 4500, solanaSignature: "5xQ…mock1", at: "2026-11-14T14:40:00Z" },
       { type: "donation", reference: "dn_19bc02", amountCents: 100000, solanaSignature: "3kP…mock2", at: "2026-11-14T13:10:00Z" },
       { type: "payout", reference: "po_a02e44", amountCents: 12000, solanaSignature: "4hR…mock3", at: "2026-11-14T12:05:00Z" },
+    ],
+  };
+}
+
+export interface FundRules {
+  formulaVersion: string;
+  perGrantCapCents: number;
+  secondApprovalOverCents: number;
+  weights: { label: string; measures: string; weight: string }[];
+}
+
+export async function getFundRules(): Promise<FundRules> {
+  await delay();
+  return {
+    formulaVersion: "need-v1",
+    perGrantCapCents: 150000,
+    secondApprovalOverCents: 50000,
+    weights: [
+      { label: "Income", measures: "Household income vs. the poverty guideline", weight: "30" },
+      { label: "Cost burden", measures: "Bill as a share of monthly income", weight: "25" },
+      { label: "Insurance", measures: "Uninsured, underinsured or insured", weight: "15" },
+      { label: "Cost of care", measures: "Bill size (log scale, capped)", weight: "10" },
+      { label: "Urgency", measures: "Expense category", weight: "10" },
+      { label: "Wait time", measures: "Days since the request", weight: "10" },
+      { label: "Prior support", measures: "Grants paid in the last 90 days", weight: "up to −10" },
     ],
   };
 }
