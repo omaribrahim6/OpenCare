@@ -1593,3 +1593,11 @@ body:has(.d-public) {
   .desk .d-tile:nth-child(n) { padding-inline: 0; border-inline-start: 0; }
   .desk .d-tile:nth-child(n+2) { border-top: 1px solid var(--d-line); }
 }
+
+.desk .d-pill, .desk .d-nav .d-count {
+  padding-inline: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.desk .d-nav .d-count { color: var(--d-teal-deep); font-variant-numeric: tabular-nums; }

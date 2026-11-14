@@ -387,3 +387,6 @@
   .ln-top { padding-bottom: 13px; }
   .ln-stats > div:nth-child(3) { padding-inline-start: 0; border-inline-start: 0; }
 }
+
+.ln-eyebrow, .ln-tag { padding: 0; border: 0; border-radius: 0; background: none; color: var(--ln-muted); }
+.ln-nav a, .ln-btn { border-radius: 9px; }
