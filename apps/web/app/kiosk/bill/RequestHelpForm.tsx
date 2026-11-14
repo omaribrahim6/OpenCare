@@ -1,22 +1,20 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { createGrant, isNoSession } from "@/lib/api";
-import { formatCents } from "@/lib/mock";
+import { isNoSession, requestHelp } from "@/lib/api";
+import { usd } from "@/lib/format";
 import { MAX_HARDSHIP_NOTE_CHARS } from "@/lib/types";
 
-/** "Request help" with an optional short hardship note (SPEC rev 5 §4): POST /api/grants. */
+/** Ask the community care fund for the remaining balance, with an optional note (never scored). */
 export function RequestHelpForm({
-  documentId,
-  providerId,
-  requestedCents,
+  visitId,
+  remainingCents,
+  onSent,
 }: {
-  documentId: string;
-  providerId: string;
-  requestedCents: number;
+  visitId: string;
+  remainingCents: number;
+  onSent: () => void;
 }) {
-  const router = useRouter();
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,14 +24,13 @@ export function RequestHelpForm({
       className="stack"
       onSubmit={async (e) => {
         e.preventDefault();
-        if (sending || !providerId) return;
+        if (sending) return;
         setSending(true);
         setError(null);
         try {
-          const trimmed = note.trim();
-          await createGrant({ documentId, providerId, requestedCents, hardshipNote: trimmed || undefined });
           // The note goes in the request body only, never the URL.
-          router.push("/kiosk/status?new=1");
+          await requestHelp({ visitId, hardshipNote: note.trim() || undefined });
+          onSent();
         } catch (err) {
           setError(
             isNoSession(err)
@@ -47,7 +44,7 @@ export function RequestHelpForm({
       }}
     >
       <div>
-        <label htmlFor="hardship">Anything you&apos;d like the caseworker to know? (optional)</label>
+        <label htmlFor="hardship">Anything you&apos;d like the reviewer to know? (optional)</label>
         <textarea
           id="hardship"
           rows={3}
@@ -66,8 +63,8 @@ export function RequestHelpForm({
           {error}
         </p>
       )}
-      <button className="btn block" type="submit" disabled={sending || !providerId}>
-        {sending ? "Sending…" : `Request help with ${formatCents(requestedCents)}`}
+      <button className="btn block" type="submit" disabled={sending}>
+        {sending ? "Sending…" : `Request help with ${usd(remainingCents)}`}
       </button>
     </form>
   );
