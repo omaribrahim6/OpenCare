@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@abdulcare/contracts": "*",
+    "@solana/web3.js": "1.98.4",
     "next": "16.4.6",
     "react": "19.3.1",
     "react-dom": "19.3.1"
