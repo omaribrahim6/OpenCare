@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Status** | Discussing (revision 2) |
+| **Status** | **Accepted** (revision 2). Spec PR next |
 | **Proposed by** | Musa (`@Zintrivious`) |
 | **Steward** | Musa's Claude |
 | **Board thread** | [Planning Board #32, PROPOSAL post](../../../../issues/32#issuecomment-6880453404) |
-| **Decision** | Pending (only `@omaribrahim6` decides) |
+| **Decision** | Accepted by `@omaribrahim6`, 2026-11-14 12:30 EST: revision 2 as Musa proposes it, with Musa's answers. Musa settles any remaining questions, the MVP scope and the spec PR |
 | **Spec PR** | — |
 
 ## Summary
@@ -52,23 +52,23 @@ The full list is in §16 of the proposal text below. These are the ones that blo
 
 | # | Question | Raised by | Current answer / options | Status |
 |---|---|---|---|---|
-| Q1 | Do we switch before the deadline (initial Devpost tonight 12:00 AM, final Sun 9:00 AM)? | Musa's Claude | Only with a hard MVP cut and a fast decision. Musa's Claude: decide by about noon EST. Noureldin: if there's no decision by about 1–2 PM EST, keep the current build (48/48 passing) for the demo and pitch this as the roadmap | Open: needs Omar |
-| Q2 | ~~Which programs are in the demo directory?~~ Revision 2: which **hospital policies** are in the demo? | Proposal §16D | Fictional, clearly labeled programs (hospital charity care, one nonprofit, the community fund), with hand-written rules carrying a source and review date. Real programs need sourced rules we can't verify by Sunday | Leaning: fictional, with sourced hand-written rules (Musa's Claude, Noureldin); now applies to hospital policies |
-| Q3 | Does Gemini still rank the fund's queue? | Proposal §3C | No. The published `need-v1` formula orders the fund's queue; the ranking code can stay unused in `packages/ai` | Leaning: drop it (Musa's Claude, Noureldin) |
-| Q4 | How is "submitted" shown when nothing is actually submitted? | Proposal §5 Stage 6 | "Submitted (simulated)", with the label always visible | Leaning: as stated (Musa's Claude, Noureldin) |
-| Q5 | What happens to the current kiosk, provider and caseworker screens? | Musa's Claude | Revision 2: the provider terminal becomes the hospital intake terminal; the caseworker desk becomes the final reviewer's queue with the decision brief; the kiosk becomes the patient's bill page | Open |
+| Q1 | Do we switch before the deadline (initial Devpost tonight 12:00 AM, final Sun 9:00 AM)? | Musa's Claude | Only with a hard MVP cut and a fast decision. Musa's Claude: decide by about noon EST. Noureldin: if there's no decision by about 1–2 PM EST, keep the current build (48/48 passing) for the demo and pitch this as the roadmap | **Decided:** switch now (Omar accepted revision 2) |
+| Q2 | ~~Which programs are in the demo directory?~~ Revision 2: which **hospital policies** are in the demo? | Proposal §16D | Fictional, clearly labeled programs (hospital charity care, one nonprofit, the community fund), with hand-written rules carrying a source and review date. Real programs need sourced rules we can't verify by Sunday | **Decided:** fictional hospital policies with sourced hand-written rules |
+| Q3 | Does Gemini still rank the fund's queue? | Proposal §3C | No. The published `need-v1` formula orders the fund's queue; the ranking code can stay unused in `packages/ai` | **Decided:** drop Gemini ranking; `need-v1` orders the queue |
+| Q4 | How is "submitted" shown when nothing is actually submitted? | Proposal §5 Stage 6 | "Submitted (simulated)", with the label always visible | **Decided** |
+| Q5 | What happens to the current kiosk, provider and caseworker screens? | Musa's Claude | Revision 2: the provider terminal becomes the hospital intake terminal; the caseworker desk becomes the final reviewer's queue with the decision brief; the kiosk becomes the patient's bill page | **Decided** |
 | Q6 | Product name: keep "TrumpCare"? | Musa's Claude | "TrumpCare" was the popular name for the 2017 AHCA repeal bill and could read as political or satire. Decide separately from the product | Open |
-| Q7 | Does the bill come from Nessie, from a seeded document, or both? | Proposal §3E | A seeded hospital-attested bill, with no OCR. The injection flag stays on the seeded documents and packet text (a tampered seeded bill is still a demo moment). Nessie keeps payouts and donations | Leaning: seeded (Musa's Claude, Noureldin) |
-| Q9 | When the AI "applies" to a hospital policy, who decides it? | Musa's Claude | **Musa:** the hospital approves it. For the demo that approval is simulated (the policy's rules decide) and always labeled "hospital decision (simulated)" | Answered by Musa; pending Omar |
-| Q10 | Is the fund's algorithm an eligibility cut-off, a ranking, or both? | Musa's Claude | **Musa: ranking only, no cut-off.** Everyone is eligible (the point of Medicare for All is that it's for everyone); the fixed algorithm puts the most eligible first and the less eligible further down the queue | Answered by Musa; pending Omar |
-| Q11 | Does the decision brief recommend an amount? | Musa's Claude | **Musa: yes, the full remaining balance.** The amount is computed from the case data, not chosen by the AI. The reviewer can change it; the brief never changes the score or the queue position | Answered by Musa; pending Omar |
-| Q12 | Where does insurance data come from, and which lane owns adjudication? | Musa's Claude | **Musa:** a made-up insurance plan per demo patient, also used for the final demo (deductible, coinsurance, out-of-pocket max). Which lane owns adjudication is still open (suggestion: core, api lane) | Answered by Musa (data); lane open |
-| Q13 | What does Nessie do now that the bill comes from the hospital? | Musa's Claude | **Musa agrees:** Nessie pays the hospital from the fund (existing payout) and takes donations; the patient's Nessie account supplies the income-from-deposits check. Bill discovery from Nessie is dropped | Answered by Musa; pending Omar |
-| Q8 | What if there's no Gemini key by demo time? | Noureldin | Every AI step needs a deterministic path that works without a key; Gemini only improves it. No "Gemini reads policies" in the MVP, because it would show nothing on stage without a key | Leaning: required (Noureldin) |
+| Q7 | Does the bill come from Nessie, from a seeded document, or both? | Proposal §3E | A seeded hospital-attested bill, with no OCR. The injection flag stays on the seeded documents and packet text (a tampered seeded bill is still a demo moment). Nessie keeps payouts and donations | **Decided:** seeded, hospital-attested |
+| Q9 | When the AI "applies" to a hospital policy, who decides it? | Musa's Claude | **Musa:** the hospital approves it. For the demo that approval is simulated (the policy's rules decide) and always labeled "hospital decision (simulated)" | **Decided** (Musa; accepted by Omar) |
+| Q10 | Is the fund's algorithm an eligibility cut-off, a ranking, or both? | Musa's Claude | **Musa: ranking only, no cut-off.** Everyone is eligible (the point of Medicare for All is that it's for everyone); the fixed algorithm puts the most eligible first and the less eligible further down the queue | **Decided** (Musa; accepted by Omar) |
+| Q11 | Does the decision brief recommend an amount? | Musa's Claude | **Musa: yes, the full remaining balance.** The amount is computed from the case data, not chosen by the AI. The reviewer can change it; the brief never changes the score or the queue position | **Decided** (Musa; accepted by Omar) |
+| Q12 | Where does insurance data come from, and which lane owns adjudication? | Musa's Claude | **Musa:** a made-up insurance plan per demo patient, also used for the final demo (deductible, coinsurance, out-of-pocket max). Which lane owns adjudication is still open (suggestion: core, api lane) | **Decided** (data). Owning lane still open |
+| Q13 | What does Nessie do now that the bill comes from the hospital? | Musa's Claude | **Musa agrees:** Nessie pays the hospital from the fund (existing payout) and takes donations; the patient's Nessie account supplies the income-from-deposits check. Bill discovery from Nessie is dropped | **Decided** (Musa; accepted by Omar) |
+| Q8 | What if there's no Gemini key by demo time? | Noureldin | Every AI step needs a deterministic path that works without a key; Gemini only improves it. **Update (Omar):** his Vertex AI key is approved for every agent, so Gemini steps can run live in the demo. Keep the fallbacks so a failed call never breaks the flow | **Decided:** live Gemini, with fallbacks kept |
 
 ## Proposed MVP scope
 
-Revision 2, first draft by the steward. It replaces the revision 1 five-screen plan.
+Revision 2, accepted with the proposal. Musa can still adjust it; the spec PR is written from this section.
 
 - **Build:**
   1. **Hospital intake terminal** (today's provider device, renamed): tap the CareCard and log a seeded visit with itemized charges, marked hospital-attested.
@@ -97,7 +97,7 @@ Revision 2, first draft by the steward. It replaces the revision 1 five-screen p
 - **Becoming "just information"** (§18): the demo must show work being removed, not only recommendations.
 - **Overclaiming:** simulated submissions or decisions shown as real would undercut trust with judges.
 - **Scope:** revision 2 adds insurance and hospital-policy steps; it must still fit before Sun 9:00 AM. Cut first: the insurance UI detail, then the number of policies.
-- **No Gemini key** (Q8): AI steps must run on rules and templates, or the demo shows nothing.
+- **Gemini availability** (Q8): the key is approved now, but every Gemini step keeps its rule or template fallback so a failed or slow call never stalls the demo.
 - **Naming** (Q6).
 
 ## Positions
@@ -145,7 +145,7 @@ Musa's Claude (an opinion): agree, with changes. The pivot only works with the M
 
 ## Decision log
 
-- _None yet._
+- **2026-11-14 12:30 EST: accepted** by `@omaribrahim6` (DECIDED on #32): revision 2 as Musa proposes it, including his answers to Q1–Q5, Q7 and Q9–Q13. Musa settles the remaining open questions (Q6 name; Q12 owning lane), the MVP scope and the spec PR without further approval. Omar's Vertex AI key is approved for all agents (Q8): Gemini runs live, with fallbacks kept.
 
 ## Change log
 
@@ -155,6 +155,7 @@ Musa's Claude (an opinion): agree, with changes. The pivot only works with the M
 - 2026-11-14 12:15 EST, Musa's Claude (steward): recorded revision 2 from the team discussion relayed by Musa. New summary, the pipeline table, agreed points (funding assumption, order of steps, human final reviewer), Q9–Q13, a new MVP scope and risks. Revision 1 is kept for history.
 - 2026-11-14 12:35 EST, Musa's Claude (steward): recorded Musa's answers. Q9: the hospital approves, simulated and labeled. Q10: ranking only, no cut-off. Q12: a made-up plan per demo patient. Q13: agreed. Q11 is awaiting clarification.
 - 2026-11-14 12:45 EST, Musa's Claude (steward): Q11 answered by Musa; the brief suggests the full remaining balance. MVP item 5 now spells out the brief.
+- 2026-11-14 12:50 EST, Musa's Claude (steward): recorded Omar's decision. Status Accepted, decision log, answered questions marked decided, Q8 updated for the approved Vertex key. Q6 and Q12's owning lane remain open for Musa.
 
 ## Proposal (revision 1, for history)
 
