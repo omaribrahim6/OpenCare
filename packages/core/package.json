@@ -12,13 +12,16 @@
     "test": "tsx --test \"src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "db:migrate": "tsx db/migrate.ts",
-    "db:seed": "tsx db/seed.ts"
+    "db:seed": "tsx db/seed.ts",
+    "db:demo": "tsx db/demo.ts",
+    "db:reset": "tsx db/demo.ts --reset"
   },
   "dependencies": {
     "@abdulcare/contracts": "*",
     "pg": "^8.13.0"
   },
   "devDependencies": {
+    "@abdulcare/ai": "*",
     "@electric-sql/pglite": "^0.2.17",
     "@types/node": "^24",
     "@types/pg": "^8.11.0",

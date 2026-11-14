@@ -11,7 +11,11 @@ npm test -w @abdulcare/core            # 24 tests on embedded Postgres (PGlite),
 npm run typecheck -w @abdulcare/core
 npm run db:migrate -w @abdulcare/core  # applies db/migrations to DATABASE_URL (from the root .env)
 npm run db:seed -w @abdulcare/core     # 4 fictional profiled patients, pharmacy, $500 fund; prints CareCard URLs
+npm run db:demo -w @abdulcare/core     # pending requests for Sam, Jordan and Casey (tampered) + starting donations
+npm run db:reset -w @abdulcare/core    # between rehearsals: wipe all activity, reopen paid Nessie bills, then db:demo
 ```
+
+`db:demo` reads the real bills from each Nessie account and leaves Alex's $45 pharmacy bill for the live kiosk request. It is safe to re-run. `db:reset` keeps patients, profiles, cards, providers and paired devices. Neither calls Gemini.
 
 `db:migrate -- --no-timescale` skips `002_timescale.sql` on plain Postgres.
 
