@@ -91,7 +91,8 @@ async function main() {
 
   // The community fund, starting from a few donations ($500 total, matching the core seed).
   const fundCustomer = await nessie.createCustomer({ firstName: "AbdulCare", lastName: "Community Fund", address: ADDRESS });
-  const fund = await nessie.createAccount(fundCustomer._id, { nickname: "AbdulCare Community Fund", balanceCents: 0 });
+  // Nessie never updates balances from deposits or purchases, so start the display balance at $500.
+  const fund = await nessie.createAccount(fundCustomer._id, { nickname: "AbdulCare Community Fund", balanceCents: 50_000 });
   for (const [i, cents] of [20_000, 15_000, 15_000].entries()) {
     await nessie.createDeposit(fund._id, { amountCents: cents, description: `AbdulCare donation seed${i + 1}`, date: daysAgo(10 - i * 3) });
   }
@@ -102,12 +103,13 @@ async function main() {
     const account = await nessie.createAccount(customer._id, { nickname: `${p.first}'s checking`, balanceCents: 30_000 });
 
     // Biweekly paychecks for the last 90 days.
-    const paycheck = Math.round((p.monthlyIncomeCents * 12) / 26);
+    // Whole dollars: Nessie truncates cents.
+    const paycheck = Math.round((p.monthlyIncomeCents * 12) / 26 / 100) * 100;
     for (let d = 4; d <= 88; d += 14) {
       await nessie.createDeposit(account._id, { amountCents: paycheck, description: "Payroll", date: daysAgo(d) });
     }
     // Everyday purchases the classifier should mark as not medical.
-    await nessie.createPurchase(account._id, { merchantId: grocery._id, amountCents: 6_420, description: "Groceries", date: daysAgo(3) });
+    await nessie.createPurchase(account._id, { merchantId: grocery._id, amountCents: 6_400, description: "Groceries", date: daysAgo(3) });
     await nessie.createPurchase(account._id, { merchantId: transit._id, amountCents: 3_000, description: "Monthly bus pass", date: daysAgo(12) });
 
     for (const bill of p.bills) {

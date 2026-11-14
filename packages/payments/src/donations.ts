@@ -35,8 +35,13 @@ export async function donateByCard(
   input: { amountCents: number; idempotencyKey?: string },
 ): Promise<DonationReceipt> {
   const { amountCents } = input;
-  if (!Number.isInteger(amountCents) || amountCents < MIN_DONATION_CENTS || amountCents > MAX_DONATION_CENTS) {
-    throw new CoreError("bad_request", "Donations must be between $1 and $10,000, in whole cents");
+  if (
+    !Number.isInteger(amountCents) ||
+    amountCents % 100 !== 0 || // Nessie stores whole dollars only
+    amountCents < MIN_DONATION_CENTS ||
+    amountCents > MAX_DONATION_CENTS
+  ) {
+    throw new CoreError("bad_request", "Donations must be whole dollars, from $1 to $10,000");
   }
   if (input.idempotencyKey !== undefined && !KEY_PATTERN.test(input.idempotencyKey)) {
     throw new CoreError("bad_request", "idempotencyKey must be 8–64 letters, digits, _ or -");
