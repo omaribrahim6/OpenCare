@@ -159,7 +159,26 @@ export interface FundLedgerEntry {
   at: string;
 }
 
+/** A named funder on the public landing page (GET /api/fund/donors). All seeded funders are fictional. */
+export interface TopDonor {
+  id: string;
+  name: string;
+  kind: import("./ledger").DonorKind;
+  website: string | null;
+  totalGivenCents: Cents;
+  giftCount: number;
+  fictional: boolean;
+}
+
+export interface TopDonorsResponse {
+  /** Named funders, largest total first. */
+  donors: TopDonor[];
+  /** Gifts from donors who chose to stay anonymous. */
+  anonymous: { totalCents: Cents; giftCount: number };
+}
+
 export interface FundSummary {
+
   totalCents: Cents;
   availableCents: Cents;
   reservedCents: Cents;
