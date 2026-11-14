@@ -4,7 +4,6 @@
 import {
   type ExpenseCategory,
   MAX_HARDSHIP_NOTE_CHARS,
-  SECOND_APPROVAL_ABOVE_CENTS,
   type Grant,
   type GrantApproval,
   type GrantDecisionRequest,
@@ -144,7 +143,7 @@ export function toGrant(row: GrantRow): Grant {
     status: row.status,
     hardshipNote: row.hardship_note,
     approvals,
-    awaitingSecondApproval: row.status === "pending_review" && approvals.length > 0,
+    awaitingSecondApproval: false, // kept for compatibility; one approval is enough
     createdAt: iso(row.created_at),
     decidedAt: isoOrNull(row.decided_at),
     paidAt: isoOrNull(row.paid_at),
@@ -284,8 +283,7 @@ export async function requestHelp(
 
 /**
  * A caseworker approves (reserving fund budget atomically) or rejects a pending request.
- * Above SECOND_APPROVAL_ABOVE_CENTS, the first approval is recorded and the grant stays
- * pending_review; a different caseworker device approving the same amount completes it.
+ * One approval is enough at any amount (Musa, Nov 14 2026).
  */
 export async function decideGrant(
   db: Db,
@@ -323,31 +321,13 @@ export async function decideGrant(
       throw new CoreError("bad_request", "Can't approve more than was requested");
     }
 
-    const { rows: prior } = await tx.query<{ reviewer_device_id: string; approved_cents: number }>(
-      "select reviewer_device_id, approved_cents from grant_approvals where grant_id = $1",
-      [grantId],
-    );
-    if (prior.some((a) => a.reviewer_device_id === reviewerDeviceId)) {
-      throw new CoreError("conflict", "You already approved this request; a second caseworker must approve it");
-    }
-    if (prior[0] && Number(prior[0].approved_cents) !== cents) {
-      throw new CoreError("bad_request", `The second approval must match the first amount (${prior[0].approved_cents} cents)`);
-    }
+    // One approval is enough at any amount. A grant left holding an approval from the old
+    // two-approval rule completes here too, from any reviewer device, the same one included.
     await tx.query(
-      "insert into grant_approvals (grant_id, reviewer_device_id, approved_cents) values ($1, $2, $3)",
+      `insert into grant_approvals (grant_id, reviewer_device_id, approved_cents) values ($1, $2, $3)
+       on conflict (grant_id, reviewer_device_id) do update set approved_cents = excluded.approved_cents`,
       [grantId, reviewerDeviceId, cents],
     );
-    if (cents > SECOND_APPROVAL_ABOVE_CENTS && prior.length === 0) {
-      // The first of two approvals reserves nothing yet, but it must still fit the budget, so no
-      // caseworker signs off on an amount the fund can't cover. The second approval checks again.
-      const { rows: fund } = await tx.query<{ available: number }>(
-        "select total_cents - reserved_cents - paid_cents as available from fund where id = 'community'",
-      );
-      if (Number(fund[0]?.available ?? 0) < cents) {
-        throw new CoreError("insufficient_funds", "The fund doesn't have enough available");
-      }
-      return; // Recorded; waits for a second caseworker.
-    }
 
     const { rows: reserved } = await tx.query(
       `update fund set reserved_cents = reserved_cents + $1
