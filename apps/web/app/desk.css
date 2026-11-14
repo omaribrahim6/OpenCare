@@ -1569,3 +1569,68 @@ body:has(.d-public) {
   align-items: center;
   margin-bottom: 24px;
 }
+
+/* Keep sections on the workspace surface and borders on controls. */
+.desk:not(.patient-desk),
+.desk:not(.patient-desk) .d-main,
+.desk:not(.patient-desk) .d-head {
+  background: #fcfdff;
+}
+.desk .d-side { background: #f5f8fd; }
+.desk :is(.d-card, .d-fund-workspace > .g-card) {
+  padding-inline: 0;
+  border: 0;
+  border-top: 1px solid var(--d-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.desk .d-tiles > .d-tile {
+  padding-inline: 14px;
+  border: 0;
+  border-inline-start: 1px solid var(--d-line);
+  border-radius: 0;
+  background: transparent;
+}
+.desk .d-tiles > .d-tile:first-child {
+  padding-inline-start: 0;
+  border-inline-start: 0;
+}
+.desk .d-pill,
+.desk .d-nav .d-count {
+  padding-inline: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.desk .d-nav .d-count {
+  color: var(--d-teal-deep);
+  font-variant-numeric: tabular-nums;
+}
+.d-login { background: #fcfdff; }
+.d-login-card {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+@media (min-width: 901px) {
+  .desk .d-next {
+    padding-inline-start: 18px;
+    border-inline-start: 1px solid var(--d-line);
+  }
+}
+@media (max-width: 1180px) {
+  .desk .d-tiles > .d-tile:nth-child(odd) {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+  .desk .d-tiles > .d-tile:nth-child(n+3) { border-top: 1px solid var(--d-line); }
+}
+@media (max-width: 560px) {
+  .desk .d-tiles > .d-tile:nth-child(n) {
+    padding-inline: 0;
+    border-inline-start: 0;
+  }
+  .desk .d-tiles > .d-tile:nth-child(n+2) { border-top: 1px solid var(--d-line); }
+}
