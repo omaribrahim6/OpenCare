@@ -1,7 +1,8 @@
-// Request and response bodies for the routes in SPEC §9 (rev 5).
+// Request and response bodies for the routes in SPEC §9 (rev 6; rev 5 routes marked deprecated).
 // Routes live in apps/web/app/api/. Every error response is ApiError with a non-2xx status.
 
 import type { Explanation } from "./ai";
+import type { Bill, CaseDetail, InsurancePlan, VisitTemplate } from "./bills";
 import type { Cents } from "./grants";
 import type {
   Device,
@@ -39,7 +40,9 @@ export interface ApiError {
 export type TapResult =
   /** Paired kiosk: a patient session started (cookie set). */
   | { kind: "session"; patient: PatientSummary }
-  /** Paired provider device: patient identified for redemption (cookie set). */
+  /** Revision 6, paired hospital device: patient selected for intake (cookie set). */
+  | { kind: "intake"; patient: PatientSummary; plan: InsurancePlan | null }
+  /** @deprecated Revision 5 provider redemption. */
   | { kind: "redemption"; patient: PatientSummary; redeemableGrants: Grant[] }
   /** Paired device, but the token isn't an active card. */
   | { kind: "unknown_card" }
@@ -56,12 +59,12 @@ export type TapResponse = TapResult;
 // ---------------------------------------------------------------------------
 // Devices
 
-// POST /api/devices/pair: staff pairs this browser as a kiosk, provider or caseworker device.
+// POST /api/devices/pair: staff pairs this browser as a kiosk, hospital or reviewer device.
 export interface PairDeviceRequest {
   role: DeviceRole;
   pin: string;
   label: string;
-  /** Required when role is "provider". */
+  /** Required when role is "hospital" (or the legacy "provider"): GET /api/providers lists them. */
   providerId?: string;
 }
 /** The device secret is set as an httpOnly cookie, never returned in the body. */
@@ -88,14 +91,52 @@ export interface CurrentPatientResponse {
   profile: PatientProfile;
 }
 
-// GET /api/patients/me/bills: likely medical Nessie bills and purchases, classified.
+// GET /api/patients/me/bill (rev 6): the latest visit's bill, its explanation and any fund request.
+export interface PatientBillResponse {
+  /** Null when no visit has been logged for this patient. */
+  bill: Bill | null;
+  /** Null when there is no bill. Template fallback when Gemini fails. */
+  explanation: Explanation | null;
+  /** The newest fund request for this visit, if any. */
+  grant: Grant | null;
+}
+
+/** @deprecated Revision 5 Nessie bill discovery (GET /api/patients/me/bills), removed in revision 6. */
 export interface BillsResponse {
   bills: FoundBill[];
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/documents (kiosk session): copy the chosen Nessie item; the server re-reads it
-// from Nessie, so the client only sends its ID.
+// Hospital intake (rev 6, paired hospital device)
+
+// GET /api/visit-templates: the seeded visits this hospital can log.
+export interface VisitTemplatesResponse {
+  templates: VisitTemplate[];
+}
+
+// GET /api/patients (hospital or reviewer device): demo patients, for "pick the demo patient"
+// when no card is at hand. Names and IDs only.
+export interface PatientListResponse {
+  patients: PatientSummary[];
+}
+
+// POST /api/visits (hospital device): log a visit for the patient selected by the last card tap
+// on this device (or patientId). Runs insurance and every hospital policy, then returns the bill.
+export interface CreateVisitRequest {
+  templateId: string;
+  /** Optional when a card tap on this device selected the patient. */
+  patientId?: string;
+  /** Client-generated (crypto.randomUUID()) so a double submit logs one visit. */
+  idempotencyKey: string;
+}
+export interface VisitResponse {
+  bill: Bill;
+}
+
+// GET /api/visits/:id (the hospital device that logged it, or a reviewer) -> VisitResponse
+
+// ---------------------------------------------------------------------------
+// @deprecated POST /api/documents (rev 5), removed in revision 6.
 
 export interface CreateDocumentRequest {
   source: DocumentSource;
@@ -111,16 +152,30 @@ export interface DocumentResponse {
 // ---------------------------------------------------------------------------
 // Grants
 
-// POST /api/grants (kiosk session): creates the request and its need assessment.
+// POST /api/grants (kiosk session): request help with the visit's remaining balance. The server
+// sets the amount (the remaining balance) and the recipient (the visit's hospital); the client
+// sends neither. Creates the need assessment and the decision brief. Repeating it returns the
+// existing pending request for the visit.
+export interface RequestHelpRequest {
+  visitId: string;
+  /** Optional, at most MAX_HARDSHIP_NOTE_CHARS. Untrusted: never scored or ranked. */
+  hardshipNote?: string;
+}
+
+/** @deprecated Revision 5 body (a Nessie document and a chosen provider). Use RequestHelpRequest. */
 export interface CreateGrantRequest {
   documentId: string;
   providerId: string;
   requestedCents: Cents;
-  /** Optional, at most MAX_HARDSHIP_NOTE_CHARS. Untrusted: never scored or ranked. */
   hardshipNote?: string;
 }
+
 export interface GrantResponse {
   grant: Grant;
+  /** Rev 6, reviewer devices only: the case screen (brief, bill, profile, factors). */
+  case?: CaseDetail;
+  /** Rev 6, the patient's own session: the updated bill. */
+  bill?: Bill;
 }
 
 // GET /api/grants?status=… (caseworker device) or the session patient's own grants (kiosk)
@@ -128,12 +183,15 @@ export interface GrantListResponse {
   grants: Grant[];
 }
 
-// GET /api/grants/:id (kiosk owner, caseworker, or the grant's provider device)
-// -> GrantResponse. Polling this reconciles a pending payout or receipt.
+// GET /api/grants/:id (kiosk owner or reviewer) -> GrantResponse, with `case` for reviewers and
+// `bill` for the patient. Polling this reconciles a pending payout or receipt.
 
-// POST /api/grants/:id/decision (caseworker device)
-// Above SECOND_APPROVAL_ABOVE_CENTS, the first approval leaves the grant pending_review with
-// awaitingSecondApproval = true; a second caseworker device approving the same amount approves it.
+// POST /api/grants/:id/decision (reviewer device)
+// Rev 6: approval (whole dollars, at most the remaining balance and the available budget) starts
+// the Nessie payout to the hospital and the Solana receipt in the same request; the response shows
+// payment_pending or paid. Above SECOND_APPROVAL_ABOVE_CENTS, the first approval leaves the grant
+// pending_review with awaitingSecondApproval = true; a second reviewer device approving the same
+// amount approves it.
 export type GrantDecisionRequest =
   | { decision: "approve"; approvedCents: Cents; note?: string }
   | { decision: "reject"; note?: string };
@@ -141,7 +199,7 @@ export type GrantDecisionRequest =
 
 // POST /api/grants/:id/cancel (caseworker device; only before payment starts) -> GrantResponse
 
-// POST /api/grants/:id/redeem (provider device, after the patient's card tap)
+// @deprecated POST /api/grants/:id/redeem (rev 5 provider tap), removed in revision 6.
 export interface RedeemGrantRequest {
   /** Must be true: the provider explicitly confirmed (SPEC §8). */
   confirm: true;
@@ -149,7 +207,8 @@ export interface RedeemGrantRequest {
 // -> GrantResponse (status payment_pending or paid). Repeating the call never pays twice.
 
 // ---------------------------------------------------------------------------
-// GET /api/review/queue (caseworker device): Gemini-ranked pending requests (SPEC §7 job 3).
+// GET /api/review/queue (reviewer device): pending requests in need-v1 formula order, each with
+// its decision brief, path and remaining balance, plus the available budget.
 
 export type ReviewQueueResponse = ReviewQueue;
 
@@ -179,7 +238,7 @@ export interface SolanaDonationRequest {
 }
 // -> DonationResponse
 
-// GET /api/providers (public): providers a patient can choose or a provider device pairs with.
+// GET /api/providers (public): the hospitals a hospital device can pair with.
 export interface ProviderListResponse {
   providers: Provider[];
 }
