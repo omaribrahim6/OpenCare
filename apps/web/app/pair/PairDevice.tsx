@@ -8,7 +8,7 @@ import { ApiRequestError, currentDevice, listProviders, pairDevice } from "@/lib
 
 const ROLES: { role: DeviceRole; label: string; home: string; help: string }[] = [
   { role: "kiosk", label: "Kiosk", home: "/kiosk", help: "The clinic's check-in phone. Patients tap their CareCard here." },
-  { role: "provider", label: "Hospital intake", home: "/intake", help: "Hospital staff log a patient's visit here after tapping their CareCard." },
+  { role: "hospital", label: "Hospital intake", home: "/intake", help: "Hospital staff log a patient's visit here after tapping their CareCard." },
   { role: "reviewer", label: "Caseworker", home: "/review", help: "Reviews and approves requests." },
 ];
 
@@ -31,17 +31,20 @@ export function PairDevice() {
 
   // Allow manual provider entry if the provider list is unavailable.
   useEffect(() => {
-    if (role !== "provider" || providers !== null) return;
+    if (role !== "hospital" || providers !== null) return;
     listProviders()
       .then((r) => {
-        setProviders(r.providers);
-        if (r.providers[0]) setProviderId((id) => id || r.providers[0].id);
+        const hospitals = r.providers.filter((provider) => provider.kind === "hospital");
+        setProviders(hospitals);
+        if (hospitals[0]) setProviderId((id) => id || hospitals[0].id);
       })
       .catch(() => setProviders([]));
   }, [role, providers]);
 
-  const home = ROLES.find((r) => r.role === (device?.role ?? role))?.home ?? "/";
-  const valid = pin.trim().length > 0 && label.trim().length > 0 && (role !== "provider" || providerId.trim().length > 0);
+  const activeRole = device?.role === "provider" ? "hospital" : device?.role;
+  const activeStation = ROLES.find((r) => r.role === activeRole);
+  const home = activeStation?.home ?? "/";
+  const valid = pin.trim().length > 0 && label.trim().length > 0 && (role !== "hospital" || providerId.trim().length > 0);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,7 +56,7 @@ export function PairDevice() {
         role,
         pin: pin.trim(),
         label: label.trim(),
-        providerId: role === "provider" ? providerId.trim() : undefined,
+        providerId: role === "hospital" ? providerId.trim() : undefined,
       });
       setDevice(r.device);
       setPin("");
@@ -80,11 +83,11 @@ export function PairDevice() {
       ) : device ? (
         <div className="portal-panel" role="status">
           <p style={{ marginTop: 0 }}>
-            This browser is paired as <strong>{ROLES.find((r) => r.role === device.role)?.label ?? device.role}</strong>
+            This browser is paired as <strong>{activeStation?.label ?? device.role}</strong>
             : {device.label}
           </p>
           <Link className="btn" href={home}>
-            Open the {ROLES.find((r) => r.role === device.role)?.label.toLowerCase() ?? "home"} screen
+            Open the {activeStation?.label.toLowerCase() ?? "home"} screen
           </Link>
           <p className="muted" style={{ marginBottom: 0, marginTop: 12 }}>
             To change it, pair again below.
@@ -107,7 +110,7 @@ export function PairDevice() {
                   checked={role === r.role}
                   onChange={() => {
                     setRole(r.role);
-                    setLabel(r.role === "kiosk" ? "Front desk kiosk" : r.role === "provider" ? "Hospital intake desk" : "Caseworker laptop");
+                    setLabel(r.role === "kiosk" ? "Front desk kiosk" : r.role === "hospital" ? "Hospital intake desk" : "Caseworker laptop");
                   }}
                   style={{ width: 22, minHeight: 22, marginTop: 3 }}
                 />
@@ -121,11 +124,11 @@ export function PairDevice() {
           </div>
         </fieldset>
 
-        {role === "provider" &&
+        {role === "hospital" &&
           (providers && providers.length > 0 ? (
             <div>
-              <label htmlFor="provider">Hospital</label>
-              <select id="provider" value={providerId} onChange={(e) => setProviderId(e.target.value)} disabled={busy}>
+              <label htmlFor="hospital">Hospital</label>
+              <select id="hospital" value={providerId} onChange={(e) => setProviderId(e.target.value)} disabled={busy}>
                 {providers.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -135,9 +138,9 @@ export function PairDevice() {
             </div>
           ) : (
             <div>
-              <label htmlFor="provider-id">Provider ID</label>
+              <label htmlFor="provider-id">Hospital ID</label>
               <input id="provider-id" value={providerId} onChange={(e) => setProviderId(e.target.value)} disabled={busy} />
-              <small className="muted">The provider list loads once this device is paired; ask the team for the ID.</small>
+              <small className="muted">Ask the team for the hospital ID if it is missing from the list.</small>
             </div>
           ))}
 
