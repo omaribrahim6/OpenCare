@@ -1516,10 +1516,10 @@
 }
 
 /* Public ledger: summary strip, clickable case rows and the case drawer */
-.lc-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0 0 20px; }
+.lc-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 0 0 20px; }
 .lc-summary div { padding: 12px 14px; border-radius: 14px; background: #f6f4fb; }
 .lc-summary dt { font-size: 12px; color: var(--v-muted, #64636d); }
-.lc-summary dd { margin: 4px 0 0; font-size: 19px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.lc-summary dd { margin: 4px 0 0; font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .lc-summary small { font-size: 12px; font-weight: 500; color: var(--v-muted, #64636d); }
 .lc-clickable { cursor: pointer; }
 .ledger-table td:nth-child(4) { white-space: nowrap; }
