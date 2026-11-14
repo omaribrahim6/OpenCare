@@ -68,7 +68,7 @@ This is a fixed pattern check, run on the merchant, description and hardship not
 - payment destinations and wallet addresses;
 - attempts to move a request in the queue or set its score.
 
-A plain plea such as "please approve my request" isn't flagged. The flag is a warning only and never changes a score or rank. Merchant names that look like attacks are also never sent to the model and never classified as medical.
+A plain plea such as "please approve my request" isn't flagged. The flag is a warning only and never changes a score or rank. Bank records that look like attacks are never sent to the model. Instead, the keyword rules classify them using only the text before the injected part, so the seeded tampered bill ("Valley Urgent Care") stays an emergency expense.
 
 ## Commands
 
