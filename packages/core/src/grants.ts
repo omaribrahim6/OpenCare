@@ -2,6 +2,7 @@
 // double taps and concurrent requests can't pay twice or overspend the fund.
 
 import {
+  type ExpenseCategory,
   MAX_HARDSHIP_NOTE_CHARS,
   SECOND_APPROVAL_ABOVE_CENTS,
   type Grant,
@@ -11,6 +12,7 @@ import {
 } from "@abdulcare/contracts";
 import type { Db } from "./db";
 import { toDocument } from "./documents";
+import { getBill } from "./visits";
 import { CoreError, hmac, isPositiveCents, iso, isoOrNull, newId, requireEnv } from "./util";
 
 interface GrantRow {
@@ -31,8 +33,8 @@ interface GrantRow {
   nessie_external_id: string | null;
   solana_signature: string | null;
   solana_status: string | null;
-  // Document columns, prefixed d_.
-  d_id: string;
+  // Document columns, prefixed d_ (rev 5 grants; null for rev 6).
+  d_id: string | null;
   d_source: "nessie_bill" | "nessie_purchase";
   d_nessie_id: string;
   d_merchant: string;
@@ -42,6 +44,13 @@ interface GrantRow {
   d_likely_medical: boolean | null;
   d_category: Grant["bill"]["category"];
   d_created_at: Date;
+  // Visit columns, prefixed v_ (rev 6 grants; null for rev 5).
+  v_id: string | null;
+  v_date: Date | string | null;
+  v_category: ExpenseCategory | null;
+  v_description: string | null;
+  v_total_cents: number | null;
+  v_created_at: Date | null;
 }
 
 export const GRANT_SELECT = `
@@ -52,6 +61,8 @@ export const GRANT_SELECT = `
          d.id as d_id, d.source as d_source, d.nessie_id as d_nessie_id, d.merchant as d_merchant,
          d.description as d_description, d.bill_date as d_bill_date, d.amount_cents as d_amount_cents,
          d.likely_medical as d_likely_medical, d.category as d_category, d.created_at as d_created_at,
+         v.id as v_id, v.visit_date as v_date, v.category as v_category, v.description as v_description,
+         v.total_cents as v_total_cents, v.created_at as v_created_at,
          (select coalesce(json_agg(json_build_object('label', dv.label, 'cents', ga.approved_cents,
                                                      'at', ga.created_at) order by ga.created_at), '[]'::json)
             from grant_approvals ga join devices dv on dv.id = ga.reviewer_device_id
@@ -68,7 +79,8 @@ export const GRANT_SELECT = `
     from grants g
     join patients p on p.id = g.patient_id
     join providers pr on pr.id = g.provider_id
-    join documents d on d.id = g.document_id`;
+    left join documents d on d.id = g.document_id
+    left join visits v on v.id = g.visit_id`;
 
 export function toGrant(row: GrantRow): Grant {
   const started = ["payment_pending", "paid"].includes(row.status);
@@ -78,11 +90,35 @@ export function toGrant(row: GrantRow): Grant {
     approvedCents: Number(a.cents),
     at: iso(a.at),
   }));
-  return {
-    id: row.id,
-    patient: { id: row.patient_id, displayName: row.patient_name },
-    bill: toDocument({
-      id: row.d_id,
+  const provider = { id: row.provider_id, name: row.provider_name, kind: row.provider_kind };
+  const visit =
+    row.v_id == null
+      ? null
+      : {
+          id: row.v_id,
+          hospital: provider,
+          date: iso(row.v_date).slice(0, 10),
+          category: row.v_category as ExpenseCategory,
+          description: row.v_description ?? "",
+          totalCents: Number(row.v_total_cents),
+        };
+  // Rev 6 grants have no Nessie document; older screens still read grant.bill, so describe the visit.
+  const bill = visit
+    ? {
+        id: visit.id,
+        patientId: row.patient_id,
+        source: "nessie_bill" as const,
+        nessieId: visit.id,
+        merchant: provider.name,
+        description: visit.description,
+        date: visit.date,
+        amountCents: visit.totalCents,
+        likelyMedical: true,
+        category: visit.category,
+        createdAt: iso(row.v_created_at),
+      }
+    : toDocument({
+      id: row.d_id as string,
       patient_id: row.patient_id,
       source: row.d_source,
       nessie_id: row.d_nessie_id,
@@ -93,8 +129,13 @@ export function toGrant(row: GrantRow): Grant {
       likely_medical: row.d_likely_medical,
       category: row.d_category,
       created_at: row.d_created_at,
-    }),
-    provider: { id: row.provider_id, name: row.provider_name, kind: row.provider_kind },
+    });
+  return {
+    id: row.id,
+    patient: { id: row.patient_id, displayName: row.patient_name },
+    visit,
+    bill,
+    provider,
     requestedCents: Number(row.requested_cents),
     approvedCents: row.approved_cents == null ? null : Number(row.approved_cents),
     status: row.status,
@@ -188,6 +229,48 @@ export async function createGrant(
   } catch (err) {
     if ((err as { code?: string }).code === "23505") {
       throw new CoreError("conflict", "A request already exists for this bill");
+    }
+    throw err;
+  }
+  return getGrant(db, id);
+}
+
+/**
+ * Rev 6: the patient asks the fund for help with a visit's remaining balance. The server sets the
+ * amount (the remaining balance) and the recipient (the visit's hospital). Asking again while a
+ * request is live returns that request.
+ */
+export async function requestHelp(
+  db: Db,
+  input: { patientId: string; visitId: string; hardshipNote?: string | null },
+): Promise<Grant> {
+  const note = input.hardshipNote?.trim() || null;
+  if (note && note.length > MAX_HARDSHIP_NOTE_CHARS) {
+    throw new CoreError("bad_request", `The note can be at most ${MAX_HARDSHIP_NOTE_CHARS} characters`);
+  }
+  const live = async () => {
+    const { rows } = await db.query<{ id: string }>(
+      "select id from grants where visit_id = $1 and status not in ('rejected', 'canceled')",
+      [input.visitId],
+    );
+    return rows[0]?.id ?? null;
+  };
+  const bill = await getBill(db, input.visitId, { patientId: input.patientId });
+  const existing = await live();
+  if (existing) return getGrant(db, existing);
+  if (bill.remainingCents <= 0) throw new CoreError("invalid_state", "Nothing is left to pay on this bill");
+
+  const id = newId("grt");
+  try {
+    await db.query(
+      `insert into grants (id, patient_id, visit_id, provider_id, requested_cents, hardship_note)
+       values ($1, $2, $3, $4, $5, $6)`,
+      [id, input.patientId, input.visitId, bill.visit.hospital.id, bill.remainingCents, note],
+    );
+  } catch (err) {
+    if ((err as { code?: string }).code === "23505") {
+      const winner = await live();
+      if (winner) return getGrant(db, winner);
     }
     throw err;
   }

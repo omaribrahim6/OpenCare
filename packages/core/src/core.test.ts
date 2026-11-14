@@ -364,7 +364,7 @@ describe("need ranking", () => {
     assert.equal(calls.inputs.at(-1)?.depositIncomeCents, 160_000);
   });
 
-  test("Gemini's order is shown and cached, and disagreements are marked", async () => {
+  test("rev 6: the queue is formula order, Gemini never ranks it, and every item has a brief", async () => {
     const low = await pendingGrant("pat_1", 9000); // highest formula score
     const mid = await pendingGrant("pat_3", 4500); // unknown income
     const high = await pendingGrant("pat_2", 2000); // lowest formula score
@@ -375,32 +375,14 @@ describe("need ranking", () => {
       model: "gemini-test",
     }));
     const queue = await getReviewQueue(db, engine);
-    assert.equal(queue.source, "gemini");
-    assert.deepEqual(queue.items.map((i) => i.grant.id), [high, mid, low]);
-    assert.deepEqual(queue.items.map((i) => i.formulaRank), [3, 2, 1]);
-    assert.deepEqual(queue.items.map((i) => i.disagreesWithFormula), [true, false, true]);
-    assert.equal(queue.items[0].rationale, "why C");
+    assert.equal(queue.source, "formula");
+    assert.equal(calls.rank, 0);
+    assert.deepEqual(queue.items.map((i) => i.grant.id), [low, mid, high]);
+    assert.deepEqual(queue.items.map((i) => i.rank), [1, 2, 3]);
+    assert.ok(queue.items.every((i) => !i.disagreesWithFormula && i.brief?.source === "template"));
+    assert.equal(queue.items[0].brief?.suggestedCents, 9000);
     assert.equal(queue.availableCents, 10_000);
     assert.ok(!JSON.stringify(calls.inputs).includes("pat_"));
-
-    await getReviewQueue(db, engine); // same inputs: served from the cache
-    assert.equal(calls.rank, 1);
-  });
-
-  test("invalid or failing Gemini output falls back to formula order and isn't cached", async () => {
-    await pendingGrant("pat_1", 9000);
-    await pendingGrant("pat_2", 2000);
-    const bad = fakeEngine((labels) => ({ source: "gemini", order: [labels[0], labels[0]], rationales: {}, model: "x" }));
-    const q1 = await getReviewQueue(db, bad.engine);
-    assert.equal(q1.source, "formula");
-    assert.deepEqual(q1.items.map((i) => i.rank), [1, 2]);
-    assert.deepEqual(q1.items.map((i) => i.formulaRank), [1, 2]);
-    assert.ok(q1.items.every((i) => !i.disagreesWithFormula && i.rationale.startsWith("Need score")));
-    await getReviewQueue(db, bad.engine);
-    assert.equal(bad.calls.rank, 2); // a fallback is retried on the next load, not cached
-
-    const down = fakeEngine(); // rankQueue throws
-    assert.equal((await getReviewQueue(db, down.engine)).source, "formula");
   });
 
   test("decided requests leave the queue; labels never expose IDs", async () => {
