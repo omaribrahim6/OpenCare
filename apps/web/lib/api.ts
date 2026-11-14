@@ -89,8 +89,12 @@ export async function tap(token: string) {
   return result;
 }
 
-export async function endSession() {
-  if (LIVE) return post<{ ok: true }>("/api/session/end");
+export function startPatientDemo() {
+  sessionStorage.setItem(DEMO_SESSION_KEY, mock.DEMO_PATIENT.id);
+}
+
+export async function endSession(demo = false) {
+  if (LIVE && !demo) return post<{ ok: true }>("/api/session/end");
   sessionStorage.removeItem(DEMO_SESSION_KEY);
   return { ok: true };
 }
@@ -182,8 +186,8 @@ export const listPatients = () => (LIVE ? get<PatientListResponse>("/api/patient
 export const createVisit = (req: CreateVisitRequest) =>
   LIVE ? post<VisitResponse>("/api/visits", req) : mock6.createVisit(req.templateId, req.patientId, req.idempotencyKey);
 
-export async function getPatientWorkspace(): Promise<{ visits: PatientBillResponse[]; plan: InsurancePlan | null }> {
-  if (LIVE) {
+export async function getPatientWorkspace(demo = false): Promise<{ visits: PatientBillResponse[]; plan: InsurancePlan | null }> {
+  if (LIVE && !demo) {
     const latest = await get<PatientBillResponse>("/api/patients/me/bill");
     return { visits: latest.bill ? [latest] : [], plan: latest.bill?.plan ?? null };
   }
@@ -203,8 +207,8 @@ export async function applyForDemoSavings(visitId: string) {
   return mock6.applyForSavings(visitId);
 }
 
-export async function requestHelp(req: RequestHelpRequest) {
-  if (LIVE) return post<GrantResponse>("/api/grants", req);
+export async function requestHelp(req: RequestHelpRequest, demo = false) {
+  if (LIVE && !demo) return post<GrantResponse>("/api/grants", req);
   requireDemoSession();
   return mock6.requestHelp(req.visitId, req.hardshipNote);
 }

@@ -15,10 +15,12 @@ const WARN_MS = 15_000;
 export function KioskSession({
   step,
   totalSteps = 4,
+  demo = false,
   children,
 }: {
   step: number;
   totalSteps?: number;
+  demo?: boolean;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -36,7 +38,7 @@ export function KioskSession({
       const idle = Date.now() - last.current;
       if (idle >= IDLE_MS) {
         clearInterval(t);
-        endSession()
+        endSession(demo)
           .catch(() => {})
           .finally(() => router.replace("/kiosk?ended=idle"));
       } else if (idle >= IDLE_MS - WARN_MS) {
@@ -47,13 +49,13 @@ export function KioskSession({
       clearInterval(t);
       events.forEach((e) => window.removeEventListener(e, bump));
     };
-  }, [router]);
+  }, [router, demo]);
 
   return (
     <main className="page station station-session">
       <div className="station-bar">
         <Logo href={null} />
-        <EndSessionButton style={{ minHeight: 44 }} />
+        <EndSessionButton demo={demo} style={{ minHeight: 44 }} />
       </div>
       {totalSteps > 0 && (
       <ol className="steps" aria-label={`Step ${step} of ${totalSteps}`}>
@@ -79,10 +81,12 @@ export function EndSessionButton({
   label = "End session",
   className = "btn secondary",
   style,
+  demo = false,
 }: {
   label?: string;
   className?: string;
   style?: React.CSSProperties;
+  demo?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -94,7 +98,7 @@ export function EndSessionButton({
       disabled={busy}
       onClick={() => {
         setBusy(true);
-        endSession()
+        endSession(demo)
           .catch(() => {})
           .finally(() => router.replace("/kiosk?ended=user"));
       }}

@@ -73,7 +73,7 @@ export function PairDevice() {
   return (
     <main className="page station station-pair">
       <header className="station-bar"><Logo /><Link href="/review">Admin</Link></header>
-      <h1>Set up this device</h1>
+      <h1>Set up staff access</h1>
 
       {device === undefined ? (
         <p role="status">Checking this device…</p>
@@ -91,7 +91,7 @@ export function PairDevice() {
           </p>
         </div>
       ) : (
-        <p className="muted">This browser isn&apos;t paired yet. CareCard taps show no patient data until it is.</p>
+        <p className="muted">Use your staff PIN to authorize this browser for one role. Choose Caseworker to open the admin queue and fund stats.</p>
       )}
 
       <form className="card stack" onSubmit={submit} aria-labelledby="pair-title">
