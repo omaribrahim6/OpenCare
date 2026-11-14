@@ -8,7 +8,7 @@ import { InsightSection } from "@/components/site/LedgerCaseDrawer";
 import { decideGrant } from "@/lib/api";
 import { cleanName, shortDate, stepLabel, usd } from "@/lib/format";
 import type { Grant, QueueItem } from "@/lib/types";
-import { CATEGORY_LABEL, INSURANCE_LABEL, SECOND_APPROVAL_ABOVE_CENTS, SUSPICIOUS_FIELD_LABEL } from "@/lib/types";
+import { CATEGORY_LABEL, INSURANCE_LABEL, SUSPICIOUS_FIELD_LABEL } from "@/lib/types";
 
 /** One request in full: why it ranks where it does, the patient's profile, the bill, and the decision. */
 export function CaseDrawer({
@@ -23,7 +23,7 @@ export function CaseDrawer({
   onDecided: (g: Grant) => void;
 }) {
   const [grant, setGrant] = useState<Grant>(item.grant);
-  // Nessie settles whole dollars only. A second approval must match the first amount.
+  // Nessie settles whole dollars only. A grant left half-approved under the old two-approval rule keeps its first amount.
   const firstApproval = grant.approvals[0]?.approvedCents;
   const [amount, setAmount] = useState(
     String(
@@ -56,7 +56,6 @@ export function CaseDrawer({
   const maxCents = item.remainingCents ?? g.requestedCents;
   const amountValid = /^\d+$/.test(amount) && cents >= 100 && cents <= maxCents;
   const brief = item.brief;
-  const needsSecond = amountValid && cents > SECOND_APPROVAL_ABOVE_CENTS && !g.awaitingSecondApproval;
   const name = cleanName(g.patient.displayName);
   const topKey = [...a.factors].filter((f) => f.maxPoints > 0).sort((x, y) => y.points - x.points)[0]?.key;
 
@@ -141,7 +140,6 @@ export function CaseDrawer({
                 <Icon name="sparkles" />
                 <span>
                   Suggested: approve the full remaining balance of <strong>{usd(brief.suggestedCents)}</strong>.
-                  {brief.needsSecondApproval ? " It's over the limit, so a second reviewer must also approve." : ""}
                 </span>
               </p>
               <p className="dr-hint">The brief is advice. It can&apos;t change the score, the order or the amount; you decide.</p>
@@ -294,11 +292,9 @@ export function CaseDrawer({
               </div>
               {g.awaitingSecondApproval ? (
                 <p className="dr-hint">
-                  One caseworker approved {usd(firstApproval ?? 0)}. A second caseworker device must approve the same
-                  amount.
+                  A caseworker already approved {usd(firstApproval ?? 0)} under the old two-approval rule. Approve to
+                  complete it.
                 </p>
-              ) : needsSecond ? (
-                <p className="dr-hint">Over {usd(SECOND_APPROVAL_ABOVE_CENTS)}: a second caseworker must also approve before it can be paid.</p>
               ) : !amountValid ? (
                 <p className="dr-hint" style={{ color: "#c2412f" }}>
                   Enter whole dollars from $1 up to the {usd(maxCents)} remaining.
@@ -346,9 +342,7 @@ export function CaseDrawer({
         onConfirm={() => decide({ decision: "approve", approvedCents: cents })}
       >
         <p style={{ color: "#5c5f5e" }}>
-          {needsSecond
-            ? `This records your approval for ${name}. Nothing is reserved until a second caseworker approves the same amount.`
-            : g.visit
+          {g.visit
               ? `This pays ${usd(cents)} from the community care fund to ${g.provider.name} now, toward ${name}'s bill. It can't be undone.`
               : `This reserves ${usd(cents)} from the fund for ${name}, payable only to ${g.provider.name}. The amount and recipient can't be changed afterward.`}
         </p>
