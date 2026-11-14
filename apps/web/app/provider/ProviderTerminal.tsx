@@ -1,5 +1,7 @@
 "use client";
 
+import { TapRings } from "@/components/TapRings";
+
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Device } from "@abdulcare/contracts";
@@ -82,7 +84,7 @@ export function ProviderTerminal({ grantId }: { grantId: string | null }) {
 
   if (device !== undefined && LIVE && (!device || device.role !== "provider")) {
     return (
-      <main className="page">
+      <main className="page station station-provider">
         {header}
         <div className="card" role="alert">
           <p style={{ marginTop: 0 }}>This browser isn&apos;t paired as a provider terminal.</p>
@@ -96,11 +98,11 @@ export function ProviderTerminal({ grantId }: { grantId: string | null }) {
 
   if (!grantId) {
     return (
-      <main className="page" style={{ textAlign: "center" }}>
+      <main className="page station station-provider" style={{ textAlign: "center" }}>
         {header}
-        <h1>Ask the patient to tap their CareCard on this phone</h1>
-        <div className="tap-target" aria-hidden="true" />
-        <p className="muted">Their approved grants will open here.</p>
+        <h1>Ready for a CareCard</h1>
+        <TapRings size={156} />
+        <p className="muted">Ask the patient to hold their card near the top of this device.</p>
         {!LIVE && (
           <Link className="btn secondary" href="/t/provider">
             Simulate card tap (demo)
@@ -112,7 +114,7 @@ export function ProviderTerminal({ grantId }: { grantId: string | null }) {
 
   if (loadError) {
     return (
-      <main className="page">
+      <main className="page station station-provider">
         {header}
         <LoadError message={loadError} onRetry={load} />
       </main>
@@ -121,7 +123,7 @@ export function ProviderTerminal({ grantId }: { grantId: string | null }) {
 
   if (!grant) {
     return (
-      <main className="page">
+      <main className="page station station-provider">
         {header}
         <p role="status" className="card">
           Loading the grant…
@@ -134,7 +136,7 @@ export function ProviderTerminal({ grantId }: { grantId: string | null }) {
   const r = grant.receipt;
 
   return (
-    <main className="page">
+    <main className="page station station-provider">
       {header}
       <div className="card">
         <h1>{grant.status === "paid" ? "Paid" : grant.status === "approved" ? "Approved grant" : "Grant"}</h1>

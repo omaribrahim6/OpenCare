@@ -6,7 +6,7 @@ export function NoSession({ message }: { message?: string }) {
     <div className="card" role="alert">
       <h2 style={{ marginTop: 0 }}>Please tap your CareCard again</h2>
       <p>{message ?? "Your session has ended, so we can't show your information."}</p>
-      <Link className="btn secondary" href="/">
+      <Link className="btn secondary" href="/kiosk">
         Back to start
       </Link>
     </div>

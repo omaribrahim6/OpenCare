@@ -14,6 +14,7 @@ import type {
   GrantDecisionRequest,
   GrantListResponse,
   GrantResponse,
+  GrantStatus,
   PairDeviceRequest,
   PairDeviceResponse,
   ProviderListResponse,
@@ -95,6 +96,10 @@ export const getGrant = (id: string) => (LIVE ? get<GrantResponse>(`/api/grants/
 /** formulaFallback only affects mocks (preview of the "formula order" state). */
 export const getReviewQueue = (formulaFallback = false) =>
   LIVE ? get<ReviewQueue>("/api/review/queue") : mock.getReviewQueue(formulaFallback);
+
+/** Caseworker: every grant, optionally filtered by status (newest first). */
+export const listGrants = (status?: GrantStatus) =>
+  LIVE ? get<GrantListResponse>(`/api/grants${status ? `?status=${encodeURIComponent(status)}` : ""}`) : mock.listGrants(status);
 
 export const decideGrant = (id: string, req: GrantDecisionRequest) =>
   LIVE ? post<GrantResponse>(`/api/grants/${encodeURIComponent(id)}/decision`, req) : mock.decideGrant(id, req);

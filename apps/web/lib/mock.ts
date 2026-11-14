@@ -16,6 +16,7 @@ import type {
   TapResult,
 } from "@abdulcare/contracts";
 import type {
+  GrantStatus,
   DocumentRecord,
   DonationResponse,
   Explanation,
@@ -210,6 +211,13 @@ export async function createGrant(req: CreateGrantRequest): Promise<GrantRespons
     createdAt: new Date().toISOString(),
   };
   return { grant: demoGrant };
+}
+
+/** Caseworker list (GET /api/grants?status=): the demo grant plus every queue grant. */
+export async function listGrants(status?: GrantStatus): Promise<GrantListResponse> {
+  await delay();
+  const all = [demoGrant, ...QUEUE.map((q) => q.grant).filter((g) => g.id !== demoGrant.id)];
+  return { grants: status ? all.filter((g) => g.status === status) : all };
 }
 
 export async function listMyGrants(): Promise<GrantListResponse> {
@@ -544,7 +552,15 @@ const FUND: FundSummary = {
   paidCount: 3,
   donationCount: 12,
   rules: { secondApprovalAboveCents: 50000 },
-  daily: [],
+  daily: [
+    { day: "2026-11-08", approvedCents: 12000, paidCents: 12000 },
+    { day: "2026-11-09", approvedCents: 0, paidCents: 0 },
+    { day: "2026-11-10", approvedCents: 18000, paidCents: 6000 },
+    { day: "2026-11-11", approvedCents: 4500, paidCents: 16500 },
+    { day: "2026-11-12", approvedCents: 9000, paidCents: 4500 },
+    { day: "2026-11-13", approvedCents: 3000, paidCents: 6500 },
+    { day: "2026-11-14", approvedCents: 4500, paidCents: 4500 },
+  ],
   recent: [
     { type: "payout", reference: "po_7f3a91", amountCents: 4500, solanaSignature: "5xQ…mock1", at: "2026-11-14T14:40:00Z" },
     { type: "donation", reference: "dn_19bc02", amountCents: 100000, solanaSignature: "3kP…mock2", at: "2026-11-14T13:10:00Z" },
