@@ -303,3 +303,20 @@ body:has(.station) {
 .station .steps li.done { border-color: #b5a3ef; }
 .station .steps li[aria-current="step"] { border-color: #745bd8; }
 .station .btn:not(.secondary, .btn-lg, .btn-danger) { background: #654dc7; border-color: #654dc7; }
+
+/* Revision 6: the patient's bill shrinking step by step */
+.card.bill-total { display: flex !important; flex-direction: column; gap: 4px; align-items: flex-start; }
+.card.bill-total .big { font-size: 2.6rem; line-height: 1.1; }
+.card.bill-total.paid { border-color: var(--ok, #1c6b3a); box-shadow: inset 4px 0 0 var(--ok, #1c6b3a); }
+.bill-receipt { font-size: 0.9rem; }
+.bill-steps { list-style: none; margin: 0; padding: 0; }
+.bill-step { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line, #e3e1dc); }
+.bill-step span { display: flex; flex-direction: column; min-width: 0; }
+.bill-step small { color: var(--muted, #5c5f5e); font-size: 0.85rem; }
+.bill-step em { font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bill-step.pending em, .bill-step.pending strong { color: var(--muted, #5c5f5e); }
+.bill-step.pending em::after { content: " pending"; font-weight: 400; font-size: 0.85rem; }
+.bill-step.total { border-bottom: 0; padding-top: 14px; }
+.bill-step.total strong, .bill-step.total em { font-size: 1.2rem; }
+.bill-policies { margin: 8px 0 0; padding-left: 18px; }
+.bill-policies li { margin-bottom: 8px; }

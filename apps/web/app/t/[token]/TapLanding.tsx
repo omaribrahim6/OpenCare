@@ -83,6 +83,30 @@ export function TapLanding({ token }: { token: string }) {
     );
   }
 
+  if (result.kind === "intake") {
+    return (
+      <main className="page station station-tap-result">
+        <p className="muted">Hospital intake · patient selected</p>
+        <h1>{result.patient.displayName}</h1>
+        <p>
+          {result.plan ? `Insurance on file: ${result.plan.payerName}.` : "No insurance plan on file."} Log today&apos;s
+          visit to start their bill.
+        </p>
+        <Link
+          className="btn block"
+          href="/intake"
+          onClick={() => {
+            try {
+              sessionStorage.setItem("intake-patient", JSON.stringify(result.patient));
+            } catch {}
+          }}
+        >
+          Log the visit
+        </Link>
+      </main>
+    );
+  }
+
   if (result.kind === "redemption") {
     return (
       <main className="page station station-tap-result">
@@ -113,13 +137,10 @@ export function TapLanding({ token }: { token: string }) {
     <main className="page station station-tap-result">
       <p className="muted">Checked in</p>
       <h1>Hi, {firstName(result.patient.displayName)}</h1>
-      <p>Let&apos;s find the bill you want help with.</p>
+      <p>Your hospital bill is ready, with insurance and the hospital&apos;s assistance already applied.</p>
       <div className="stack">
-        <Link className="btn block" href="/kiosk/bills">
-          Find my medical bills
-        </Link>
-        <Link className="btn secondary block" href="/kiosk/status">
-          Check a request I already made
+        <Link className="btn block" href="/kiosk/bill">
+          See my bill
         </Link>
       </div>
       <p className="muted" style={{ marginTop: 24 }}>
