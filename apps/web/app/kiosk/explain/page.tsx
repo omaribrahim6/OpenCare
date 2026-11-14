@@ -2,8 +2,9 @@ import Link from "next/link";
 import { KioskSession } from "@/components/KioskSession";
 import { ReadAloud } from "@/components/ReadAloud";
 import { formatCents, getExplanation } from "@/lib/mock";
+import { RequestHelpForm } from "./RequestHelpForm";
 
-// Screen 4: Explanation / request.
+// Screen 3: Explanation / request.
 export default async function ExplainRequest({ searchParams }: { searchParams: Promise<{ bill?: string }> }) {
   const { bill } = await searchParams;
   const ex = await getExplanation(bill);
@@ -28,9 +29,7 @@ export default async function ExplainRequest({ searchParams }: { searchParams: P
           The fund has a limited budget, so a person reviews requests and helps those with the greatest need first.
           Approval isn&apos;t guaranteed.
         </p>
-        <Link className="btn block" href="/kiosk/status?new=1">
-          Request help with {amount}
-        </Link>
+        <RequestHelpForm amountLabel={amount} />
       </div>
       <Link className="btn secondary block" href="/kiosk/bills">
         Pick a different bill
