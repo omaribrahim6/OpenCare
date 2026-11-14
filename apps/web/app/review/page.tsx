@@ -5,7 +5,7 @@ import { ReviewQueue } from "./ReviewQueue";
 export default async function CaseworkerQueue({ searchParams }: { searchParams: Promise<{ order?: string }> }) {
   const { order } = await searchParams;
   const queue = await getReviewQueue(order === "formula");
-  const totalRequested = queue.items.reduce((sum, it) => sum + it.requestedCents, 0);
+  const totalRequested = queue.items.reduce((sum, it) => sum + it.grant.requestedCents, 0);
 
   return (
     <main className="page wide">
@@ -25,7 +25,7 @@ export default async function CaseworkerQueue({ searchParams }: { searchParams: 
         </div>
         <div>
           <div className="muted">Order</div>
-          {queue.order === "gemini" ? (
+          {queue.source === "gemini" ? (
             <span className="badge info">Ranked by Gemini</span>
           ) : (
             <span className="badge warn">Formula order</span>
@@ -34,7 +34,7 @@ export default async function CaseworkerQueue({ searchParams }: { searchParams: 
       </div>
 
       <p className="muted">
-        {queue.order === "gemini"
+        {queue.source === "gemini"
           ? "Gemini compared these requests using anonymized factor values only. The formula score sits beside each rank so you can see where they differ."
           : "Gemini's ranking wasn't available or didn't pass its checks, so requests are in formula order with standard explanations."}{" "}
         The order is a recommendation. You decide every grant and can open any request in any order.
@@ -43,7 +43,7 @@ export default async function CaseworkerQueue({ searchParams }: { searchParams: 
       {queue.items.length === 0 ? (
         <p className="card">Nothing waiting for review.</p>
       ) : (
-        <ReviewQueue items={queue.items} order={queue.order} availableCents={queue.availableCents} />
+        <ReviewQueue items={queue.items} order={queue.source} availableCents={queue.availableCents} />
       )}
     </main>
   );

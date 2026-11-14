@@ -4,12 +4,8 @@ import { Fragment, useState } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatCents } from "@/lib/mock";
 import type { GrantStatus, NeedFactor, QueueItem } from "@/lib/types";
-import { CATEGORY_LABEL } from "@/lib/types";
+import { CATEGORY_LABEL, INSURANCE_LABEL, SECOND_APPROVAL_ABOVE_CENTS, SUSPICIOUS_FIELD_LABEL } from "@/lib/types";
 
-/** Grants above this need a second caseworker's approval (SPEC rev 5, P1). */
-const SECOND_APPROVAL_CENTS = 50000;
-/** Gemini placing a request this many positions from the formula order is flagged (SPEC §7). */
-const DISAGREEMENT_POSITIONS = 2;
 
 function topFactors(factors: NeedFactor[]): NeedFactor[] {
   return [...factors]
@@ -18,9 +14,10 @@ function topFactors(factors: NeedFactor[]): NeedFactor[] {
     .slice(0, 2);
 }
 
+/** Text for the disagreement marker; the server sets disagreesWithFormula (2+ positions, SPEC §7). */
 function disagreement(it: QueueItem): string | null {
+  if (!it.disagreesWithFormula) return null;
   const diff = it.formulaRank - it.rank;
-  if (Math.abs(diff) < DISAGREEMENT_POSITIONS) return null;
   return diff > 0 ? `Gemini ranked ${diff} higher than formula` : `Gemini ranked ${-diff} lower than formula`;
 }
 
@@ -33,24 +30,24 @@ export function ReviewQueue({
   order: "gemini" | "formula";
   availableCents: number;
 }) {
-  const [openId, setOpenId] = useState<string | null>(items[0]?.grantId ?? null);
+  const [openId, setOpenId] = useState<string | null>(items[0]?.grant.id ?? null);
   const [decisions, setDecisions] = useState<Record<string, GrantStatus>>({});
-  const open = items.find((i) => i.grantId === openId) ?? null;
+  const open = items.find((i) => i.grant.id === openId) ?? null;
 
   // Budget reach (P1): the first request that no longer fits if everything above it were approved in full.
   let running = 0;
-  const budgetEndsBefore = items.find((it) => (running += it.requestedCents) > availableCents)?.grantId ?? null;
+  const budgetEndsBefore = items.find((it) => (running += it.grant.requestedCents) > availableCents)?.grant.id ?? null;
 
   return (
     <div className="queue">
       <ol className="stack queue-list" aria-label="Pending requests in recommended order">
         {items.map((it) => {
-          const status = decisions[it.grantId] ?? "pending_review";
-          const selected = it.grantId === openId;
+          const status = decisions[it.grant.id] ?? "pending_review";
+          const selected = it.grant.id === openId;
           const differs = order === "gemini" ? disagreement(it) : null;
           return (
-            <Fragment key={it.grantId}>
-              {it.grantId === budgetEndsBefore && (
+            <Fragment key={it.grant.id}>
+              {it.grant.id === budgetEndsBefore && (
                 <li className="budget-line" role="separator">
                   Available budget runs out here if every request above is approved in full
                 </li>
@@ -61,7 +58,7 @@ export function ReviewQueue({
                   className={`queue-row${selected ? " selected" : ""}`}
                   aria-current={selected ? "true" : undefined}
                   onClick={() => {
-                    setOpenId(it.grantId);
+                    setOpenId(it.grant.id);
                     // Stacked layout on phones: bring the detail panel into view.
                     if (window.matchMedia("(max-width: 899px)").matches) {
                       requestAnimationFrame(() =>
@@ -75,7 +72,7 @@ export function ReviewQueue({
                   </span>
                   <span className="queue-main">
                     <span className="row" style={{ justifyContent: "space-between", gap: 8 }}>
-                      <strong>{formatCents(it.requestedCents)}</strong>
+                      <strong>{formatCents(it.grant.requestedCents)}</strong>
                       <span className="score" aria-label={`Formula need score ${it.assessment.score} out of 100`}>
                         {it.assessment.score}
                         <small>/100</small>
@@ -91,7 +88,7 @@ export function ReviewQueue({
                     {order === "gemini" && <span className="muted">Formula rank #{it.formulaRank}</span>}
                     <span className="row" style={{ gap: 6 }}>
                       {differs && <span className="badge warn">{differs}</span>}
-                      {it.assessment.suspiciousContent && <span className="badge bad">Suspicious content</span>}
+                      {it.suspiciousContent && <span className="badge bad">Suspicious content</span>}
                       {status !== "pending_review" && <StatusBadge status={status} />}
                     </span>
                   </span>
@@ -104,11 +101,11 @@ export function ReviewQueue({
 
       {open && (
         <Detail
-          key={open.grantId}
+          key={open.grant.id}
           item={open}
           order={order}
-          status={decisions[open.grantId] ?? "pending_review"}
-          onDecide={(s) => setDecisions((d) => ({ ...d, [open.grantId]: s }))}
+          status={decisions[open.grant.id] ?? "pending_review"}
+          onDecide={(s) => setDecisions((d) => ({ ...d, [open.grant.id]: s }))}
         />
       )}
     </div>
@@ -126,30 +123,30 @@ function Detail({
   status: GrantStatus;
   onDecide: (s: GrantStatus) => void;
 }) {
-  const [amount, setAmount] = useState((item.requestedCents / 100).toFixed(2));
+  const [amount, setAmount] = useState((item.grant.requestedCents / 100).toFixed(2));
   const a = item.assessment;
   const decided = status !== "pending_review";
   const amountCents = Math.round(Number(amount) * 100);
-  const needsSecond = Number.isFinite(amountCents) && amountCents > SECOND_APPROVAL_CENTS;
+  const needsSecond = Number.isFinite(amountCents) && amountCents > SECOND_APPROVAL_ABOVE_CENTS;
   const differs = order === "gemini" ? disagreement(item) : null;
 
   return (
     <section className="card queue-detail" aria-labelledby="detail-title">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h2 id="detail-title" style={{ margin: 0 }}>
-          #{item.rank} · {item.patient.displayName}
+          #{item.rank} · {item.grant.patient.displayName}
         </h2>
         <StatusBadge status={status} />
       </div>
 
-      {a.suspiciousContent && (
+      {item.suspiciousContent && (
         <div className="injection-warning" role="alert">
-          <strong>Suspicious content in the {a.suspiciousContent.field}</strong>
+          <strong>Suspicious content in the {SUSPICIOUS_FIELD_LABEL[item.suspiciousContent.field]}</strong>
           <p style={{ margin: "6px 0" }}>
             It looks like instructions aimed at this system. It was ignored: the score, rank and payout are unchanged.
             Treat this request with extra care.
           </p>
-          <blockquote>{a.suspiciousContent.excerpt}</blockquote>
+          <blockquote>{item.suspiciousContent.excerpt}</blockquote>
         </div>
       )}
 
@@ -183,7 +180,7 @@ function Detail({
       </p>
 
       <h3>{order === "gemini" ? "Why Gemini ranked it here" : "Why it ranks here"}</h3>
-      <p>{a.rationale}</p>
+      <p>{item.rationale}</p>
 
       <h3>Factor breakdown</h3>
       <table>
@@ -203,7 +200,7 @@ function Detail({
               <td>
                 {f.input}
                 {f.unknown && <span className="badge info" style={{ marginLeft: 6 }}>Unknown</span>}
-                {f.key === "income" && a.incomeEstimatedFromDeposits && (
+                {f.key === "income" && a.incomeSource === "deposits" && (
                   <>
                     <br />
                     <small className="muted">Estimated from deposits</small>
@@ -222,42 +219,56 @@ function Detail({
       <h3>Profile (set at enrollment)</h3>
       <table>
         <tbody>
-          <tr><th scope="row">Household</th><td>{item.profile.householdSize}</td></tr>
-          <tr><th scope="row">Monthly income</th><td>{formatCents(item.profile.monthlyIncomeCents)}</td></tr>
-          <tr><th scope="row">Insurance</th><td style={{ textTransform: "capitalize" }}>{item.profile.insurance}</td></tr>
+          <tr><th scope="row">Household</th><td>{item.profile.householdSize ?? "Unknown"}</td></tr>
+          <tr>
+            <th scope="row">Monthly income</th>
+            <td>
+              {formatCents(item.profile.monthlyIncomeCents)}
+              {a.incomeMismatch && (
+                <>
+                  <br />
+                  <small className="muted">
+                    Deposits suggest {formatCents(a.incomeMismatch.depositCents)}/month (over 25% different). The score
+                    uses the profile.
+                  </small>
+                </>
+              )}
+            </td>
+          </tr>
+          <tr><th scope="row">Insurance</th><td>{item.profile.insurance ? INSURANCE_LABEL[item.profile.insurance] : "Unknown"}</td></tr>
         </tbody>
       </table>
 
       <h3>Bill (from Nessie)</h3>
       <table>
         <tbody>
-          <tr><th scope="row">Merchant</th><td>{item.bill.merchant}</td></tr>
-          <tr><th scope="row">Description</th><td className="untrusted">{item.bill.description}</td></tr>
-          <tr><th scope="row">Category</th><td>{CATEGORY_LABEL[item.bill.category]}</td></tr>
-          <tr><th scope="row">Date</th><td>{item.bill.date ?? "Unknown"}</td></tr>
-          <tr><th scope="row">Amount</th><td>{formatCents(item.requestedCents)}</td></tr>
+          <tr><th scope="row">Merchant</th><td>{item.grant.bill.merchant}</td></tr>
+          <tr><th scope="row">Description</th><td className="untrusted">{item.grant.bill.description ?? "None"}</td></tr>
+          <tr><th scope="row">Category</th><td>{item.grant.bill.category ? CATEGORY_LABEL[item.grant.bill.category] : "Unknown"}</td></tr>
+          <tr><th scope="row">Date</th><td>{item.grant.bill.date ?? "Unknown"}</td></tr>
+          <tr><th scope="row">Amount</th><td>{formatCents(item.grant.requestedCents)}</td></tr>
         </tbody>
       </table>
 
-      {item.hardshipNote && (
+      {item.grant.hardshipNote && (
         <>
           <h3>Hardship note</h3>
           <p className="muted" style={{ fontSize: "0.85rem", margin: 0 }}>
             Written by the patient. Untrusted text; never scored or ranked.
           </p>
-          <blockquote className="untrusted">{item.hardshipNote}</blockquote>
+          <blockquote className="untrusted">{item.grant.hardshipNote}</blockquote>
         </>
       )}
 
       <h3>Decision</h3>
       <p>
-        Recipient: <strong>{item.provider.name}</strong> <small className="muted">(allowlisted provider)</small>
+        Recipient: <strong>{item.grant.provider.name}</strong> <small className="muted">(allowlisted provider)</small>
       </p>
       <label htmlFor="amt">Approved amount (USD)</label>
       <input id="amt" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} disabled={decided} />
       {needsSecond && !decided && (
         <p className="muted" style={{ marginTop: 8 }}>
-          Over {formatCents(SECOND_APPROVAL_CENTS)}: a second caseworker must also approve before it can be paid.
+          Over {formatCents(SECOND_APPROVAL_ABOVE_CENTS)}: a second caseworker must also approve before it can be paid.
         </p>
       )}
       <div className="row" style={{ marginTop: 16 }}>
