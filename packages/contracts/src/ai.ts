@@ -52,6 +52,7 @@ export interface Explanation {
 
 /** Text that looks like instructions aimed at the system (SPEC §7 injection flag). */
 export interface SuspiciousContent {
+  /** Revision 6: "description" covers the visit description and its line items. */
   field: "merchant" | "description" | "hardship_note";
   excerpt: string;
 }
@@ -90,7 +91,9 @@ export interface NeedInput {
   /** Monthly income estimated from the last 90 days of Nessie deposits, if available. */
   depositIncomeCents: Cents | null;
   insurance: InsuranceStatus | null;
+  /** Revision 6: the bill's remaining balance after insurance and hospital assistance. */
   billCents: Cents;
+  /** Revision 6: the visit's category. */
   category: ExpenseCategory | null;
   daysWaiting: number;
   /** Grants paid to this patient by the fund in the last 90 days. */
@@ -142,6 +145,7 @@ export interface QueueRanking {
  */
 export interface NeedEngine {
   assessNeed(input: NeedInput): NeedAssessment;
+  /** @deprecated Revision 6 retires Gemini ranking: core orders the queue by formula. */
   rankQueue(rows: RankingRow[]): Promise<QueueRanking>;
   detectSuspicious(
     fields: { field: SuspiciousContent["field"]; text: string }[],
