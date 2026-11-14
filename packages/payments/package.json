@@ -1,0 +1,30 @@
+{
+  "name": "@abdulcare/payments",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AbdulCare payments: Capital One Nessie (bills, deposits, payouts, card donations) and Solana devnet receipts. Server-only.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "solana:setup": "tsx scripts/solana-setup.ts",
+    "nessie:seed": "tsx scripts/nessie-seed.ts",
+    "nessie:check": "tsx scripts/nessie-check.ts"
+  },
+  "dependencies": {
+    "@abdulcare/contracts": "*",
+    "@abdulcare/core": "*",
+    "@solana/web3.js": "1.98.4",
+    "bs58": "^6.0.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.2.17",
+    "@types/node": "^24",
+    "tsx": "^4.19.0",
+    "typescript": "^5"
+  }
+}
