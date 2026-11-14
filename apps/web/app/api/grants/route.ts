@@ -14,7 +14,7 @@ import {
 } from "@abdulcare/contracts";
 import { CoreError, assessGrant, createGrant, getBill, getDb, getGrant, listGrants, requestHelp } from "@abdulcare/core";
 import { optionalSessionPatient, requireDevice, requirePatientSession } from "@/app/api/_lib/auth";
-import { depositIncomeCents, needEngine } from "@/app/api/_lib/deps";
+import { billEngine, depositIncomeCents, needEngine } from "@/app/api/_lib/deps";
 import { ok, readJson, route } from "@/app/api/_lib/http";
 
 export const POST = route(async (req: Request) => {
@@ -23,7 +23,7 @@ export const POST = route(async (req: Request) => {
   const db = getDb();
   const hardshipNote = typeof body.hardshipNote === "string" ? body.hardshipNote : null;
   const created = body.visitId
-    ? await requestHelp(db, { patientId: patient.id, visitId: String(body.visitId), hardshipNote })
+    ? await requestHelp(db, { patientId: patient.id, visitId: String(body.visitId), hardshipNote }, { bills: billEngine })
     : await createGrant(db, {
         patientId: patient.id,
         documentId: String(body.documentId ?? ""),
