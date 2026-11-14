@@ -1,0 +1,14 @@
+{
+  "name": "AbdulCare kiosk",
+  "short_name": "CareCard",
+  "start_url": "/kiosk",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#c9c1f0",
+  "theme_color": "#c9c1f0",
+  "icons": [
+    { "src": "/kiosk-icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/kiosk-icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
