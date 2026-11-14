@@ -1,23 +1,34 @@
 // npm run db:demo -w @abdulcare/core       adds the demo's pending requests and donations
 // npm run db:reset -w @abdulcare/core      wipes all activity first, then does the same
 //
-// Demo data for SPEC §14, on top of db:seed (patients, profiles, the pharmacy, cards):
-// - Pending requests for Sam, Jordan and Casey, built from their real Nessie bills, so the
-//   caseworker queue has something to rank. Casey's is the tampered request.
-// - Alex's $45 pharmacy bill stays unrequested: the presenter requests it live at the kiosk.
+// Demo data for SPEC §14 (rev 6), on top of db:seed (patients, plans, the hospital, its policies
+// and visit templates, cards):
+// - Visits already logged at Valley General for Alex, Sam and Casey, each run through insurance
+//   and the hospital's policies, with a fund request waiting in the reviewer queue. Casey's visit
+//   is the tampered one.
+// - Jordan has no visit yet: the presenter logs it live at the hospital terminal.
 // - The fund's starting donations, matching the Nessie seed's deposits into the fund account.
 //
-// --reset deletes every request, document, approval, payout attempt, donation, fund event and
-// cached ranking, ends open kiosk sessions, zeroes the fund and reopens any Nessie bill a
-// rehearsal paid. Patients, profiles, cards, providers and paired devices are kept.
+// --reset deletes every visit, bill event, policy application, request, brief, approval, payout
+// attempt, donation and fund event, ends open sessions and zeroes the fund. Patients, profiles,
+// plans, cards, hospitals, policies, templates and paired devices are kept.
 //
-// This script never calls Gemini: it classifies with the rules and assesses with the formula
-// (an offline model client), whatever the environment says.
+// This script never calls Gemini: policies, briefs and scores use the rules and templates
+// (core's fallback engine and an offline model client), whatever the environment says.
 
 import { join } from "node:path";
-import { classifyTransactions, createNeedEngine, estimateMonthlyIncomeCents, ModelUnavailableError, type ModelClient } from "@abdulcare/ai";
-import type { TransactionInput } from "@abdulcare/contracts";
-import { assessGrant, createGrant, createNessieDocument, createPgDb, recordDonation, type Db } from "../src";
+import { createNeedEngine, estimateMonthlyIncomeCents, ModelUnavailableError, type ModelClient } from "@abdulcare/ai";
+import {
+  assessGrant,
+  createPgDb,
+  fallbackBillEngine,
+  logVisit,
+  recordDonation,
+  requestHelp,
+  sha256,
+  newSecret,
+  type Db,
+} from "../src";
 
 try {
   process.loadEnvFile(join(__dirname, "..", "..", "..", ".env"));
@@ -33,20 +44,21 @@ const offline: ModelClient = {
 };
 const engine = createNeedEngine({ client: offline });
 
-const PROVIDER_ID = "prv_demo_pharmacy";
+const HOSPITAL_ID = "prv_demo_hospital";
+const SEED_DEVICE_ID = "dev_demo_seed_intake";
 const DAY = 86_400_000;
 
-/** Requests already waiting when the demo starts. Bills are matched by payee in each Nessie account. */
+/** Visits already logged and waiting in the reviewer queue when the demo starts. */
 const REQUESTS = [
-  { patientId: "pat_demo_sam", accountEnv: "NESSIE_PATIENT2_ACCOUNT_ID", payee: "Amherst Family Medicine", daysAgo: 1, note: null },
+  { patientId: "pat_demo_alex", accountEnv: "NESSIE_PATIENT_ACCOUNT_ID", templateId: "tpl_demo_urgent", daysAgo: 1, note: null },
   {
-    patientId: "pat_demo_jordan",
-    accountEnv: "NESSIE_PATIENT3_ACCOUNT_ID",
-    payee: "Valley Regional Hospital ER",
+    patientId: "pat_demo_sam",
+    accountEnv: "NESSIE_PATIENT2_ACCOUNT_ID",
+    templateId: "tpl_demo_imaging",
     daysAgo: 4,
-    note: "My hours were cut after the ER visit and we are a family of four. Anything helps.",
+    note: "My hours were cut after the injury. Anything helps.",
   },
-  { patientId: "pat_demo_casey", accountEnv: "NESSIE_PATIENT4_ACCOUNT_ID", payee: "Valley Urgent Care", daysAgo: 2, note: null },
+  { patientId: "pat_demo_casey", accountEnv: "NESSIE_PATIENT4_ACCOUNT_ID", templateId: "tpl_demo_tampered", daysAgo: 2, note: null },
 ] as const;
 
 /** Fallback starting donations when the Nessie fund deposits can't be read ($500 total). */
@@ -57,11 +69,6 @@ const FALLBACK_DONATIONS_CENTS = [20_000, 15_000, 15_000];
 interface NessieBill {
   _id: string;
   status: string;
-  payee: string;
-  nickname?: string;
-  payment_amount: number;
-  payment_date?: string;
-  creation_date?: string;
 }
 interface NessieDeposit {
   _id: string;
@@ -86,7 +93,6 @@ async function nessie<T>(method: "GET" | "PUT", path: string, body?: unknown): P
 }
 
 const toCents = (dollars: number) => Math.round(dollars * 100);
-const ymd = (s: string | undefined) => (s && /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : null);
 
 function requireEnv(name: string): string {
   const v = process.env[name];
@@ -121,10 +127,14 @@ async function reset(db: Db) {
     const out = {
       approvals: await del("grant_approvals"),
       assessments: await del("need_assessments"),
+      briefs: await del("decision_briefs"),
       rankings: await del("queue_rankings"),
       attempts: await del("payment_attempts"),
       grants: await del("grants"),
       documents: await del("documents"),
+      billEvents: await del("bill_events"),
+      applications: await del("policy_applications"),
+      visits: await del("visits"),
       donations: await del("donations"),
       fundEvents: await del("fund_events"),
     };
@@ -133,9 +143,11 @@ async function reset(db: Db) {
     return out;
   });
   console.log(
-    `  Deleted ${counts.grants} requests, ${counts.documents} documents, ${counts.approvals} approvals, ` +
-      `${counts.attempts} payout attempts, ${counts.donations} donations, ${counts.fundEvents} fund events, ` +
-      `${counts.rankings} cached rankings. Fund set to $0 and kiosk sessions ended.`,
+    `  Deleted ${counts.visits} visits (${counts.billEvents} bill events, ${counts.applications} policy applications), ` +
+      `${counts.grants} requests, ${counts.briefs} briefs, ${counts.documents} documents, ${counts.approvals} approvals, ` +
+      `${counts.attempts} payout attempts, ${counts.donations} donations, ${counts.fundEvents} fund events. ` +
+      `Fund set to $0 and sessions ended.`,
+
   );
 }
 
@@ -179,58 +191,48 @@ async function depositIncome(accountId: string): Promise<number | null> {
   }
 }
 
+/** A hospital "device" for the seed's own intake records (never paired to a browser). */
+async function seedIntakeDevice(db: Db) {
+  await db.query(
+    `insert into devices (id, role, label, secret_hash, provider_id)
+     values ($1, 'hospital', 'Valley General intake (seeded)', $2, $3)
+     on conflict (id) do nothing`,
+    [SEED_DEVICE_ID, sha256(newSecret()), HOSPITAL_ID],
+  );
+  return { id: SEED_DEVICE_ID, label: "Valley General intake (seeded)", providerId: HOSPITAL_ID };
+}
+
 async function seedRequests(db: Db) {
-  const { rows: provider } = await db.query("select 1 from providers where id = $1", [PROVIDER_ID]);
-  if (!provider[0]) throw new Error(`Provider ${PROVIDER_ID} is missing: run npm run db:seed -w @abdulcare/core first`);
+  const { rows: hospital } = await db.query("select 1 from providers where id = $1", [HOSPITAL_ID]);
+  if (!hospital[0]) throw new Error(`Hospital ${HOSPITAL_ID} is missing: run npm run db:seed -w @abdulcare/core first`);
+  const device = await seedIntakeDevice(db);
 
   for (const r of REQUESTS) {
-    const accountId = requireEnv(r.accountEnv);
-    const bills = await nessie<NessieBill[]>("GET", `/accounts/${encodeURIComponent(accountId)}/bills`);
-    const bill = bills.find((b) => b.payee === r.payee && (b.status === "pending" || b.status === "recurring"));
-    if (!bill) {
-      console.log(`  ${r.patientId}: no open "${r.payee}" bill in Nessie, skipped`);
+    const accountId = process.env[r.accountEnv];
+    const deposits = accountId ? await depositIncome(accountId) : null;
+    const bill = await logVisit(
+      db,
+      { bills: fallbackBillEngine, need: engine },
+      { templateId: r.templateId, patientId: r.patientId, device, idempotencyKey: `demo-seed-${r.patientId}`, depositIncomeCents: deposits },
+    );
+    if (bill.remainingCents <= 0) {
+      console.log(`  ${r.patientId}: nothing left after insurance and hospital assistance, no request`);
       continue;
     }
-    const txn: TransactionInput = {
-      id: bill._id,
-      kind: "bill",
-      merchant: bill.payee,
-      description: bill.nickname,
-      amountCents: toCents(bill.payment_amount),
-      date: bill.payment_date ?? bill.creation_date,
-    };
-    const [classification] = await classifyTransactions([txn], { client: offline });
-    const doc = await createNessieDocument(db, r.patientId, {
-      source: "nessie_bill",
-      nessieId: txn.id,
-      merchant: txn.merchant,
-      description: txn.description ?? null,
-      date: ymd(txn.date),
-      amountCents: txn.amountCents,
-      likelyMedical: classification?.likelyMedical ?? null,
-      category: classification?.category ?? null,
-    });
-
-    const { rows: existing } = await db.query<{ id: string }>("select id from grants where document_id = $1", [doc.id]);
-    if (existing[0]) {
-      console.log(`  ${r.patientId}: request already exists, leaving it`);
-      continue;
-    }
-    const grant = await createGrant(db, {
-      patientId: r.patientId,
-      documentId: doc.id,
-      providerId: PROVIDER_ID,
-      requestedCents: doc.amountCents,
-      hardshipNote: r.note,
-    });
+    const grant = await requestHelp(db, { patientId: r.patientId, visitId: bill.visit.id, hardshipNote: r.note });
     // Backdate so "days waiting" differs between requests, as it would in a real queue.
-    await db.query("update grants set created_at = $2 where id = $1", [grant.id, new Date(Date.now() - r.daysAgo * DAY)]);
-    const { assessment, suspicious } = await assessGrant(db, engine, grant.id, {
-      depositIncomeCents: await depositIncome(accountId),
-    });
+    const created = new Date(Date.now() - r.daysAgo * DAY);
+    await db.query("update grants set created_at = $2 where id = $1 and status = 'pending_review'", [grant.id, created]);
+    await db.query("update visits set created_at = $2, visit_date = $3 where id = $1", [
+      bill.visit.id,
+      created,
+      created.toISOString().slice(0, 10),
+    ]);
+    const { assessment, suspicious } = await assessGrant(db, engine, grant.id, { depositIncomeCents: deposits });
+    const path = bill.steps.map((s) => `$${(s.balanceCents / 100).toFixed(2)}`).join(" -> ");
     console.log(
-      `  ${r.patientId}: $${(doc.amountCents / 100).toFixed(2)} ${doc.merchant}, need score ${assessment.score}` +
-        (suspicious ? `, flagged as suspicious (${suspicious.field})` : ""),
+      `  ${r.patientId}: ${path}, request $${(grant.requestedCents / 100).toFixed(2)}, need score ${assessment.score}` +
+        (suspicious || bill.suspiciousContent ? ", flagged as suspicious" : ""),
     );
   }
 }
@@ -246,7 +248,7 @@ async function main() {
   console.log("Adding demo data...");
   await seedDonations(db);
   await seedRequests(db);
-  console.log("\nDemo ready. Alex's $45 pharmacy bill is left for the live kiosk request.");
+  console.log("\nDemo ready. Jordan has no visit yet: log the ER visit live at the hospital terminal.");
   process.exit(0);
 }
 
