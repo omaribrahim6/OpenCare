@@ -1639,3 +1639,12 @@
   min-height: 44px;
   margin-top: 4px;
 }
+
+.lc-full { grid-column: 1 / -1; }
+.lc-wrap { overflow-wrap: anywhere; }
+.lc-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.lc-bullets { margin: 6px 0; padding-left: 18px; font-size: 14px; line-height: 1.5; color: #3d3c46; }
+.lc-insight { padding: 14px; border-radius: 14px; background: #f7f5fe; }
+
+.v-amount { overflow-wrap: anywhere; }
+@media (max-width: 560px) { .v-amount { font-size: min(9vw, 36px); } }

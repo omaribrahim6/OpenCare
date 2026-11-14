@@ -341,7 +341,14 @@ export function Desk({ initialView }: { initialView: DeskView }) {
                               {cleanName(g.patient.displayName)}
                             </span>
                           </td>
-                          <td className="clip">{g.bill.merchant}</td>
+                          <td className="clip">
+                            {g.bill.merchant}
+                            {it.insight && (
+                              <small className="d-insight" title={it.insight.summary}>
+                                {it.insight.urgency} · {it.insight.labels.slice(0, 2).join(" · ")}
+                              </small>
+                            )}
+                          </td>
                           <td>
                             <span className={`d-pill${g.bill.category ? " teal" : ""}`}>
                               {g.bill.category ? CATEGORY_LABEL[g.bill.category] : "Unknown"}
