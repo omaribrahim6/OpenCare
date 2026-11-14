@@ -123,11 +123,14 @@ function Detail({
   status: GrantStatus;
   onDecide: (s: GrantStatus) => void;
 }) {
-  const [amount, setAmount] = useState((item.grant.requestedCents / 100).toFixed(2));
+  // Nessie settles whole dollars only, so approvals are whole dollars (rounded down from the request).
+  const [amount, setAmount] = useState(String(Math.floor(item.grant.requestedCents / 100)));
   const a = item.assessment;
   const decided = status !== "pending_review";
-  const amountCents = Math.round(Number(amount) * 100);
-  const needsSecond = Number.isFinite(amountCents) && amountCents > SECOND_APPROVAL_ABOVE_CENTS;
+  const dollars = Number(amount);
+  const amountValid = /^\d+$/.test(amount.trim()) && dollars >= 1;
+  const amountCents = dollars * 100;
+  const needsSecond = amountValid && amountCents > SECOND_APPROVAL_ABOVE_CENTS;
   const differs = order === "gemini" ? disagreement(item) : null;
 
   return (
@@ -264,16 +267,29 @@ function Detail({
       <p>
         Recipient: <strong>{item.grant.provider.name}</strong> <small className="muted">(allowlisted provider)</small>
       </p>
-      <label htmlFor="amt">Approved amount (USD)</label>
-      <input id="amt" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} disabled={decided} />
+      <label htmlFor="amt">Approved amount (whole US dollars)</label>
+      <input
+        id="amt"
+        inputMode="numeric"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        disabled={decided}
+        aria-invalid={!amountValid}
+        aria-describedby="amt-help"
+      />
+      <small id="amt-help" className="muted">
+        Whole dollars only; the bank settles in dollars.
+        {item.grant.requestedCents % 100 !== 0 &&
+          ` The request was ${formatCents(item.grant.requestedCents)}, rounded down here.`}
+      </small>
       {needsSecond && !decided && (
         <p className="muted" style={{ marginTop: 8 }}>
           Over {formatCents(SECOND_APPROVAL_ABOVE_CENTS)}: a second caseworker must also approve before it can be paid.
         </p>
       )}
       <div className="row" style={{ marginTop: 16 }}>
-        <button className="btn" disabled={decided} onClick={() => onDecide("approved")}>
-          Approve ${amount}
+        <button className="btn" disabled={decided || !amountValid} onClick={() => onDecide("approved")}>
+          {amountValid ? `Approve ${formatCents(amountCents)}` : "Approve"}
         </button>
         <button className="btn danger" disabled={decided} onClick={() => onDecide("rejected")}>
           Reject
