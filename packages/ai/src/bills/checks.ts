@@ -63,9 +63,19 @@ export function checkText(text: string, opts: CheckOptions): string | null {
   if (detectInjection(text).length) return "contains instruction-like text";
   if (opts.noDecisions && DECISION.test(text)) return "makes a decision or eligibility claim";
   for (const re of [...MEDICAL, ...COVERAGE]) if (re.test(text)) return `forbidden claim: ${re.source}`;
-  for (const n of numbersIn(text)) if (!opts.allowed.has(n)) return `number ${n} is not in the case data`;
+  for (const m of text.matchAll(NUMBER)) {
+    const n = toNum(m[0]);
+    if (Number.isFinite(n) && !opts.allowed.has(n)) return `${numberKind(text, m.index ?? 0, m[0].length)} is not in the case data`;
+  }
   for (const r of opts.mustInclude ?? []) if (!mentions(text, r)) return `missing the ${r.label}`;
   return null;
+}
+
+/** What kind of number was rejected, so the fallback log says something useful without the value. */
+function numberKind(text: string, start: number, length: number): string {
+  if (text[start - 1] === "$") return "a dollar amount";
+  if (/^\s*(%|percent\b)/i.test(text.slice(start + length))) return "a percentage";
+  return "a plain number";
 }
 
 /**
