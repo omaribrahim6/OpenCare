@@ -12,7 +12,10 @@ import {
 } from "@abdulcare/contracts";
 import type { Db } from "./db";
 import { toDocument } from "./documents";
-import { getBill } from "./visits";
+import type { BillEngine } from "@abdulcare/contracts";
+import { fallbackBillEngine } from "./bill-fallback";
+import { applyVisitPolicies } from "./visits";
+
 import { CoreError, hmac, isPositiveCents, iso, isoOrNull, newId, requireEnv } from "./util";
 
 interface GrantRow {
@@ -243,6 +246,7 @@ export async function createGrant(
 export async function requestHelp(
   db: Db,
   input: { patientId: string; visitId: string; hardshipNote?: string | null },
+  engines: { bills: BillEngine } = { bills: fallbackBillEngine },
 ): Promise<Grant> {
   const note = input.hardshipNote?.trim() || null;
   if (note && note.length > MAX_HARDSHIP_NOTE_CHARS) {
@@ -255,7 +259,8 @@ export async function requestHelp(
     );
     return rows[0]?.id ?? null;
   };
-  const bill = await getBill(db, input.visitId, { patientId: input.patientId });
+  // The fund only covers what the hospital's own policies leave, so apply any prepared ones first.
+  const bill = await applyVisitPolicies(db, engines, { visitId: input.visitId, patientId: input.patientId });
   const existing = await live();
   if (existing) return getGrant(db, existing);
   if (bill.remainingCents <= 0) throw new CoreError("invalid_state", "Nothing is left to pay on this bill");
