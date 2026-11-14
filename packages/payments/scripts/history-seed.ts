@@ -869,14 +869,15 @@ function planCases(): PlannedCase[] {
       scenario,
       hospitalId,
       outcome,
-      visitDay: between(4, 172),
+      // Requests take up to ~8 days to decide and pay, so every visit is at least 10 days old.
+      visitDay: between(10, 175),
       scale: between(0.85, 1.25),
     });
   });
   // Two duplicate claims: the same visit submitted again by the same patient.
   for (const k of [7, 41]) {
     const original = cases[k];
-    cases.push({ ...original, outcome: "duplicate", visitDay: Math.max(1, original.visitDay - between(6, 20)), duplicateOf: k });
+    cases.push({ ...original, outcome: "duplicate", visitDay: Math.max(10, original.visitDay - between(6, 20)), duplicateOf: k });
   }
   return cases.sort((a, b) => b.visitDay - a.visitDay);
 }
