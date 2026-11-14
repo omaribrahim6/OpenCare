@@ -1,38 +1,61 @@
 // Grant state machine (SPEC §8). Every money rule is enforced in SQL so retries,
 // double taps and concurrent requests can't pay twice or overspend the fund.
 
-import type { ConfirmedFields, Grant, GrantDecisionRequest, GrantStatus } from "@abdulcare/contracts";
+import {
+  MAX_HARDSHIP_NOTE_CHARS,
+  SECOND_APPROVAL_ABOVE_CENTS,
+  type Grant,
+  type GrantApproval,
+  type GrantDecisionRequest,
+  type GrantStatus,
+} from "@abdulcare/contracts";
 import type { Db } from "./db";
+import { toDocument } from "./documents";
 import { CoreError, hmac, isPositiveCents, iso, isoOrNull, newId, requireEnv } from "./util";
 
 interface GrantRow {
   id: string;
   patient_id: string;
   patient_name: string;
-  document_id: string;
   provider_id: string;
   provider_name: string;
   provider_kind: string;
-  program_id: string;
-  program_name: string;
   requested_cents: number;
   approved_cents: number | null;
   status: GrantStatus;
-  confirmed: ConfirmedFields | null;
-  warnings: string[] | null;
+  hardship_note: string | null;
   created_at: Date;
   decided_at: Date | null;
   paid_at: Date | null;
+  approvals: { label: string; cents: number; at: string }[] | string | null;
   nessie_external_id: string | null;
   solana_signature: string | null;
   solana_status: string | null;
+  // Document columns, prefixed d_.
+  d_id: string;
+  d_source: "nessie_bill" | "nessie_purchase";
+  d_nessie_id: string;
+  d_merchant: string;
+  d_description: string | null;
+  d_bill_date: Date | string | null;
+  d_amount_cents: number;
+  d_likely_medical: boolean | null;
+  d_category: Grant["bill"]["category"];
+  d_created_at: Date;
 }
 
-const GRANT_SELECT = `
-  select g.id, g.patient_id, p.display_name as patient_name, g.document_id,
+export const GRANT_SELECT = `
+  select g.id, g.patient_id, p.display_name as patient_name,
          g.provider_id, pr.name as provider_name, pr.kind as provider_kind,
-         g.program_id, g.program_name, g.requested_cents, g.approved_cents, g.status,
-         d.confirmed, d.warnings, g.created_at, g.decided_at, g.paid_at,
+         g.requested_cents, g.approved_cents, g.status, g.hardship_note,
+         g.created_at, g.decided_at, g.paid_at,
+         d.id as d_id, d.source as d_source, d.nessie_id as d_nessie_id, d.merchant as d_merchant,
+         d.description as d_description, d.bill_date as d_bill_date, d.amount_cents as d_amount_cents,
+         d.likely_medical as d_likely_medical, d.category as d_category, d.created_at as d_created_at,
+         (select coalesce(json_agg(json_build_object('label', dv.label, 'cents', ga.approved_cents,
+                                                     'at', ga.created_at) order by ga.created_at), '[]'::json)
+            from grant_approvals ga join devices dv on dv.id = ga.reviewer_device_id
+           where ga.grant_id = g.id) as approvals,
          (select external_id from payment_attempts a
            where a.grant_id = g.id and a.rail = 'nessie' and a.status = 'confirmed'
            order by a.created_at desc limit 1) as nessie_external_id,
@@ -47,28 +70,37 @@ const GRANT_SELECT = `
     join providers pr on pr.id = g.provider_id
     join documents d on d.id = g.document_id`;
 
-const EMPTY_FIELDS: ConfirmedFields = {
-  provider: null,
-  documentType: null,
-  currency: null,
-  totalCents: null,
-  date: null,
-};
-
-function toGrant(row: GrantRow): Grant {
+export function toGrant(row: GrantRow): Grant {
   const started = ["payment_pending", "paid"].includes(row.status);
+  const raw = typeof row.approvals === "string" ? JSON.parse(row.approvals) : (row.approvals ?? []);
+  const approvals: GrantApproval[] = raw.map((a: { label: string; cents: number; at: string }) => ({
+    reviewerLabel: a.label,
+    approvedCents: Number(a.cents),
+    at: iso(a.at),
+  }));
   return {
     id: row.id,
     patient: { id: row.patient_id, displayName: row.patient_name },
-    documentId: row.document_id,
+    bill: toDocument({
+      id: row.d_id,
+      patient_id: row.patient_id,
+      source: row.d_source,
+      nessie_id: row.d_nessie_id,
+      merchant: row.d_merchant,
+      description: row.d_description,
+      bill_date: row.d_bill_date,
+      amount_cents: row.d_amount_cents,
+      likely_medical: row.d_likely_medical,
+      category: row.d_category,
+      created_at: row.d_created_at,
+    }),
     provider: { id: row.provider_id, name: row.provider_name, kind: row.provider_kind },
-    programId: row.program_id,
-    programName: row.program_name,
     requestedCents: Number(row.requested_cents),
     approvedCents: row.approved_cents == null ? null : Number(row.approved_cents),
     status: row.status,
-    confirmedFields: row.confirmed ?? EMPTY_FIELDS,
-    warnings: row.warnings ?? [],
+    hardshipNote: row.hardship_note,
+    approvals,
+    awaitingSecondApproval: row.status === "pending_review" && approvals.length > 0,
     createdAt: iso(row.created_at),
     decidedAt: isoOrNull(row.decided_at),
     paidAt: isoOrNull(row.paid_at),
@@ -113,33 +145,33 @@ export async function listGrants(
   return rows.map(toGrant);
 }
 
-/** Patient asks for help with a confirmed document. One grant per document. */
+/** Patient asks for help with a bill they chose. One grant per document. */
 export async function createGrant(
   db: Db,
   input: {
     patientId: string;
     documentId: string;
     providerId: string;
-    programId: string;
-    programName: string;
     requestedCents: number;
+    hardshipNote?: string | null;
   },
 ): Promise<Grant> {
   if (!isPositiveCents(input.requestedCents)) {
     throw new CoreError("bad_request", "requestedCents must be a positive integer");
   }
-  if (!input.programId || !input.programName) throw new CoreError("bad_request", "A program is required");
+  const note = input.hardshipNote?.trim() || null;
+  if (note && note.length > MAX_HARDSHIP_NOTE_CHARS) {
+    throw new CoreError("bad_request", `The note can be at most ${MAX_HARDSHIP_NOTE_CHARS} characters`);
+  }
 
-  const { rows: docs } = await db.query<{ patient_id: string; status: string; confirmed: ConfirmedFields | null }>(
-    "select patient_id, status, confirmed from documents where id = $1",
+  const { rows: docs } = await db.query<{ patient_id: string; amount_cents: number }>(
+    "select patient_id, amount_cents from documents where id = $1",
     [input.documentId],
   );
   const doc = docs[0];
   if (!doc) throw new CoreError("not_found", "Document not found");
   if (doc.patient_id !== input.patientId) throw new CoreError("forbidden", "Not this patient's document");
-  if (doc.status !== "confirmed") throw new CoreError("invalid_state", "Confirm the document's fields first");
-  const total = doc.confirmed?.totalCents;
-  if (total != null && input.requestedCents > total) {
+  if (input.requestedCents > Number(doc.amount_cents)) {
     throw new CoreError("bad_request", "Requested amount is more than the bill");
   }
 
@@ -149,20 +181,24 @@ export async function createGrant(
   const id = newId("grt");
   try {
     await db.query(
-      `insert into grants (id, patient_id, document_id, provider_id, program_id, program_name, requested_cents)
-       values ($1, $2, $3, $4, $5, $6, $7)`,
-      [id, input.patientId, input.documentId, input.providerId, input.programId, input.programName, input.requestedCents],
+      `insert into grants (id, patient_id, document_id, provider_id, requested_cents, hardship_note)
+       values ($1, $2, $3, $4, $5, $6)`,
+      [id, input.patientId, input.documentId, input.providerId, input.requestedCents, note],
     );
   } catch (err) {
     if ((err as { code?: string }).code === "23505") {
-      throw new CoreError("conflict", "A request already exists for this document");
+      throw new CoreError("conflict", "A request already exists for this bill");
     }
     throw err;
   }
   return getGrant(db, id);
 }
 
-/** Reviewer approves (reserving fund budget atomically) or rejects a pending request. */
+/**
+ * A caseworker approves (reserving fund budget atomically) or rejects a pending request.
+ * Above SECOND_APPROVAL_ABOVE_CENTS, the first approval is recorded and the grant stays
+ * pending_review; a different caseworker device approving the same amount completes it.
+ */
 export async function decideGrant(
   db: Db,
   grantId: string,
@@ -196,6 +232,25 @@ export async function decideGrant(
     if (cents > Number(grant.requested_cents)) {
       throw new CoreError("bad_request", "Can't approve more than was requested");
     }
+
+    const { rows: prior } = await tx.query<{ reviewer_device_id: string; approved_cents: number }>(
+      "select reviewer_device_id, approved_cents from grant_approvals where grant_id = $1",
+      [grantId],
+    );
+    if (prior.some((a) => a.reviewer_device_id === reviewerDeviceId)) {
+      throw new CoreError("conflict", "You already approved this request; a second caseworker must approve it");
+    }
+    if (prior[0] && Number(prior[0].approved_cents) !== cents) {
+      throw new CoreError("bad_request", `The second approval must match the first amount (${prior[0].approved_cents} cents)`);
+    }
+    await tx.query(
+      "insert into grant_approvals (grant_id, reviewer_device_id, approved_cents) values ($1, $2, $3)",
+      [grantId, reviewerDeviceId, cents],
+    );
+    if (cents > SECOND_APPROVAL_ABOVE_CENTS && prior.length === 0) {
+      return; // Recorded; waits for a second caseworker.
+    }
+
     const { rows: reserved } = await tx.query(
       `update fund set reserved_cents = reserved_cents + $1
         where id = 'community' and total_cents - reserved_cents - paid_cents >= $1
