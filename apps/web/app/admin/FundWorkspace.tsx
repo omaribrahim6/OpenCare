@@ -11,7 +11,6 @@ import { FORMULA_WEIGHTS } from "@/lib/mock";
 import type { LedgerEntry, LedgerResponse } from "@abdulcare/contracts";
 import type { FundSummary } from "@/lib/types";
 import { CATEGORY_LABEL } from "@/lib/types";
-import { SECOND_APPROVAL_ABOVE_CENTS } from "@/lib/types";
 
 type FundTab = "overview" | "ledger" | "about";
 
@@ -294,7 +293,6 @@ function LedgerResults({ ledger, entries }: { ledger: LedgerResponse | null; ent
 }
 
 function About({ s }: { s: FundSummary | null }) {
-  const second = s?.rules?.secondApprovalAboveCents ?? SECOND_APPROVAL_ABOVE_CENTS;
   const steps = [
     ["Tap the CareCard", "At a participating clinic kiosk. No app, password or smartphone; the patient's profile is on file."],
     ["Pick a bill", "AbdulCare finds medical bills in the linked bank account and explains each one in plain words, with read-aloud."],
@@ -303,7 +301,7 @@ function About({ s }: { s: FundSummary | null }) {
   ];
   const rules = [
     ["Need first", "The queue follows a published 100-point need score. Gemini compares anonymized requests; the formula is the fallback."],
-    ["People decide", `Every grant needs a caseworker's approval. Grants over ${usd(second)} need a second caseworker.`],
+    ["People decide", "A caseworker reviews every request and approves or declines it. One approval is enough to pay the hospital."],
     ["Providers only", "Money goes to participating providers, never to the patient, so it can only pay for care."],
     ["Private", "Names, demographics and diagnoses are never used to rank anyone and never go on-chain."],
   ];
