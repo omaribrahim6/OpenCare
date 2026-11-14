@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { KioskSession } from "@/components/KioskSession";
-import { StatusBadge } from "@/components/StatusBadge";
+import { ReadAloud } from "@/components/ReadAloud";
+import { STATUS_LABEL, StatusBadge } from "@/components/StatusBadge";
 import { formatCents, getGrant } from "@/lib/mock";
 import type { GrantStatus } from "@/lib/types";
 
 const NEXT_STEP: Record<GrantStatus, string> = {
   draft: "Finish your request to send it for review.",
-  pending_review: "A person at the fund will review your request. You can check back here any time by tapping your card.",
+  pending_review:
+    "A person at the fund will review your request. You can check back any time by tapping your card here.",
   approved: "Take your card to the provider. They'll tap it and confirm, and the fund pays them directly.",
   rejected: "This request wasn't approved. Ask staff about other options.",
   canceled: "This request was canceled before payment.",
@@ -20,7 +22,7 @@ export default async function RequestStatus({ searchParams }: { searchParams: Pr
   const grant = await getGrant();
   if (!grant) {
     return (
-      <KioskSession step={4}>
+      <KioskSession step={3} totalSteps={3}>
         <h1>No requests yet</h1>
         <Link className="btn block" href="/kiosk/bills">
           Start a request
@@ -29,8 +31,11 @@ export default async function RequestStatus({ searchParams }: { searchParams: Pr
     );
   }
 
+  const amount = formatCents(grant.approvedCents ?? grant.requestedCents);
+  const spoken = `Your request for ${amount} to ${grant.provider.name} is: ${STATUS_LABEL[grant.status]}. ${NEXT_STEP[grant.status]}`;
+
   return (
-    <KioskSession step={4}>
+    <KioskSession step={3} totalSteps={3}>
       {isNew && (
         <p className="card" role="status">
           <strong>Request sent.</strong> We&apos;ve saved it for review.
@@ -40,14 +45,13 @@ export default async function RequestStatus({ searchParams }: { searchParams: Pr
       <div className="card">
         <StatusBadge status={grant.status} />
         <p className="big" style={{ marginTop: 12 }}>
-          {formatCents(grant.approvedCents ?? grant.requestedCents)}
+          {amount}
         </p>
         <p>
           To <strong>{grant.provider.name}</strong>
-          <br />
-          <span className="muted">From {grant.programName}</span>
         </p>
-        <p style={{ marginBottom: 0 }}>{NEXT_STEP[grant.status]}</p>
+        <p>{NEXT_STEP[grant.status]}</p>
+        <ReadAloud text={spoken} />
       </div>
       <Link className="btn secondary block" href="/?ended=user">
         Done, end session

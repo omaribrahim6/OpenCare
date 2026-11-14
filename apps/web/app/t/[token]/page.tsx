@@ -44,10 +44,7 @@ export default async function TapLanding({ params }: { params: Promise<{ token: 
       <p>Let&apos;s find the bill you want help with.</p>
       <div className="stack">
         <Link className="btn block" href="/kiosk/bills">
-          Find bills from my bank account
-        </Link>
-        <Link className="btn secondary block" href="/kiosk/scan">
-          Scan a paper bill or receipt
+          Find my medical bills
         </Link>
         <Link className="btn secondary block" href="/kiosk/status">
           Check a request I already made
