@@ -1818,3 +1818,69 @@ body:has(.d-public) {
     padding-left: 10px;
   }
 }
+
+/* Fund rules, flat like the rest of the admin: no panels, thin dividers between sections and items. */
+.desk .hw-hero {
+  border: 0;
+}
+.desk .hw-cols {
+  gap: 0;
+}
+.desk .hw-card {
+  padding: 18px 0 4px;
+  border: 0;
+  border-top: 1px solid var(--d-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.desk .hw-cols > .hw-card + .hw-card {
+  padding-inline-start: 24px;
+  margin-inline-start: 24px;
+  border-inline-start: 1px solid var(--d-line);
+}
+.desk .hw-card ol,
+.desk .hw-card ul {
+  gap: 0;
+}
+.desk .hw-item {
+  padding: 12px 0;
+  border: 0;
+  border-top: 1px solid var(--d-line);
+  border-radius: 0;
+  background: transparent;
+}
+.desk .hw-item:first-child {
+  border-top: 0;
+}
+.desk .hw-features {
+  gap: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--d-line);
+}
+.desk .hw-features li {
+  padding: 4px 18px;
+  border: 0;
+  border-inline-start: 1px solid var(--d-line);
+  border-radius: 0;
+  background: transparent;
+}
+.desk .hw-features li:first-child {
+  padding-inline-start: 0;
+  border-inline-start: 0;
+}
+@media (max-width: 1100px) {
+  .desk .hw-cols > .hw-card + .hw-card {
+    padding-inline-start: 0;
+    margin-inline-start: 0;
+    border-inline-start: 0;
+  }
+  .desk .hw-features li {
+    padding: 12px 0;
+    border-inline-start: 0;
+    border-top: 1px solid var(--d-line);
+  }
+  .desk .hw-features li:first-child {
+    border-top: 0;
+  }
+}
