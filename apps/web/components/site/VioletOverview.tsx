@@ -39,8 +39,15 @@ function label(date: string) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(date));
 }
 
+function overviewUsd(cents: number) {
+  return Math.abs(cents) >= 100_000_000 ? usdCompact(cents) : usd(cents);
+}
+
 function Amount({ cents }: { cents: number | undefined }) {
   if (cents == null) return <span className="v-amount">—</span>;
+  if (Math.abs(cents) >= 100_000_000) {
+    return <span className="v-amount" title={usd(cents)}>{overviewUsd(cents)}</span>;
+  }
   const [dollars, fraction] = usdParts(cents);
   return <span className="v-amount">{dollars}<span>{fraction}</span></span>;
 }
@@ -97,7 +104,7 @@ function Chart({ points, metric, line = false }: { points: Point[]; metric: Acti
         {(line || hovered !== null) && (
           <div className="v-chart-tip" style={{ left: `${Math.min(89, Math.max(11, 100 * active / (points.length - 1)))}%` }} aria-hidden="true">
             <small>{label(points[active].date)}</small>
-            <strong>{usd(points[active][metric])}</strong>
+            <strong title={usd(points[active][metric])}>{overviewUsd(points[active][metric])}</strong>
           </div>
         )}
       </div>
@@ -136,7 +143,7 @@ function Allocation({ summary }: { summary: FundSummary | null }) {
       <dl className="v-allocation-key">
         {sections.map((part) => (
           <div key={part.label} style={{ borderColor: part.color }}>
-            <dt>{part.label}</dt><dd title={summary ? usd(part.cents) : undefined}>{summary ? (part.cents >= 100_000_000 ? usdCompact(part.cents) : usd(part.cents)) : "—"}</dd>
+            <dt>{part.label}</dt><dd title={summary ? usd(part.cents) : undefined}>{summary ? overviewUsd(part.cents) : "—"}</dd>
           </div>
         ))}
       </dl>
@@ -197,7 +204,7 @@ export function VioletOverview({
         </div>
         <div className="v-fund-stat">
           <span className="v-stat-icon"><Icon name="wallet" /></span>
-          <div><small>Available to grant</small><strong>{summary ? usd(summary.availableCents) : "—"}</strong></div>
+          <div><small>Available to grant</small><strong title={summary ? usd(summary.availableCents) : undefined}>{summary ? overviewUsd(summary.availableCents) : "—"}</strong></div>
           <button className="v-quiet v-icon-button" aria-label="Open ledger" onClick={showLedger}><Icon name="chevronRight" /></button>
         </div>
         <div className="v-activity">
