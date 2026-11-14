@@ -676,7 +676,8 @@ export async function explainBill(db: Db, engine: BillEngine, bill: Bill): Promi
 /** Demo patients, for the hospital tab's "pick the demo patient" when no card is at hand. */
 export async function listPatients(db: Db): Promise<{ id: string; displayName: string }[]> {
   const { rows } = await db.query<{ id: string; display_name: string }>(
-    "select id, display_name from patients order by display_name",
+    // The history seed's patients (pat_hist_*) are past cases, not people at the hospital today.
+    "select id, display_name from patients where id not like 'pat_hist_%' order by display_name",
   );
   return rows.map((r) => ({ id: r.id, displayName: r.display_name }));
 }
