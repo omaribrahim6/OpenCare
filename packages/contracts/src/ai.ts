@@ -53,7 +53,7 @@ export interface Explanation {
 /** Text that looks like instructions aimed at the system (SPEC §7 injection flag). */
 export interface SuspiciousContent {
   /** Revision 6: "description" covers the visit description and its line items. */
-  field: "merchant" | "description" | "hardship_note";
+  field: "merchant" | "description" | "hardship_note" | "policy_text";
   excerpt: string;
 }
 
