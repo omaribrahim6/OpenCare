@@ -11,7 +11,7 @@ export type DeskView = "queue" | "decided";
 const STATIONS: { href: string; icon: IconName; label: string }[] = [
   { href: "/", icon: "wallet", label: "Community fund" },
   { href: "/kiosk", icon: "tap", label: "Patient kiosk" },
-  { href: "/provider", icon: "store", label: "Provider terminal" },
+  { href: "/intake", icon: "hospital", label: "Hospital intake" },
 ];
 
 /** Caseworker frame: sidebar (device, review nav, other stations) and the page header. */
