@@ -16,7 +16,10 @@ import type {
   GrantListResponse,
   GrantResponse,
   GrantStatus,
+  IdentityRevealResponse,
   InsurancePlan,
+  LedgerCase,
+  LedgerResponse,
   PairDeviceRequest,
   PairDeviceResponse,
   PatientBillResponse,
@@ -134,6 +137,29 @@ export const redeemGrant = (id: string) =>
 // Fund ------------------------------------------------------------------------------------------
 
 export const getFundSummary = () => (LIVE ? get<FundSummary>("/api/fund/summary") : mock.getFundSummary());
+
+// Public ledger: every donation and decided case, no identity. Mocks derive rows from the summary.
+
+export const getLedger = (): Promise<LedgerResponse> =>
+  LIVE
+    ? get<LedgerResponse>("/api/ledger")
+    : mock.getFundSummary().then((s) => ({
+        entries: s.recent
+          .filter((e) => e.type === "donation" || e.type === "payout")
+          .map((e) => ({ kind: e.type as "donation" | "payout", reference: e.reference, at: e.at, amountCents: e.amountCents, solanaSignature: e.solanaSignature })),
+        totals: { donatedCents: s.totalCents, paidCents: s.paidCents, careCostCents: 0, cases: s.paidCount, declined: 0 },
+      }));
+
+export const getLedgerCase = (ref: string) =>
+  LIVE
+    ? get<{ case: LedgerCase }>(`/api/ledger/${encodeURIComponent(ref)}`)
+    : Promise.reject(new ApiRequestError(404, "not_found", "Case details need the live API"));
+
+/** Caseworker only (paired reviewer device). Every reveal is logged and counted publicly. */
+export const revealIdentity = (ref: string, reason: string) =>
+  LIVE
+    ? post<IdentityRevealResponse>(`/api/ledger/${encodeURIComponent(ref)}/identity`, { reason })
+    : Promise.reject(new ApiRequestError(401, "unauthenticated", "Pair this browser as a caseworker first"));
 
 /** Card donation: one idempotencyKey per attempt, reused on retry. */
 export type CardDonationRequest = CreateDonationRequest & { idempotencyKey: string };
