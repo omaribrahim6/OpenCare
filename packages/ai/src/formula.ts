@@ -107,7 +107,7 @@ export function assessNeed(input: NeedInput): NeedAssessment {
     incomePct = Math.round(((monthly * 12) / povertyLineCents(size)) * 100);
     const { fullAtOrBelowPct: lo, zeroAtOrAbovePct: hi } = F.income;
     const estimated = incomeSource === "deposits" ? ", estimated from deposits" : "";
-    incomeFactor = factor("income", (hi - incomePct) / (hi - lo), `${incomePct}% of poverty guideline (household of ${size}${estimated})`);
+    incomeFactor = factor("income", (hi - incomePct) / (hi - lo), `${incomePct}% of poverty guideline for a household of ${size}${estimated}`);
   } else {
     incomeFactor = factor("income", null, monthly === null ? "Income unknown" : "Household size unknown");
   }
