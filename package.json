@@ -1,0 +1,8 @@
+{
+  "name": "abdulcare",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
