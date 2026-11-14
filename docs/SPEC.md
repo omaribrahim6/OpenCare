@@ -4,6 +4,8 @@
 
 > Tap your card. Watch your bill shrink. A person approves the rest.
 
+**Revision 6.1 (Nov 14, decided by Musa):** one reviewer's approval pays a grant of any size; the second approval above $500 is removed.
+
 **Revision 6 changes (Nov 14, from [proposal 001](proposals/001-trumpcare-coordinator.md), accepted by Omar; details settled by Musa):**
 - **The product is now a bill-reduction pipeline.** A hospital visit's bill runs through insurance, then every hospital assistance policy (the AI applies; the hospital's approval is simulated and labeled), then the community care fund. What's left after the fund is $0 or a small balance the patient owes (§1, §3).
 - **Funding is treated as solved** for the hackathon: hospitals fund the community care fund (it counts toward their nonprofit community benefit), with government programs and donations (§2).
@@ -18,7 +20,7 @@
 **Revision 5 changes (Nov 14, decided by Omar):**
 - **No questionnaire.** Need information lives in the patient's profile, set at enrollment when they get their CareCard (seeded for the demo). Patients answer nothing during a request.
 - **Gemini ranks the queue** (replaced in revision 6 by formula order).
-- **Governance:** a caseworker decides each case in private; the community sets the fund's rules in public; grants above $500 need a second approval; anyone can audit the money.
+- **Governance:** a caseworker decides each case in private; the community sets the fund's rules in public; one reviewer's approval pays a grant of any size; anyone can audit the money.
 - **Funding:** direct donations (card via Nessie, or devnet SOL) are built.
 - **Money vs. proof:** dollars move through Nessie; Solana is the public record of every donation and payout.
 
@@ -57,7 +59,7 @@ A hospital bill passes through insurance, hospital financial assistance and char
 - **Insurance:** the insurer's plan rules (simulated, deterministic).
 - **Hospital assistance:** the hospital approves each policy application (simulated in the demo by the policy's rules, always labeled "hospital decision (simulated)").
 - **Community care fund:** a human final reviewer approves or denies every grant. The formula orders the queue and the AI writes the brief; neither decides.
-- **Two approvals for large grants (P1):** a grant above $500 needs a second reviewer. The demo patient's remaining balance stays under $500, so one reviewer completes the demo.
+- **One approval:** a single reviewer's approval pays a grant of any size. There is no second-approval step.
 - **Public audit:** the dashboard and the Solana ledger show every dollar in and out, with no names.
 
 **Where the money comes from (treated as solved for the hackathon).**
@@ -87,7 +89,6 @@ A hospital bill passes through insurance, hospital financial assistance and char
 | P0 | Duplicate prevention | Repeated clicks, refreshes and retries never pay a grant twice on either rail, and never post the same insurance or policy reduction twice |
 | P0 | Injection flag | Instructions hidden in visit text, policy text or the hardship note are flagged and change nothing |
 | P1 | Fund dashboard and donations | Public page: totals, available/reserved, the fund's rules, donate by card or devnet SOL, the Solana ledger |
-| P1 | Second approval | A grant above $500 needs a second reviewer |
 | P1 | Budget reach | The queue marks how far the available budget reaches |
 
 The need score is a triage aid for the reviewer, not an eligibility decision. Everyone can receive help; the score only orders the queue. All patients, plans, policies, incomes and visits are fictional.
@@ -145,7 +146,7 @@ Unchanged from revision 5: NTAG213/215 stickers in 3D-printed card shells, a 3D-
 - **Bill's path:** charged → after insurance → after each hospital policy → remaining.
 - **Why it sits where it does:** two or three sentences built only from the factor values.
 - **Flags:** suspicious content, an income mismatch with deposits, unknown factors.
-- **Suggested action:** approve the **full remaining balance**, and note when it needs a second approval.
+- **Suggested action:** approve the **full remaining balance**.
 
 Every number in the brief must match the case data, or the template brief is shown. The brief never changes the score, the order, or the amount; the reviewer edits the amount and decides.
 
@@ -224,7 +225,7 @@ Each agent edits only its lane's folders (AGENTS.md §2). Folders are unchanged 
 | Sun 12:00–4:30 AM | Polish, accessibility, CareCards and stand; backup recording by 4:00 AM |
 | Sun 4:30–9:00 AM | Feature freeze, rehearse, final submission by **9:00 AM** |
 
-If the schedule slips, cut in this order: the public fund page and donations; the second approval; Gemini rewriting application text (keep the templates); the catastrophic-cap policy (keep charity care); the 3D-printed stand.
+If the schedule slips, cut in this order: the public fund page and donations; Gemini rewriting application text (keep the templates); the catastrophic-cap policy (keep charity care); the 3D-printed stand.
 
 ## 13. Acceptance checks
 - A hospital-terminal tap selects the right patient; a kiosk tap opens their session; an unpaired phone shows nothing.
