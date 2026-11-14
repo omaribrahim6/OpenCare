@@ -1,1 +1,36 @@
+# Agent board state (per clone)
 .board/
+
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# Builds and caches
+.next/
+dist/
+build/
+out/
+coverage/
+.turbo/
+*.tsbuildinfo
+
+# Secrets: never commit these. Copy .env.example instead.
+.env
+.env.*
+!.env.example
+*.pem
+*keypair*.json
+treasury*.json
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
