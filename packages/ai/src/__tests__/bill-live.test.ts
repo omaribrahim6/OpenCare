@@ -139,6 +139,26 @@ test("explanation: invented amounts, medical or payment claims, or a missing bal
   for (const f of failures) assert.equal((await engineWith(f).engine.explainBill(explainInput)).fallback, true);
 });
 
+test("explanation: the total saved is allowed and given to the model; other sums still fall back", async () => {
+  const { engine, client } = engineWith(JSON.stringify({ summary: "Insurance and charity care saved you $4,368.00 in total, so $432.00 is left.", questionsToAsk: [] }));
+  const e = await engine.explainBill(explainInput);
+  assert.equal(e.fallback, false);
+  assert.match(client.calls[0].parts.map((p) => p.text ?? "").join("\n"), /"totalSaved":"\$4,368\.00"/);
+  // Any other total is still an invented amount.
+  const bad = await engineWith(JSON.stringify({ summary: "You saved $3,282.00 and $432.00 is left.", questionsToAsk: [] })).engine.explainBill(explainInput);
+  assert.equal(bad.fallback, true);
+});
+
+test("the number check says what kind of number was rejected, never the value", async () => {
+  const { checkText } = await import("../bills/checks");
+  const allowed = new Set([432]);
+  assert.equal(checkText("You saved $99.00.", { allowed }), "a dollar amount is not in the case data");
+  assert.equal(checkText("That is 47% off.", { allowed }), "a percentage is not in the case data");
+  assert.equal(checkText("It took 12 percent off.", { allowed }), "a percentage is not in the case data");
+  assert.equal(checkText("There were 5 steps.", { allowed }), "a plain number is not in the case data");
+  assert.equal(checkText("$432 is left.", { allowed }), null);
+});
+
 test("explanation: 'you have' billing wording passes; 'you have' medical wording still falls back", async () => {
   for (const summary of [
     "Valley General Hospital charged $4,800.00. After insurance and charity care, you have $432.00 left to pay.",
