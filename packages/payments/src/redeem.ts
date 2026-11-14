@@ -21,7 +21,16 @@ import {
 } from "@abdulcare/core";
 import { dollarsToCents } from "./money";
 import { NessieClient, NessieError, type NessiePurchase } from "./nessie";
-import { broadcast, checkSignature, buildReceipt, signatureOf, solanaFromEnv, waitForSignature, type SolanaConfig } from "./solana";
+import {
+  broadcast,
+  buildReceipt,
+  checkSignature,
+  isRejectedBeforeSend,
+  signatureOf,
+  solanaFromEnv,
+  waitForSignature,
+  type SolanaConfig,
+} from "./solana";
 
 export interface PaymentsDeps {
   db: Db;
@@ -277,7 +286,7 @@ async function settleReceipt(deps: PaymentsDeps, grantId: string): Promise<void>
       if (status === "confirmed") return confirmReceipt(db, live.id, grantId, signature);
       if (status === "pending") {
         // Same bytes, same signature: rebroadcasting can't create a second receipt.
-        await broadcast(sol.connection, live.signedTx);
+        await broadcastOrFail(db, sol, live.id, live.signedTx);
         return;
       }
       await updateAttempt(db, live.id, { status, error: `Receipt ${status}` });
@@ -305,10 +314,22 @@ async function settleReceipt(deps: PaymentsDeps, grantId: string): Promise<void>
   }
   await updateAttempt(db, attempt.id, { externalId: receipt.signature });
 
-  await broadcast(sol.connection, receipt.signedTx);
+  await broadcastOrFail(db, sol, attempt.id, receipt.signedTx);
   const status = await waitForSignature(sol.connection, receipt.signature, receipt.lastValidBlockHeight);
   if (status === "confirmed") return confirmReceipt(db, attempt.id, grantId, receipt.signature);
   if (status !== "pending") await updateAttempt(db, attempt.id, { status, error: `Receipt ${status}` });
+}
+
+/** Broadcast; if the node refused it outright, fail the attempt so the next poll can replace it. */
+async function broadcastOrFail(db: Db, sol: SolanaConfig, attemptId: string, signedTx: string): Promise<void> {
+  try {
+    await broadcast(sol.connection, signedTx);
+  } catch (err) {
+    if (isRejectedBeforeSend(err)) {
+      await updateAttempt(db, attemptId, { status: "failed", error: "Receipt rejected before send (is the treasury funded?)" });
+    }
+    throw err;
+  }
 }
 
 /** Mark confirmed and write the ledger entry exactly once, even if two polls race. */

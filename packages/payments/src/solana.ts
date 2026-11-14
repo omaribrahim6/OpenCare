@@ -126,6 +126,15 @@ export async function broadcast(connection: Connection, signedTx: string): Promi
   }
 }
 
+/**
+ * True when the RPC node simulated the transaction and refused to forward it (for example, the
+ * treasury can't pay fees). Such a transaction never reached the network, so its attempt has
+ * conclusively failed.
+ */
+export function isRejectedBeforeSend(err: unknown): boolean {
+  return /simulation failed/i.test(String((err as Error)?.message ?? ""));
+}
+
 /** Where a signature stands. `expired` means it can never land: its blockhash is too old. */
 export async function checkSignature(
   connection: Connection,
