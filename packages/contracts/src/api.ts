@@ -46,6 +46,13 @@ export type TapResult =
   /** Not a paired device: show "Tap at a participating kiosk", never patient data. */
   | { kind: "unpaired_device" };
 
+// POST /api/tap: the /t/[token] page sends the token from its URL; the server checks this
+// browser's device cookie, sets the session cookie when a session starts, and returns TapResult.
+export interface TapRequest {
+  token: string;
+}
+export type TapResponse = TapResult;
+
 // ---------------------------------------------------------------------------
 // Devices
 
@@ -156,11 +163,21 @@ export type FundSummaryResponse = FundSummary;
 export interface CreateDonationRequest {
   /** Between $1 and $10,000. */
   amountCents: Cents;
+  /** Client-generated (e.g. crypto.randomUUID()) so a double submit deposits once. */
+  idempotencyKey?: string;
 }
 export interface DonationResponse {
   donation: Donation;
+  /** Devnet explorer link for the donation's memo receipt, once broadcast. */
+  explorerUrl?: string | null;
   fund: FundSummary;
 }
+
+// POST /api/fund/donations/solana: record a devnet SOL transfer to the treasury (verified on-chain).
+export interface SolanaDonationRequest {
+  signature: string;
+}
+// -> DonationResponse
 
 // GET /api/providers (paired devices): providers a patient can choose.
 export interface ProviderListResponse {
