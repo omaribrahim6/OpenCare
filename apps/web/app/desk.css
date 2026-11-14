@@ -8,13 +8,13 @@
   --d-teal-ink: #0d2b28;
   --d-sand: #e8dba0;
   --d-sand-cap: #efe5b8;
-  --d-mist: #e5edf6;
-  --d-canvas: #f3f6fa;
+  --d-mist: #e1e4e8;
+  --d-canvas: #f5f5f4;
   --d-line: #e9e9e7;
-  --d-tile: #f4f7fb;
-  --d-text: #111c2b;
-  --d-text-2: #46566a;
-  --d-muted: #5e6e82;
+  --d-tile: #fafaf9;
+  --d-text: #1a1a1a;
+  --d-text-2: #5c5f5e;
+  --d-muted: #9a9d9b;
 
   display: grid;
   grid-template-columns: 247px minmax(0, 1fr);
@@ -324,7 +324,7 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 .d-btn-teal:hover:not(:disabled) {
-  background: #004abe;
+  background: #10463f;
 }
 .d-btn-danger {
   color: #b5382b;
@@ -459,10 +459,10 @@
   position: relative;
   height: 0;
   margin-left: 44px;
-  border-top: 1px solid #e8edf4;
+  border-top: 1px solid #ecebf1;
 }
 .d-vbars-grid > div:last-child {
-  border-top-color: #d0dae9;
+  border-top-color: #d9d7e2;
 }
 .d-vbars-grid span {
   position: absolute;
@@ -494,15 +494,15 @@
   display: block;
   width: min(100%, 40px);
   border-radius: 4px 4px 0 0;
-  background: #77a3ec;
+  background: #8d77ec;
   transition: background var(--t);
 }
 .d-vbar.on i,
 .d-vbar:focus-visible i {
-  background: #074ebb;
+  background: #553eb6;
 }
 .d-vbar:focus-visible {
-  box-shadow: inset 0 0 0 2px #e5efff;
+  box-shadow: inset 0 0 0 2px #e5def9;
   border-radius: 6px;
 }
 .d-vbar-x {
@@ -525,7 +525,7 @@
   min-width: 150px;
   padding: 8px 12px;
   border-radius: 10px;
-  background: #1a2f52;
+  background: #241a52;
   color: #fff;
   font-size: 13px;
   pointer-events: none;
@@ -533,7 +533,7 @@
 }
 .d-vtip small {
   display: block;
-  color: #d4e5ff;
+  color: #c9c1f0;
   font-size: 12px;
 }
 .d-vtip div {
@@ -562,7 +562,7 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #074ebb;
+  color: #553eb6;
 }
 .d-next-nav {
   display: flex;
@@ -600,8 +600,8 @@
   width: 48px;
   height: 48px;
   border-radius: 14px;
-  background: #ebf1fc;
-  color: #074ebb;
+  background: #efebfc;
+  color: #553eb6;
   font-weight: 600;
 }
 .d-next-who > div {
@@ -626,7 +626,7 @@
   margin: 0;
   border: 1px solid var(--d-line);
   border-radius: 12px;
-  background: #f9fbfd;
+  background: #faf9fd;
 }
 .d-next-facts > div {
   padding: 12px 14px;
@@ -797,7 +797,7 @@
   background: #fbfbfa;
 }
 .d-table tbody tr.row[aria-selected="true"] {
-  background: #eaf3ff;
+  background: #f3f8f7;
 }
 .d-table .cents {
   color: #c2c5c3;
@@ -1320,7 +1320,7 @@
 
 /* Operational views use the public dashboard's color system and data accents. */
 .desk {
-  background: linear-gradient(140deg, #e2f0f6, #eaf5ef 58%, #e8edf5);
+  background: linear-gradient(140deg, #e2f0f6, #eaf5ef 58%, #ebe8f5);
 }
 
 .desk .d-main,
@@ -1348,7 +1348,7 @@
 }
 
 .desk .d-tile:nth-child(2) { background: #e1eff8; }
-.desk .d-tile:nth-child(3) { background: #e8effb; }
+.desk .d-tile:nth-child(3) { background: #eae8fb; }
 .desk .d-tile:nth-child(4) { background: #f7e9e5; }
 
 .desk .d-btn-teal,
@@ -1367,23 +1367,23 @@
 
 /* Shared violet treatment for the caseworker workspace. */
 .desk {
-  --d-teal: #075deb;
-  --d-teal-deep: #074ebb;
-  --d-teal-ink: #143468;
-  --d-sand: #b8d6ff;
-  --d-sand-cap: #e5efff;
-  --d-line: #dfe7f1;
-  background: #f3f6fa;
+  --d-teal: #6954cb;
+  --d-teal-deep: #553eb6;
+  --d-teal-ink: #302068;
+  --d-sand: #d4c8f6;
+  --d-sand-cap: #e5def9;
+  --d-line: #e6e3ee;
+  background: #f1f2f4;
 }
 
-.desk .d-side { background: #f6f7fa; }
-.desk .d-tile { background: #ebf1fc; }
-.desk .d-tile:nth-child(2) { background: #ebf1fa; }
+.desk .d-side { background: #f7f6fa; }
+.desk .d-tile { background: #f0ebfc; }
+.desk .d-tile:nth-child(2) { background: #eeebfa; }
 .desk .d-tile:nth-child(3) { background: #e9ebfb; }
-.desk .d-tile:nth-child(4) { background: #f1f5fb; }
+.desk .d-tile:nth-child(4) { background: #f6ecf6; }
 .desk .d-btn-teal,
 .desk .d-avatar,
-.desk .d-count { background: #075deb; border-color: #075deb; }
+.desk .d-count { background: #6d56d3; border-color: #6d56d3; }
 
 /* Revision 6: decision brief in the case drawer */
 .dr-brief { border: 1px solid #d9e6f5; background: #f5f9fe; border-radius: 12px; padding: 14px 16px; }
@@ -1403,18 +1403,18 @@
 /* ------------------------------------------------------------ Admin sign-in (staff PIN) */
 
 .d-login {
-  --d-teal: #075deb;
-  --d-teal-deep: #074ebb;
-  --d-line: #dfe7f1;
-  --d-tile: #f4f7fb;
-  --d-text: #111c2b;
-  --d-muted: #5e6e82;
+  --d-teal: #6d56d3;
+  --d-teal-deep: #553eb6;
+  --d-line: #e6e3ee;
+  --d-tile: #f7f6fa;
+  --d-text: #1a1a1a;
+  --d-muted: #6b6e6d;
   --t: 0.15s ease;
   min-height: 100dvh;
   display: grid;
   place-items: center;
   padding: 24px 16px;
-  background: #f3f6fa;
+  background: #f1f2f4;
   color: var(--d-text);
   font-size: 14px;
   letter-spacing: -0.006em;
@@ -1451,7 +1451,7 @@
   height: 48px;
   margin-top: 8px;
   border-radius: 12px;
-  background: #ebf1fc;
+  background: #f0ebfc;
   color: var(--d-teal-deep);
 }
 .d-login h1 {
@@ -1483,7 +1483,7 @@
 .d-login-field input:focus {
   outline: none;
   border-color: var(--d-teal);
-  box-shadow: 0 0 0 3px #e5efff;
+  box-shadow: 0 0 0 3px #e5def9;
 }
 .d-login-field input[aria-invalid="true"] {
   border-color: #c2412f;
@@ -1502,12 +1502,12 @@
 /* ------------------------------------------------------------ Public ledger (/fund), no sign-in */
 
 .d-public {
-  --d-teal: #075deb;
-  --d-teal-deep: #074ebb;
-  --d-line: #dfe7f1;
-  --d-tile: #f4f7fb;
-  --d-text: #111c2b;
-  --d-muted: #5e6e82;
+  --d-teal: #6d56d3;
+  --d-teal-deep: #553eb6;
+  --d-line: #e6e3ee;
+  --d-tile: #f7f6fa;
+  --d-text: #1a1a1a;
+  --d-muted: #6b6e6d;
   --t: 0.15s ease;
   min-height: 100dvh;
   max-width: 1200px;
@@ -1517,87 +1517,10 @@
   font-size: 14px;
 }
 body:has(.d-public) {
-  background: #f3f6fa;
+  background: #f1f2f4;
 }
 .d-public-bar {
   display: flex;
   align-items: center;
   margin-bottom: 24px;
 }
-
-/* Caseworker tools share the public UI's active, selected and focus states. */
-.desk .d-nav [aria-current="page"] {
-  color: #104fb6;
-  background: #eaf3ff;
-  border-color: #dceaff;
-}
-.desk .d-nav [aria-current="page"] svg { color: currentColor; }
-.desk .d-head { border-bottom-color: #e1e9f2; }
-.desk .d-head h1, .desk .d-card-head h2 { letter-spacing: -.036em; }
-.desk .d-btn:focus-visible,
-.desk .d-nav a:focus-visible,
-.desk .d-search input:focus-visible,
-.desk .d-table button:focus-visible {
-  outline: 2px solid #075deb;
-  outline-offset: 3px;
-}
-.desk .d-next { border-color: #d7e6fa; }
-.desk .d-next-facts { background: #f4f8ff; }
-.desk .d-table .cents,
-.desk .d-tile-num .cents { color: #586b83; }
-.desk .d-table tbody tr.row:hover { background: #f0f6ff; }
-.d-login .d-btn-teal { border-color: #075deb; background: #075deb; }
-.d-login .d-btn-teal:hover:not(:disabled) { background: #004abe; }
-
-/* Use the desk surface for sections and leave boundaries on controls and dialogs. */
-.desk { background: #fcfdff; }
-.desk .d-main { background: #fcfdff; }
-.desk .d-side { background: #f5f8fd; }
-.desk .d-head { background: #fcfdff; }
-.desk .d-card {
-  padding-inline: 0;
-  border: 0;
-  border-top: 1px solid var(--d-line);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-.desk .d-tile,
-.desk .d-tile:nth-child(n) {
-  padding-inline: 14px;
-  border: 0;
-  border-inline-start: 1px solid var(--d-line);
-  border-radius: 0;
-  background: transparent;
-}
-.desk .d-tile:first-child { padding-inline-start: 0; border-inline-start: 0; }
-.desk .d-next { border-top-color: var(--d-line); }
-.d-login { background: #fcfdff; }
-.d-login-card {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-@media (min-width: 901px) {
-  .desk .d-next {
-    padding-inline-start: 18px;
-    border-inline-start: 1px solid var(--d-line);
-  }
-}
-@media (max-width: 1180px) {
-  .desk .d-tile:nth-child(odd) { padding-inline-start: 0; border-inline-start: 0; }
-  .desk .d-tile:nth-child(n+3) { border-top: 1px solid var(--d-line); }
-}
-@media (max-width: 560px) {
-  .desk .d-tile:nth-child(n) { padding-inline: 0; border-inline-start: 0; }
-  .desk .d-tile:nth-child(n+2) { border-top: 1px solid var(--d-line); }
-}
-
-.desk .d-pill, .desk .d-nav .d-count {
-  padding-inline: 0;
-  border: 0;
-  border-radius: 0;
-  background: none;
-}
-.desk .d-nav .d-count { color: var(--d-teal-deep); font-variant-numeric: tabular-nums; }
