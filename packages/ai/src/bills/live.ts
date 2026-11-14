@@ -80,11 +80,15 @@ export async function writeApplicationLive(input: ApplicationTextInput, deps: Li
       }),
       deps.timeouts?.application ?? DEFAULT_TIMEOUTS.application,
     );
-    const text = cleanUntrusted(asRecord(parseModelJson(raw)).text, 1600).replace(/\s*\[truncated\]$/, "");
+    const letter = cleanUntrusted(asRecord(parseModelJson(raw)).text, 1600).replace(/\s*\[truncated\]$/, "");
+    // The heading ("Application for <policy> at <hospital>") comes from code, like the footer, so the
+    // policy is always named exactly even when the letter only says "financial assistance".
+    const heading = template.text.split("\n")[0];
+    const text = !letter.trim() || letter.startsWith(heading) ? letter : `${heading}\n\n${letter}`;
     const problem = checkText(text, {
       allowed: allowedNumbers([template.text]),
       noDecisions: true,
-      maxLength: 1600,
+      maxLength: 1600 + heading.length + 2,
       mustInclude: [
         { label: "reduction amount", cents: input.evaluation.reductionCents },
         { label: "policy name", text: safePolicyName(input.policy.name) },
