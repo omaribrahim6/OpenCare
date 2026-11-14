@@ -27,6 +27,8 @@ export const POST = route(async (req: Request, { params }: IdParams) => {
   const db = getDb();
 
   let grant = await getGrant(db, id);
+  // A double click or retry on a grant that's already paid just returns it.
+  if (decision.decision === "approve" && grant.visit && grant.status === "paid") return ok<GrantResponse>({ grant });
   const alreadyApproved = grant.status === "approved" || grant.status === "payment_pending";
   if (!(decision.decision === "approve" && alreadyApproved && grant.visit)) {
     grant = await decideGrant(db, id, device.id, decision);
