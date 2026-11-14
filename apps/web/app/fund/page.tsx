@@ -1,11 +1,13 @@
-import { formatCents, getFundRules, getFundSummary } from "@/lib/mock";
+import { FORMULA_WEIGHTS, formatCents, getFundSummary } from "@/lib/mock";
+import { SECOND_APPROVAL_ABOVE_CENTS } from "@/lib/types";
 import { DonateButton } from "./DonateButton";
 
 // Screen 7: Fund dashboard. Aggregates only; no patient-level information.
 export default async function FundDashboard() {
-  const [s, rules] = await Promise.all([getFundSummary(), getFundRules()]);
+  const s = await getFundSummary();
+  const secondApprovalAbove = s.rules?.secondApprovalAboveCents ?? SECOND_APPROVAL_ABOVE_CENTS;
   const tiles = [
-    { label: "Donated", value: formatCents(s.totalCents) },
+    { label: `Donated (${s.donationCount ?? 0} donations)`, value: formatCents(s.totalCents) },
     { label: "Available", value: formatCents(s.availableCents) },
     { label: "Reserved for approved grants", value: formatCents(s.reservedCents) },
     { label: `Paid out (${s.paidCount} grants)`, value: formatCents(s.paidCents) },
@@ -37,9 +39,8 @@ export default async function FundDashboard() {
           see how requests are prioritized.
         </p>
         <ul>
-          <li>Largest single grant: {formatCents(rules.perGrantCapCents)}</li>
-          <li>Grants over {formatCents(rules.secondApprovalOverCents)} need a second caseworker&apos;s approval</li>
-          <li>The queue is ordered by need; the formula (version {rules.formulaVersion}) weighs:</li>
+          <li>Grants over {formatCents(secondApprovalAbove)} need a second caseworker&apos;s approval</li>
+          <li>The queue is ordered by need; the formula (version {FORMULA_WEIGHTS.formulaVersion}) weighs:</li>
         </ul>
         <table>
           <thead>
@@ -50,7 +51,7 @@ export default async function FundDashboard() {
             </tr>
           </thead>
           <tbody>
-            {rules.weights.map((w) => (
+            {FORMULA_WEIGHTS.weights.map((w) => (
               <tr key={w.label}>
                 <td>{w.label}</td>
                 <td>{w.measures}</td>

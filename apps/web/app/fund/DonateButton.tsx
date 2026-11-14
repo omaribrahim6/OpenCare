@@ -1,20 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import { donate, formatCents } from "@/lib/mock";
+import type { DonationResponse } from "@/lib/types";
 
-type Method = "card" | "sol";
-type Phase = "closed" | "form" | "sending" | "done";
+type Phase = "closed" | "form" | "sending" | "done" | "error";
 
 const PRESETS = [10, 25, 50];
+const MIN_CENTS = 100; // CreateDonationRequest: between $1 and $10,000
+const MAX_CENTS = 1_000_000;
 
 /**
- * Donate (SPEC rev 5 §3 P0). Card = a Nessie deposit into the fund account; SOL = devnet SOL to the treasury.
- * Mock: no request is sent yet. The api/payments lanes will provide the route.
+ * Card donation (SPEC rev 5 §3 P0): POST /api/fund/donations with { amountCents }, which makes a
+ * Nessie deposit into the fund account. Devnet SOL donations wait for a route in the contracts.
  */
 export function DonateButton() {
   const [phase, setPhase] = useState<Phase>("closed");
-  const [method, setMethod] = useState<Method>("card");
   const [amount, setAmount] = useState("25");
+  const [result, setResult] = useState<DonationResponse | null>(null);
+
+  const cents = Math.round(Number(amount) * 100);
+  const valid = Number.isFinite(cents) && cents >= MIN_CENTS && cents <= MAX_CENTS;
 
   if (phase === "closed") {
     return (
@@ -24,15 +30,14 @@ export function DonateButton() {
     );
   }
 
-  if (phase === "done") {
+  if (phase === "done" && result) {
     return (
       <div className="card" role="status">
         <h2 style={{ marginTop: 0 }}>Thank you</h2>
         <p>
-          {method === "card"
-            ? `Your $${amount} donation was deposited into the fund (mock Nessie deposit).`
-            : `Your ${amount} devnet SOL donation was sent to the fund treasury.`}{" "}
-          It will appear in the public ledger below with its Solana receipt.
+          Your {formatCents(result.donation.amountCents)} donation was deposited into the fund (mock Nessie deposit).
+          The fund now has {formatCents(result.fund.availableCents)} available. The donation will appear in the public
+          ledger with its Solana receipt.
         </p>
         <button className="btn secondary" onClick={() => setPhase("closed")}>
           Close
@@ -41,77 +46,65 @@ export function DonateButton() {
     );
   }
 
-  const valid = Number(amount) > 0;
-
   return (
     <form
       className="card stack"
       aria-labelledby="donate-title"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
         if (!valid) return;
         setPhase("sending");
-        setTimeout(() => setPhase("done"), 900);
+        try {
+          setResult(await donate(cents));
+          setPhase("done");
+        } catch {
+          setPhase("error");
+        }
       }}
     >
       <h2 id="donate-title" style={{ margin: 0 }}>
-        Donate
+        Donate by card
       </h2>
-      <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
-        <legend style={{ fontWeight: 600, marginBottom: 6 }}>How</legend>
-        <div className="row">
-          <label className="row" style={{ fontWeight: 400, gap: 8, margin: 0 }}>
-            <input
-              type="radio"
-              name="method"
-              checked={method === "card"}
-              onChange={() => setMethod("card")}
-              style={{ width: 22, minHeight: 22 }}
-            />
-            Card (USD)
-          </label>
-          <label className="row" style={{ fontWeight: 400, gap: 8, margin: 0 }}>
-            <input
-              type="radio"
-              name="method"
-              checked={method === "sol"}
-              onChange={() => setMethod("sol")}
-              style={{ width: 22, minHeight: 22 }}
-            />
-            Devnet SOL
-          </label>
-        </div>
-      </fieldset>
 
-      {method === "card" && (
-        <div className="row" role="group" aria-label="Preset amounts">
-          {PRESETS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              className={`btn${amount === String(p) ? "" : " secondary"}`}
-              aria-pressed={amount === String(p)}
-              onClick={() => setAmount(String(p))}
-            >
-              ${p}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="row" role="group" aria-label="Preset amounts">
+        {PRESETS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            className={`btn${amount === String(p) ? "" : " secondary"}`}
+            aria-pressed={amount === String(p)}
+            onClick={() => setAmount(String(p))}
+          >
+            ${p}
+          </button>
+        ))}
+      </div>
 
       <div>
-        <label htmlFor="donate-amount">{method === "card" ? "Amount (USD)" : "Amount (devnet SOL)"}</label>
-        <input id="donate-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
-        <small className="muted">
-          {method === "card"
-            ? "Prototype: no real card is charged. This makes a mock deposit in Capital One's Nessie sandbox."
-            : "Test network only. Devnet SOL has no dollar value."}
+        <label htmlFor="donate-amount">Amount (USD)</label>
+        <input
+          id="donate-amount"
+          inputMode="decimal"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          aria-invalid={!valid}
+          aria-describedby="donate-help"
+        />
+        <small id="donate-help" className="muted">
+          Between $1 and $10,000. Prototype: no real card is charged; this makes a deposit in Capital One&apos;s Nessie
+          sandbox.
         </small>
       </div>
 
+      {phase === "error" && (
+        <p role="alert" className="badge bad">
+          The donation didn&apos;t go through. Nothing was charged. Please try again.
+        </p>
+      )}
+
       <div className="row">
         <button className="btn" type="submit" disabled={!valid || phase === "sending"}>
-          {phase === "sending" ? "Sending…" : "Donate"}
+          {phase === "sending" ? "Sending…" : valid ? `Donate ${formatCents(cents)}` : "Donate"}
         </button>
         <button className="btn secondary" type="button" onClick={() => setPhase("closed")}>
           Cancel
