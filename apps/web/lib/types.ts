@@ -45,4 +45,5 @@ export const SUSPICIOUS_FIELD_LABEL = {
   merchant: "merchant name",
   description: "bill description",
   hardship_note: "hardship note",
+  policy_text: "hospital policy text",
 } as const;
