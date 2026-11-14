@@ -4,7 +4,11 @@
 // only a reviewer device can reveal identity, and each reveal is logged and counted publicly.
 
 import type {
+  DonorKind,
   IdentityRevealResponse,
+  LedgerDetailResponse,
+  LedgerDonation,
+  OrganizationProfile,
   LedgerCase,
   LedgerEntry,
   LedgerResponse,
@@ -15,7 +19,9 @@ import type {
 import type { Db } from "./db";
 import { getGrant, payoutReference } from "./grants";
 import { povertyLineCents } from "./bill-fallback";
-import { CoreError, iso, newId } from "./util";
+import { getPatientWithProfile } from "./profiles";
+import { triageCase } from "./triage";
+import { CoreError, iso, isoOrNull, newId } from "./util";
 import { getBill } from "./visits";
 
 const LEDGER_LIMIT = 1000;
@@ -55,10 +61,15 @@ export async function listLedger(db: Db): Promise<LedgerResponse> {
     amount_cents: number;
     solana_signature: string | null;
     donor_label: string | null;
+    donor_kind: DonorKind | null;
+    public_name: boolean | null;
+    purpose: string | null;
     created_at: Date;
   }>(
-    `select id, rail, amount_cents, solana_signature, donor_label, created_at
-       from donations order by created_at desc limit ${LEDGER_LIMIT}`,
+    `select d.id, d.rail, d.amount_cents, d.solana_signature, coalesce(o.name, d.donor_label) as donor_label,
+            o.kind as donor_kind, o.public_name, d.purpose, d.created_at
+       from donations d left join donors o on o.id = d.donor_id
+      order by d.created_at desc limit ${LEDGER_LIMIT}`,
   );
 
   const { rows: cases } = await db.query<CaseRow>(
@@ -90,7 +101,9 @@ export async function listLedger(db: Db): Promise<LedgerResponse> {
     at: iso(d.created_at),
     amountCents: Number(d.amount_cents),
     solanaSignature: d.solana_signature,
-    donorLabel: d.donor_label,
+    donorLabel: d.public_name === false ? null : d.donor_label,
+    donorKind: d.donor_kind ?? (d.donor_label ? null : "individual"),
+    purpose: d.purpose,
     rail: d.rail,
   }));
   for (const c of cases) {
@@ -154,7 +167,8 @@ export async function getLedgerCase(db: Db, ref: string): Promise<LedgerCase> {
     household_size: number | null;
     monthly_income_cents: number | null;
     insurance_status: LedgerCase["patient"]["insurance"];
-  }>("select region, age_band, household_size, monthly_income_cents, insurance_status from patients where id = $1", [
+    employment: string | null;
+  }>("select region, age_band, household_size, monthly_income_cents, insurance_status, employment from patients where id = $1", [
     grant.patient.id,
   ]);
   const p = pRows[0];
@@ -214,7 +228,22 @@ export async function getLedgerCase(db: Db, ref: string): Promise<LedgerCase> {
       reason: a.evaluation.reason,
       criteria: a.evaluation.criteria.map((c) => ({ label: c.label, met: c.met, detail: c.detail })),
     })),
+    hospital: await organizationProfile(db, grant.provider.id),
+    payer: fundPayer(),
+    insight: assessment
+      ? triageCase({
+          bill,
+          remainingCents: grant.requestedCents,
+          assessment,
+          profile: (await getPatientWithProfile(db, grant.patient.id)).profile,
+          suspicious: bill.suspiciousContent ?? (n?.suspicious ? parse(n.suspicious) : null),
+          priorPaidCount90d: inputs?.priorPaidCount90d ?? 0,
+          employment: p?.employment ?? null,
+        })
+      : null,
+    hardshipNote: grant.hardshipNote,
     patient: {
+      employment: p?.employment ?? null,
       region: p?.region ?? null,
       ageBand: p?.age_band ?? null,
       householdSize: size,
@@ -307,4 +336,157 @@ export async function revealIdentity(
     revealedAt: iso(logged[0].created_at),
     identityReveals: count[0]?.n ?? 1,
   };
+}
+
+function fundPayer(): LedgerCase["payer"] {
+  return {
+    name: "AbdulCare community care fund",
+    nessieAccountId: process.env.NESSIE_FUND_ACCOUNT_ID || null,
+    treasuryAddress: process.env.NEXT_PUBLIC_TREASURY_ADDRESS || null,
+  };
+}
+
+async function organizationProfile(db: Db, providerId: string): Promise<OrganizationProfile> {
+  const { rows } = await db.query<{
+    id: string;
+    name: string;
+    kind: string;
+    address: string | null;
+    ein: string | null;
+    npi: string | null;
+    website: string | null;
+    phone: string | null;
+    nonprofit: boolean | null;
+    beds: number | null;
+    description: string | null;
+    nessie_merchant_id: string | null;
+    solana_wallet: string | null;
+    received: number;
+    payouts: number;
+  }>(
+    `select p.*, coalesce((select sum(approved_cents) from grants g where g.provider_id = p.id and g.status = 'paid'), 0)::bigint as received,
+            (select count(*)::int from grants g where g.provider_id = p.id and g.status = 'paid') as payouts
+       from providers p where p.id = $1`,
+    [providerId],
+  );
+  const r = rows[0];
+  if (!r) throw new CoreError("not_found", "Organization not found");
+  return {
+    id: r.id,
+    name: r.name,
+    kind: r.kind,
+    address: r.address,
+    ein: r.ein,
+    npi: r.npi,
+    website: r.website,
+    phone: r.phone,
+    nonprofit: r.nonprofit,
+    beds: r.beds == null ? null : Number(r.beds),
+    description: r.description,
+    nessieMerchantId: r.nessie_merchant_id,
+    solanaWallet: r.solana_wallet,
+    totalReceivedCents: Number(r.received),
+    payoutCount: Number(r.payouts),
+  };
+}
+
+/** One donation in full: who gave (unless they chose to stay anonymous), how much, and its proof. */
+export async function getLedgerDonation(db: Db, id: string): Promise<LedgerDonation> {
+  const { rows } = await db.query<{
+    id: string;
+    rail: "nessie" | "solana";
+    amount_cents: number;
+    nessie_deposit_id: string | null;
+    solana_signature: string | null;
+    donor_label: string | null;
+    purpose: string | null;
+    created_at: Date;
+    donor_id: string | null;
+  }>("select id, rail, amount_cents, nessie_deposit_id, solana_signature, donor_label, purpose, created_at, donor_id from donations where id = $1", [id]);
+  const d = rows[0];
+  if (!d) throw new CoreError("not_found", "No donation with that reference");
+
+  let donor: LedgerDonation["donor"];
+  const { rows: o } = d.donor_id
+    ? await db.query<{
+        id: string;
+        name: string;
+        kind: DonorKind;
+        public_name: boolean;
+        ein: string | null;
+        address: string | null;
+        website: string | null;
+        contact: string | null;
+        description: string | null;
+        fictional: boolean;
+        total: number;
+        gifts: number;
+        first_at: Date | null;
+      }>(
+        `select o.*, coalesce(sum(x.amount_cents), 0)::bigint as total, count(x.id)::int as gifts, min(x.created_at) as first_at
+           from donors o left join donations x on x.donor_id = o.id
+          where o.id = $1 group by o.id`,
+        [d.donor_id],
+      )
+    : { rows: [] };
+  if (o[0]) {
+    const r = o[0];
+    const anonymous = !r.public_name;
+    donor = {
+      id: r.id,
+      name: anonymous ? "Anonymous donor" : r.name,
+      kind: r.kind,
+      anonymous,
+      ein: anonymous ? null : r.ein,
+      address: anonymous ? null : r.address,
+      website: anonymous ? null : r.website,
+      contact: anonymous ? null : r.contact,
+      description: r.description,
+      fictional: r.fictional,
+      totalGivenCents: Number(r.total),
+      giftCount: Number(r.gifts),
+      firstGiftAt: isoOrNull(r.first_at),
+    };
+  } else {
+    donor = {
+      id: null,
+      name: d.donor_label ?? "Anonymous donor",
+      kind: "individual",
+      anonymous: !d.donor_label,
+      ein: null,
+      address: null,
+      website: null,
+      contact: null,
+      description: d.rail === "solana" ? "Gave devnet SOL from a wallet." : "Gave by card through the public donate form.",
+      fictional: true,
+      totalGivenCents: Number(d.amount_cents),
+      giftCount: 1,
+      firstGiftAt: iso(d.created_at),
+    };
+  }
+  const { rows: f } = await db.query<{ total_cents: number; available: number }>(
+    "select total_cents, (total_cents - reserved_cents - paid_cents)::bigint as available from fund where id = 'community'",
+  );
+  return {
+    reference: d.id,
+    at: iso(d.created_at),
+    amountCents: Number(d.amount_cents),
+    rail: d.rail,
+    purpose: d.purpose,
+    donor,
+    nessieDepositId: d.nessie_deposit_id,
+    solanaSignature: d.solana_signature,
+    explorerUrl: d.solana_signature ? `https://explorer.solana.com/tx/${d.solana_signature}?cluster=devnet` : null,
+    fund: {
+      ...fundPayer(),
+      totalCents: Number(f[0]?.total_cents ?? 0),
+      availableCents: Number(f[0]?.available ?? 0),
+    },
+  };
+}
+
+/** A public ledger row in full: a donation (don_…) or a decided case (its opaque reference). */
+export async function getLedgerDetail(db: Db, ref: string): Promise<LedgerDetailResponse> {
+  if (/^don_[A-Za-z0-9_-]{1,60}$/.test(ref)) return { donation: await getLedgerDonation(db, ref) };
+  return { case: await getLedgerCase(db, ref) };
 }
