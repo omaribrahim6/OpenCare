@@ -1,6 +1,7 @@
 // Records as the API returns them (SPEC §9). Database rows live in packages/core.
 
 import type { ExpenseCategory, InsuranceStatus, NeedAssessment, SuspiciousContent } from "./ai";
+import type { BillStep, DecisionBrief, VisitSummary } from "./bills";
 import type { Cents, GrantStatus, ReceiptStatus } from "./grants";
 
 export interface PatientSummary {
@@ -31,7 +32,7 @@ export interface Device {
   id: string;
   role: DeviceRole;
   label: string;
-  /** Set for provider devices. */
+  /** Set for hospital (and legacy provider) devices: the hospital it logs visits for. */
   providerId: string | null;
 }
 
@@ -86,8 +87,13 @@ export interface GrantApproval {
 export interface Grant {
   id: string;
   patient: PatientSummary;
+  /** Revision 6: the visit this request is for. Null only for revision 5 grants. */
+  visit?: VisitSummary | null;
+  /** @deprecated Revision 5 Nessie document. Revision 6 grants carry `visit` instead. */
   bill: DocumentRecord;
+  /** The hospital the fund pays on approval (revision 6: the visit's hospital). */
   provider: Provider;
+  /** Revision 6: the visit's remaining balance when the patient asked. */
   requestedCents: Cents;
   approvedCents: Cents | null;
   status: GrantStatus;
@@ -99,28 +105,35 @@ export interface Grant {
   createdAt: string;
   decidedAt: string | null;
   paidAt: string | null;
-  /** Present once redemption started. */
+  /** Present once the payout started. */
   receipt: Receipt | null;
 }
 
 /** One row of the caseworker queue (SPEC §4 screen 5). */
 export interface QueueItem {
-  /** 1-based position in the order shown (Gemini's, or the formula's on fallback). */
+  /** 1-based position. Revision 6: always formula order (score, longest wait, earliest). */
   rank: number;
-  /** 1-based position in formula order. */
+  /** 1-based position in formula order (equal to rank in revision 6). */
   formulaRank: number;
-  /** True when Gemini placed this request 2 or more positions from formula order. */
+  /** @deprecated Always false in revision 6 (no Gemini ranking). */
   disagreesWithFormula: boolean;
   grant: Grant;
   profile: PatientProfile;
   daysWaiting: number;
   assessment: NeedAssessment;
+  /** Revision 6: the brief's reasons joined; kept for older screens. */
   rationale: string;
   suspiciousContent: SuspiciousContent | null;
+  /** Revision 6: the decision brief. Core always sets it; optional only so older mocks type-check. */
+  brief?: DecisionBrief;
+  /** Revision 6: the bill's path, for the queue row. */
+  path?: BillStep[];
+  /** Revision 6: the remaining balance (what approval would pay). */
+  remainingCents?: Cents;
 }
 
 export interface ReviewQueue {
-  /** "formula" means Gemini was unavailable: label the queue "formula order". */
+  /** Revision 6: always "formula" (the published need-v1 order). */
   source: "gemini" | "formula";
   model: string | null;
   availableCents: Cents;
