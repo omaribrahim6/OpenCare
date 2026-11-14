@@ -17,3 +17,4 @@ export * from "./visits";
 export * from "./bill-fallback";
 export * from "./ledger";
 export * from "./triage";
+export * from "./donors";
