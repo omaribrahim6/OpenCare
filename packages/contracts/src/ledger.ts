@@ -11,6 +11,76 @@ import type { Provider } from "./records";
 
 export type LedgerKind = "donation" | "payout" | "declined" | "pending";
 
+/**
+ * Triage insight for a case: classification labels, urgency, a short reading of the case and a
+ * suggested next step. Computed by rules from the case data (no model call); advice only, it
+ * never changes a score, an order or an amount.
+ */
+export interface CaseInsight {
+  labels: string[];
+  urgency: "critical" | "high" | "moderate" | "low";
+  summary: string;
+  considerations: string[];
+  recommendation: "approve_full" | "verify_first" | "review_carefully" | "likely_decline";
+  recommendationText: string;
+  source: "rules";
+}
+
+export type DonorKind = "state_program" | "federal_program" | "hospital" | "foundation" | "corporate" | "community" | "individual";
+
+/** Who gave. Institutions are always named; people may stay anonymous. */
+export interface DonorProfile {
+  id: string | null;
+  name: string;
+  kind: DonorKind;
+  anonymous: boolean;
+  ein: string | null;
+  address: string | null;
+  website: string | null;
+  contact: string | null;
+  description: string | null;
+  fictional: boolean;
+  /** All gifts from this donor, for context. */
+  totalGivenCents: Cents;
+  giftCount: number;
+  firstGiftAt: string | null;
+}
+
+/** The organization paid (or the fund paying). */
+export interface OrganizationProfile {
+  id: string;
+  name: string;
+  kind: string;
+  address: string | null;
+  ein: string | null;
+  npi: string | null;
+  website: string | null;
+  phone: string | null;
+  nonprofit: boolean | null;
+  beds: number | null;
+  description: string | null;
+  nessieMerchantId: string | null;
+  solanaWallet: string | null;
+  /** Fund payouts this organization has received. */
+  totalReceivedCents: Cents;
+  payoutCount: number;
+}
+
+/** One donation in full (GET /api/ledger/:ref for a donation reference). */
+export interface LedgerDonation {
+  reference: string;
+  at: string;
+  amountCents: Cents;
+  rail: "nessie" | "solana";
+  purpose: string | null;
+  donor: DonorProfile;
+  nessieDepositId: string | null;
+  solanaSignature: string | null;
+  explorerUrl: string | null;
+  /** The fund this went into, and its balance today. */
+  fund: { name: string; nessieAccountId: string | null; treasuryAddress: string | null; totalCents: Cents; availableCents: Cents };
+}
+
 /** One row of the public ledger. */
 export interface LedgerEntry {
   kind: LedgerKind;
@@ -22,6 +92,8 @@ export interface LedgerEntry {
   solanaSignature: string | null;
   /** Donations: a named institutional funder, or null for an anonymous donor. */
   donorLabel?: string | null;
+  donorKind?: DonorKind | null;
+  purpose?: string | null;
   rail?: "nessie" | "solana";
   /** Cases only. */
   hospital?: string;
@@ -33,6 +105,11 @@ export interface LedgerEntry {
   hospitalAssistanceCents?: Cents;
   needScore?: number | null;
   region?: string | null;
+}
+
+export interface LedgerDetailResponse {
+  case?: LedgerCase;
+  donation?: LedgerDonation;
 }
 
 export interface LedgerResponse {
@@ -71,8 +148,15 @@ export interface LedgerCase {
     reason: string;
     criteria: { label: string; met: boolean | null; detail: string }[];
   }[];
+  /** Who was paid, and who paid. */
+  hospital: OrganizationProfile;
+  payer: { name: string; nessieAccountId: string | null; treasuryAddress: string | null };
+  insight: CaseInsight | null;
+  /** The patient's own note, if any (fictional seed data is written without identifying details). */
+  hardshipNote: string | null;
   /** Non-identifying patient context. */
   patient: {
+    employment: string | null;
     region: string | null;
     ageBand: string | null;
     householdSize: number | null;
