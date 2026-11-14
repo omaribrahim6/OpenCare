@@ -4,16 +4,17 @@
 
 AbdulCare is an AI-assisted healthcare access kiosk built at HackUMass XIV. A patient taps an NFC **CareCard** on a clinic kiosk. AbdulCare finds or scans a medical bill and explains it in plain language, and the patient requests help from a community care fund. Once a human reviewer approves the grant, a second tap at the provider pays the bill through Capital One's Nessie API and records a privacy-safe public receipt on Solana devnet.
 
-**Built with:** Next.js · Node.js/TypeScript · Gemini API · MongoDB Atlas · Capital One Nessie · Solana devnet · NFC (NTAG) · 3D printing
+**Built with:** Next.js on Vercel · TypeScript · Gemini API · Tiger Data (Postgres + TimescaleDB) · Capital One Nessie · Solana devnet · NFC (NTAG) · 3D printing
 
 ## Repository layout
 
 | Path | Contents | Lane |
 |---|---|---|
-| `apps/web/` | Mobile-first kiosk, reviewer, provider and dashboard views | `web` |
-| `apps/api/` | Backend API, auth, device pairing, grant state machine | `api` |
-| `apps/api/src/ai/` | Gemini extraction, explanations, assistance matching | `ai` |
-| `apps/api/src/payments/` | Nessie payouts and Solana receipts | `payments` |
+| `apps/web/` | The Next.js app: mobile-first kiosk, reviewer, provider and dashboard views | `web` |
+| `apps/web/app/api/` | Thin API route handlers | `api` |
+| `packages/core/` | Database schema, auth, device pairing, card tokens, grant state machine | `api` |
+| `packages/ai/` | Gemini extraction, explanations, assistance matching, injection flag | `ai` |
+| `packages/payments/` | Nessie payouts and seed data, Solana receipts | `payments` |
 | `packages/contracts/` | Shared TypeScript types and API contracts | `api` (integration owner) |
 | `docs/` | [Product spec](docs/SPEC.md) and [agent board guide](docs/agent-board.md) | — |
 | `tools/` | `board` (agent message board) and `preflight` (conflict and commit checks) | — |
