@@ -1,7 +1,7 @@
 // npm run db:seed -w @abdulcare/core [-- --new-cards]
 // Seeds fictional demo data (SPEC §10) and prints the CareCard URLs to write to the NFC tags.
 // Safe to re-run: it only issues cards for patients who have none, unless --new-cards is passed.
-// Nessie IDs come from the payments lane's Nessie seed (via env).
+// Nessie IDs come from the payments lane's Nessie seed (NESSIE_PATIENT_ACCOUNT_ID, NESSIE_PATIENT2..4_ACCOUNT_ID).
 
 import { join } from "node:path";
 import { createPgDb, issueCard, recordDonation, setPatientProfile, type Db } from "../src";
@@ -27,18 +27,21 @@ const PATIENTS: { id: string; name: string; card: boolean; nessieAccount?: strin
     id: "pat_demo_sam",
     name: "Sam Patel (fictional)",
     card: true,
+    nessieAccount: process.env.NESSIE_PATIENT2_ACCOUNT_ID,
     profile: { householdSize: 1, monthlyIncomeCents: 420_000, insurance: "insured" },
   },
   {
     id: "pat_demo_jordan",
     name: "Jordan Lee (fictional)",
     card: false,
+    nessieAccount: process.env.NESSIE_PATIENT3_ACCOUNT_ID,
     profile: { householdSize: 4, monthlyIncomeCents: 260_000, insurance: "underinsured" },
   },
   {
     id: "pat_demo_casey",
     name: "Casey Morgan (fictional)",
     card: false,
+    nessieAccount: process.env.NESSIE_PATIENT4_ACCOUNT_ID,
     profile: { householdSize: 2, monthlyIncomeCents: null, insurance: "uninsured" },
   },
 ];
