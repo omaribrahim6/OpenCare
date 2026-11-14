@@ -1,0 +1,122 @@
+/* Stepped bill check after a kiosk tap (/kiosk/check). Classes are prefixed bw-. */
+
+.bw {
+  --violet: #654dc7;
+  --violet-soft: #ece5fc;
+  --ink: #191822;
+  --muted: #5d5a70;
+  --saved: #1f7a52;
+  --v-rgb: 101 77 199;
+}
+
+.bw-demo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--violet-soft);
+  color: #4b3fa0;
+  font-size: 13px;
+}
+
+.station .bw-title { margin: 14px 0 2px; }
+.bw-sub { margin: 0 0 18px; color: var(--muted); }
+
+/* Big balance, counting down as each step lands. */
+.bw-balance {
+  display: grid;
+  gap: 4px;
+  padding: 18px 20px;
+  border-radius: 22px;
+  background: linear-gradient(150deg, #ffffff, #f3efff);
+  border: 1px solid rgb(var(--v-rgb) / 0.18);
+  box-shadow: 0 10px 30px rgb(var(--v-rgb) / 0.12);
+}
+.bw-balance span { color: var(--muted); font-size: 14px; font-weight: 550; }
+.bw-balance strong {
+  font-size: clamp(42px, 13vw, 58px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.bw-balance small { color: var(--muted); font-size: 14px; min-height: 1.2em; }
+.bw-meter { height: 8px; border-radius: 999px; background: rgb(var(--v-rgb) / 0.12); overflow: hidden; margin: 6px 0 2px; }
+.bw-meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #8f7bea, var(--violet)); transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* Steps */
+.bw-steps { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 10px; }
+.bw-step {
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgb(var(--v-rgb) / 0.12);
+  animation: bw-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes bw-in { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
+.bw-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--violet-soft);
+  color: var(--violet);
+}
+.bw-step[data-tone="saved"] .bw-icon { background: #e3f4ec; color: var(--saved); }
+.bw-step[data-tone="skip"] .bw-icon { background: #efeff3; color: #77748a; }
+.bw-step[data-tone="wait"] .bw-icon { background: #fbf2e1; color: #9a6618; }
+.bw-text { display: grid; gap: 2px; min-width: 0; }
+.bw-text strong { font-size: 16px; font-weight: 650; line-height: 1.25; }
+.bw-text small { color: var(--muted); font-size: 13.5px; line-height: 1.35; }
+.bw-amount { display: grid; justify-items: end; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bw-step[data-tone="saved"] .bw-amount { color: var(--saved); }
+.bw-step[data-tone="skip"] .bw-amount,
+.bw-step[data-tone="wait"] .bw-amount { color: var(--muted); font-weight: 550; font-size: 14px; }
+.bw-amount em { font-style: normal; font-weight: 500; font-size: 11px; color: var(--muted); }
+
+.bw-spin { position: relative; }
+.bw-spin::after {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2.5px solid rgb(var(--v-rgb) / 0.25);
+  border-top-color: var(--violet);
+  animation: bw-spin 0.8s linear infinite;
+}
+@keyframes bw-spin { to { transform: rotate(360deg); } }
+
+/* Result */
+.bw-result { display: grid; gap: 14px; margin-top: 18px; animation: bw-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.bw-panel {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid rgb(var(--v-rgb) / 0.18);
+  color: var(--violet);
+}
+.bw-panel h2 { margin: 0 0 4px; color: var(--ink); }
+.bw-panel p { margin: 0; color: var(--muted); }
+.bw-done { color: var(--saved); }
+.bw-ask { display: grid; gap: 4px; background: linear-gradient(150deg, #ffffff, #f3efff); }
+.bw-ask .btn { margin-top: 8px; background: var(--violet); border-color: var(--violet); }
+.bw-explain { display: grid; gap: 10px; padding: 0 4px; color: var(--muted); }
+.bw-explain p { margin: 0; }
+.bw-explain .btn { justify-self: start; }
+.bw-link { display: inline-flex; align-items: center; gap: 4px; justify-self: start; color: #4b3fa0; font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bw-step, .bw-result { animation: none; }
+  .bw-meter i { transition: none; }
+}
