@@ -43,21 +43,18 @@ export function RequestHelpForm({
         }
       }}
     >
-      <div>
-        <label htmlFor="hardship">Anything you&apos;d like the reviewer to know? (optional)</label>
+      <details className="patient-note">
+        <summary>Add an optional note</summary>
+        <label htmlFor="hardship">Anything you’d like the reviewer to know?</label>
         <textarea
           id="hardship"
           rows={3}
           maxLength={MAX_HARDSHIP_NOTE_CHARS}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          aria-describedby="hardship-help"
           disabled={sending}
         />
-        <small id="hardship-help" className="muted">
-          A person reads this. It doesn&apos;t change your place in line. {note.length}/{MAX_HARDSHIP_NOTE_CHARS}
-        </small>
-      </div>
+      </details>
       {error && (
         <p role="alert" className="badge bad">
           {error}

@@ -16,6 +16,7 @@ import type {
   GrantListResponse,
   GrantResponse,
   GrantStatus,
+  InsurancePlan,
   PairDeviceRequest,
   PairDeviceResponse,
   PatientBillResponse,
@@ -76,9 +77,26 @@ export const currentDevice = () =>
   LIVE ? get<CurrentDeviceResponse>("/api/devices/me") : mock.currentDevice();
 
 /** POST /api/tap: sets the session cookie on a paired device and returns what the tap means. */
-export const tap = (token: string) => (LIVE ? post<TapResult>("/api/tap", { token }) : mock.resolveTap(token));
+const DEMO_SESSION_KEY = "abdulcare-demo-patient";
 
-export const endSession = () => (LIVE ? post<{ ok: true }>("/api/session/end") : Promise.resolve({ ok: true as const }));
+export async function tap(token: string) {
+  if (LIVE) return post<TapResult>("/api/tap", { token });
+  const result = await mock.resolveTap(token);
+  if (result.kind === "session") sessionStorage.setItem(DEMO_SESSION_KEY, result.patient.id);
+  return result;
+}
+
+export async function endSession() {
+  if (LIVE) return post<{ ok: true }>("/api/session/end");
+  sessionStorage.removeItem(DEMO_SESSION_KEY);
+  return { ok: true };
+}
+
+function requireDemoSession() {
+  if (sessionStorage.getItem(DEMO_SESSION_KEY) !== mock.DEMO_PATIENT.id) {
+    throw new ApiRequestError(401, "unauthenticated", "Please tap your CareCard again.");
+  }
+}
 
 // Kiosk -----------------------------------------------------------------------------------------
 
@@ -100,13 +118,9 @@ export const getGrant = (id: string) => (LIVE ? get<GrantResponse>(`/api/grants/
 
 // Caseworker ------------------------------------------------------------------------------------
 
-/** formulaFallback only affects mocks (preview of the "formula order" state). */
-export const getReviewQueue = (formulaFallback = false) =>
-  LIVE ? get<ReviewQueue>("/api/review/queue") : mock.getReviewQueue(formulaFallback);
-
 /** Caseworker: every grant, optionally filtered by status (newest first). */
 export const listGrants = (status?: GrantStatus) =>
-  LIVE ? get<GrantListResponse>(`/api/grants${status ? `?status=${encodeURIComponent(status)}` : ""}`) : mock.listGrants(status);
+  LIVE ? get<GrantListResponse>(`/api/grants${status ? `?status=${encodeURIComponent(status)}` : ""}`) : mock6.listGrants(status);
 
 /** Approval pays the hospital directly in revision 6 (no provider tap). */
 export const decideGrant = (id: string, req: GrantDecisionRequest) =>
@@ -140,12 +154,34 @@ export const listPatients = () => (LIVE ? get<PatientListResponse>("/api/patient
 
 /** Log a visit for the patient selected by the last card tap on this hospital device (or patientId). */
 export const createVisit = (req: CreateVisitRequest) =>
-  LIVE ? post<VisitResponse>("/api/visits", req) : mock6.createVisit(req.templateId, req.patientId);
+  LIVE ? post<VisitResponse>("/api/visits", req) : mock6.createVisit(req.templateId, req.patientId, req.idempotencyKey);
 
-export const getMyBill = () => (LIVE ? get<PatientBillResponse>("/api/patients/me/bill") : mock6.getMyBill());
+export async function getPatientWorkspace(): Promise<{ visits: PatientBillResponse[]; plan: InsurancePlan | null }> {
+  if (LIVE) {
+    const latest = await get<PatientBillResponse>("/api/patients/me/bill");
+    return { visits: latest.bill ? [latest] : [], plan: latest.bill?.plan ?? null };
+  }
+  requireDemoSession();
+  const visits = await mock6.getMyVisits();
+  requireDemoSession();
+  return { visits, plan: mock6.getDemoPlan() };
+}
 
-export const requestHelp = (req: RequestHelpRequest) =>
-  LIVE ? post<GrantResponse>("/api/grants", req) : mock6.requestHelp(req.visitId, req.hardshipNote);
+export async function saveDemoInsurance(plan: InsurancePlan) {
+  requireDemoSession();
+  mock6.saveDemoPlan(plan);
+}
+
+export async function applyForDemoSavings(visitId: string) {
+  requireDemoSession();
+  return mock6.applyForSavings(visitId);
+}
+
+export async function requestHelp(req: RequestHelpRequest) {
+  if (LIVE) return post<GrantResponse>("/api/grants", req);
+  requireDemoSession();
+  return mock6.requestHelp(req.visitId, req.hardshipNote);
+}
 
 /** Formula-ordered queue; each row carries its decision brief, path and remaining balance. */
 export const getBriefedQueue = () => (LIVE ? get<ReviewQueue>("/api/review/queue") : mock6.getReviewQueue());

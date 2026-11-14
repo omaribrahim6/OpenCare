@@ -35,9 +35,9 @@ export function Decided({ tick }: { tick: number }) {
   const sum = (s: GrantStatus[]) => (grants ?? []).filter((g) => s.includes(g.status)).reduce((a, g) => a + (g.approvedCents ?? 0), 0);
   const count = (s: GrantStatus[]) => (grants ?? []).filter((g) => s.includes(g.status)).length;
   const tiles = [
-    { icon: "checkCircle" as const, label: "Approved", value: String(count(["approved", "payment_pending"])), cap: "Waiting to be collected" },
+    { icon: "checkCircle" as const, label: "Approved", value: String(count(["approved", "payment_pending"])), cap: "Awaiting hospital payment" },
     { icon: "lock" as const, label: "Reserved", value: usd(sum(["approved", "payment_pending"])), cap: "Held for approved grants" },
-    { icon: "store" as const, label: "Paid to providers", value: usd(sum(["paid"])), cap: `${count(["paid"])} grants paid` },
+    { icon: "store" as const, label: "Paid to hospitals", value: usd(sum(["paid"])), cap: `${count(["paid"])} grants paid` },
     { icon: "xCircle" as const, label: "Declined", value: String(count(["rejected"])), cap: "Requests not approved" },
   ];
 

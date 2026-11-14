@@ -1,12 +1,11 @@
 "use client";
 
 import { TapRings } from "@/components/TapRings";
-import { firstName } from "@/lib/format";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { TapResult } from "@abdulcare/contracts";
-import { EndSessionButton } from "@/components/KioskSession";
 import { tap } from "@/lib/api";
 import { formatCents } from "@/lib/mock";
 
@@ -17,6 +16,7 @@ type State = { phase: "loading" } | { phase: "error" } | { phase: "done"; result
  * /api/tap on mount; the route sets the session cookie and returns a TapResult.
  */
 export function TapLanding({ token }: { token: string }) {
+  const router = useRouter();
   const [state, setState] = useState<State>({ phase: "loading" });
   const started = useRef(false);
 
@@ -25,9 +25,12 @@ export function TapLanding({ token }: { token: string }) {
     if (started.current) return;
     started.current = true;
     tap(token)
-      .then((result) => setState({ phase: "done", result }))
+      .then((result) => {
+        if (result.kind === "session") router.replace("/kiosk/bill");
+        else setState({ phase: "done", result });
+      })
       .catch(() => setState({ phase: "error" }));
-  }, [token]);
+  }, [router, token]);
 
   if (state.phase === "loading") {
     return (
@@ -133,19 +136,5 @@ export function TapLanding({ token }: { token: string }) {
     );
   }
 
-  return (
-    <main className="page station station-tap-result">
-      <p className="muted">Checked in</p>
-      <h1>Hi, {firstName(result.patient.displayName)}</h1>
-      <p>Your hospital bill is ready, with insurance and the hospital&apos;s assistance already applied.</p>
-      <div className="stack">
-        <Link className="btn block" href="/kiosk/bill">
-          See my bill
-        </Link>
-      </div>
-      <p className="muted" style={{ marginTop: 24 }}>
-        Not you? <EndSessionButton label="End session" className="btn secondary" style={{ minHeight: 40 }} />
-      </p>
-    </main>
-  );
+  return null;
 }

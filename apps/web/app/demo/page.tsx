@@ -3,12 +3,11 @@ import Link from "next/link";
 // Index of every screen for the team and the pitch. Not part of the patient flow.
 const SCREENS = [
   ["/pair", "Staff: set up this device (pairing)"],
-  ["/intake", "Admin: hospital intake (log a visit)"],
+  ["/intake", "Hospital staff: log a visit"],
   ["/t/hospital", "Card tap on a hospital device (mock)"],
   ["/kiosk", "Patient: welcome / tap your CareCard"],
   ["/t/demo", "Card tap on the patient kiosk"],
-  ["/kiosk/bill", "Patient: my bill, request help, $0"],
-  ["/review", "Admin: final reviewer queue with decision briefs"],
+  ["/review", "Fund admin: review queue"],
   ["/t/unknown", "Card tap: unknown card"],
   ["/t/unpaired", "Card tap on an unpaired phone"],
   ["/", "Public: community fund"],
