@@ -282,27 +282,27 @@ body:has(.station) {
 }
 
 body:has(.station) {
-  background: linear-gradient(168deg, #c9c1f0, #ece8f8 72%, #f7f6fb);
+  background: linear-gradient(168deg, #d4e5ff, #e8eef8 72%, #f6f8fb);
 }
 .station {
-  background: linear-gradient(150deg, #f5f5f9, #eeebfa);
+  background: linear-gradient(150deg, #f5f5f9, #ebf1fa);
   box-shadow: 0 12px 40px #45367524, 0 1px 3px #4536751a;
 }
 .station .rings {
-  color: #654eca;
-  background: radial-gradient(circle, #ded4fa, #efebfd 64%, transparent 71%);
+  color: #075deb;
+  background: radial-gradient(circle, #d9e9ff, #ebf2fd 64%, transparent 71%);
 }
-.station .rings span { border-color: #ad9aea; }
+.station .rings span { border-color: #9ab8ea; }
 .station .tap-rings .ring {
-  border-color: #ac9ae8;
-  background: #ece5fc;
-  box-shadow: inset 0 0 0 14px #f5f1ff;
+  border-color: #9ab8e8;
+  background: #eaf2ff;
+  box-shadow: inset 0 0 0 14px #f1f6ff;
 }
-.station .tap-rings .core { border-color: #b7a6ed; color: #654eca; }
-.station .steps li { border-color: #dcd7ec; }
-.station .steps li.done { border-color: #b5a3ef; }
-.station .steps li[aria-current="step"] { border-color: #745bd8; }
-.station .btn:not(.secondary, .btn-lg, .btn-danger) { background: #654dc7; border-color: #654dc7; }
+.station .tap-rings .core { border-color: #a6c1ed; color: #075deb; }
+.station .steps li { border-color: #d7dfec; }
+.station .steps li.done { border-color: #a3c0ef; }
+.station .steps li[aria-current="step"] { border-color: #5b8bd8; }
+.station .btn:not(.secondary, .btn-lg, .btn-danger) { background: #075deb; border-color: #075deb; }
 
 /* Revision 6: the patient's bill shrinking step by step */
 .card.bill-total { display: flex !important; flex-direction: column; gap: 4px; align-items: flex-start; }
