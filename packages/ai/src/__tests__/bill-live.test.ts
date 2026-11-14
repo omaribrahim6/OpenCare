@@ -176,3 +176,17 @@ test("evaluatePolicy is the same pure function in the live engine", () => {
   assert.equal(engine.evaluatePolicy({ policy: charity, profile, depositIncomeCents: null, balanceCents: 216_000, chargesCents: 480_000 }).reductionCents, 172_800);
   assert.equal(client.calls.length, 0);
 });
+
+test("fallback logs give the reason category only, with numbers and quoted text masked", async () => {
+  const { logFallback } = await import("../bills/live");
+  const lines: string[] = [];
+  const orig = console.warn;
+  console.warn = (msg: string) => lines.push(msg);
+  try {
+    logFallback("explanation", 'missing "$432.00"');
+    logFallback("brief", "number 47 is not in the case data");
+  } finally {
+    console.warn = orig;
+  }
+  assert.deepEqual(lines, ['[ai] explanation used the template: missing "…"', "[ai] brief used the template: number # is not in the case data"]);
+});
