@@ -1370,3 +1370,6 @@
 .dr-flags svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
 .dr-suggest { margin: 10px 0 4px; display: flex; gap: 6px; align-items: flex-start; }
 .dr-suggest svg { width: 16px; height: 16px; flex: none; margin-top: 3px; }
+
+/* Triage insight under the bill in the queue row */
+.d-insight { display: block; margin-top: 2px; font-size: 11.5px; color: #6b6878; text-transform: none; }

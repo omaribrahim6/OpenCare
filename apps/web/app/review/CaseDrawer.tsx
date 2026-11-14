@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { GrantDecisionRequest } from "@abdulcare/contracts";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Icon } from "@/components/Icon";
+import { InsightSection } from "@/components/site/LedgerCaseDrawer";
 import { decideGrant } from "@/lib/api";
 import { cleanName, shortDate, stepLabel, usd } from "@/lib/format";
 import type { Grant, QueueItem } from "@/lib/types";
@@ -102,6 +103,8 @@ export function CaseDrawer({
               <blockquote>{item.suspiciousContent.excerpt}</blockquote>
             </div>
           )}
+
+          {item.insight && <InsightSection insight={item.insight} />}
 
           {brief && (
             <section className="dr-sec dr-brief" aria-labelledby="brief-title">

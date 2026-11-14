@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { IdentityRevealResponse, LedgerCase } from "@abdulcare/contracts";
+import type { CaseInsight, DonorKind, IdentityRevealResponse, LedgerCase, LedgerDonation, OrganizationProfile } from "@abdulcare/contracts";
 import { Icon, SolanaMark } from "@/components/Icon";
-import { ApiRequestError, getLedgerCase, revealIdentity } from "@/lib/api";
+import { ApiRequestError, getLedgerDetail, revealIdentity } from "@/lib/api";
 import { explorerTx, shortDate, shortSig, stepLabel, usd } from "@/lib/format";
 import { CATEGORY_LABEL, INSURANCE_LABEL } from "@/lib/types";
 
@@ -21,6 +21,7 @@ const POLICY_STATUS: Record<string, string> = {
 export function LedgerCaseDrawer({ reference, onClose }: { reference: string; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [c, setC] = useState<LedgerCase | null>(null);
+  const [donation, setDonation] = useState<LedgerDonation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [revealing, setRevealing] = useState(false);
@@ -30,8 +31,11 @@ export function LedgerCaseDrawer({ reference, onClose }: { reference: string; on
   useEffect(() => {
     const d = dialog.current;
     if (d && !d.open) d.showModal();
-    getLedgerCase(reference)
-      .then((r) => setC(r.case))
+    getLedgerDetail(reference)
+      .then((r) => {
+        setC(r.case ?? null);
+        setDonation(r.donation ?? null);
+      })
       .catch((e: Error) => setError(e.message));
   }, [reference]);
 
@@ -57,13 +61,15 @@ export function LedgerCaseDrawer({ reference, onClose }: { reference: string; on
   const sig = c?.payout.solanaSignature ?? null;
 
   return (
-    <dialog ref={dialog} className="lc-drawer" aria-label="Ledger case" onClose={onClose} onCancel={onClose}>
+    <dialog ref={dialog} className="lc-drawer" aria-label="Ledger details" onClose={onClose} onCancel={onClose}>
       <header className="lc-head">
         <div>
-          <span className="lc-kicker">Case <span className="mono">{reference}</span></span>
-          <h2>{c ? c.visit.description : error ? "Case unavailable" : "Loading case…"}</h2>
+          <span className="lc-kicker">{donation ? "Donation" : "Case"} <span className="mono">{reference}</span></span>
+          <h2>
+            {c ? c.visit.description : donation ? `${usd(donation.amountCents)} from ${donation.donor.name}` : error ? "Not available" : "Loading…"}
+          </h2>
         </div>
-        <button type="button" className="v-quiet v-icon-button" aria-label="Close case" onClick={() => dialog.current?.close()}>
+        <button type="button" className="v-quiet v-icon-button" aria-label="Close details" onClick={() => dialog.current?.close()}>
           <Icon name="x" />
         </button>
       </header>
@@ -71,6 +77,8 @@ export function LedgerCaseDrawer({ reference, onClose }: { reference: string; on
       {error && (
         <div className="notice notice-bad" role="alert"><Icon name="alert" /><span>{error}</span></div>
       )}
+
+      {donation && <DonationBody d={donation} />}
 
       {c && (
         <div className="lc-body">
@@ -91,6 +99,8 @@ export function LedgerCaseDrawer({ reference, onClose }: { reference: string; on
             <div><dt>Hospital assistance</dt><dd>{usd(c.hospitalAssistanceCents)}</dd></div>
             <div><dt>{declined ? "Fund paid" : "Community fund paid"}</dt><dd>{usd(c.fundPaidCents)}</dd></div>
           </dl>
+
+          {c.insight && <InsightSection insight={c.insight} />}
 
           <section className="lc-section">
             <h3><Icon name="hospital" /> Visit</h3>
@@ -163,6 +173,7 @@ export function LedgerCaseDrawer({ reference, onClose }: { reference: string; on
           <section className="lc-section">
             <h3><Icon name="users" /> Patient (no identity)</h3>
             <dl className="lc-facts">
+              <div><dt>Work situation</dt><dd>{c.patient.employment ?? "Not on file"}</dd></div>
               <div><dt>Region</dt><dd>{c.patient.region ?? "Not shown"}</dd></div>
               <div><dt>Age band</dt><dd>{c.patient.ageBand ?? "Not shown"}</dd></div>
               <div><dt>Household</dt><dd>{c.patient.householdSize ?? "Unknown"}</dd></div>
@@ -171,6 +182,13 @@ export function LedgerCaseDrawer({ reference, onClose }: { reference: string; on
               <div><dt>Insurance</dt><dd>{c.patient.insurance ? INSURANCE_LABEL[c.patient.insurance] : "Unknown"}</dd></div>
               <div><dt>Fund grants, last 90 days</dt><dd>{c.patient.priorPaidCount90d}</dd></div>
             </dl>
+            {c.hardshipNote && (
+              <blockquote className="lc-note">
+                <small className="muted">Patient&apos;s note</small>
+                <br />
+                {c.hardshipNote}
+              </blockquote>
+            )}
           </section>
 
           {c.need && (
@@ -204,6 +222,20 @@ export function LedgerCaseDrawer({ reference, onClose }: { reference: string; on
               </p>
             )}
             {c.payout.nessiePaymentId && <p className="lc-meta">Bank transfer to the hospital: <span className="mono">{c.payout.nessiePaymentId}</span></p>}
+          </section>
+
+          <section className="lc-section">
+            <h3><Icon name="store" /> {declined ? "Hospital that billed" : "Paid to"}</h3>
+            <OrgFacts org={c.hospital} />
+          </section>
+
+          <section className="lc-section">
+            <h3><Icon name="wallet" /> Paid from</h3>
+            <dl className="lc-facts">
+              <div><dt>Fund</dt><dd>{c.payer.name}</dd></div>
+              <div><dt>Nessie fund account</dt><dd className="mono lc-wrap">{c.payer.nessieAccountId ?? "Not shown"}</dd></div>
+              <div className="lc-full"><dt>Solana treasury</dt><dd className="mono lc-wrap">{c.payer.treasuryAddress ?? "Not shown"}</dd></div>
+            </dl>
           </section>
 
           <section className="lc-section lc-identity">
@@ -244,5 +276,129 @@ export function LedgerCaseDrawer({ reference, onClose }: { reference: string; on
         </div>
       )}
     </dialog>
+  );
+}
+
+const DONOR_KIND: Record<DonorKind, string> = {
+  state_program: "State program",
+  federal_program: "Federal program",
+  hospital: "Hospital (community benefit)",
+  foundation: "Foundation",
+  corporate: "Company",
+  community: "Community group",
+  individual: "Individual",
+};
+
+const URGENCY: Record<CaseInsight["urgency"], string> = {
+  critical: "chip-bad",
+  high: "chip-warn",
+  moderate: "chip-info",
+  low: "chip-line",
+};
+
+export function InsightSection({ insight }: { insight: CaseInsight }) {
+  return (
+    <section className="lc-section lc-insight">
+      <h3><Icon name="sparkles" /> Triage insight</h3>
+      <div className="lc-tags">
+        <span className={`chip chip-dot ${URGENCY[insight.urgency]}`}>{insight.urgency[0].toUpperCase() + insight.urgency.slice(1)} urgency</span>
+        {insight.labels.map((l) => <span key={l} className="chip chip-line">{l}</span>)}
+      </div>
+      <p className="lc-meta">{insight.summary}</p>
+      {insight.considerations.length > 0 && (
+        <ul className="lc-bullets">
+          {insight.considerations.map((x) => <li key={x}>{x}</li>)}
+        </ul>
+      )}
+      <p className="lc-meta"><strong>Suggested:</strong> {insight.recommendationText}</p>
+      <small className="muted">Computed from the case data by the published rules. Advice only; a caseworker decides.</small>
+    </section>
+  );
+}
+
+function OrgFacts({ org }: { org: OrganizationProfile }) {
+  return (
+    <>
+      <p className="lc-meta"><strong>{org.name}</strong>{org.description ? ` · ${org.description}` : ""}</p>
+      <dl className="lc-facts">
+        <div><dt>Type</dt><dd>{org.nonprofit == null ? org.kind : org.nonprofit ? `Nonprofit ${org.kind}` : `For-profit ${org.kind}`}</dd></div>
+        <div><dt>Beds</dt><dd>{org.beds ?? "Not listed"}</dd></div>
+        <div className="lc-full"><dt>Address</dt><dd>{org.address ?? "Not listed"}</dd></div>
+        <div><dt>EIN</dt><dd className="mono">{org.ein ?? "Not listed"}</dd></div>
+        <div><dt>NPI</dt><dd className="mono">{org.npi ?? "Not listed"}</dd></div>
+        <div><dt>Phone</dt><dd>{org.phone ?? "Not listed"}</dd></div>
+        <div><dt>Website</dt><dd className="lc-wrap">{org.website ?? "Not listed"}</dd></div>
+        <div><dt>Fund payouts received</dt><dd>{usd(org.totalReceivedCents)} ({org.payoutCount})</dd></div>
+        <div><dt>Nessie merchant</dt><dd className="mono lc-wrap">{org.nessieMerchantId ?? "None"}</dd></div>
+        <div className="lc-full"><dt>Solana wallet</dt><dd className="mono lc-wrap">{org.solanaWallet ?? "None"}</dd></div>
+      </dl>
+    </>
+  );
+}
+
+function DonationBody({ d }: { d: LedgerDonation }) {
+  const o = d.donor;
+  return (
+    <div className="lc-body">
+      <div className="lc-outcome">
+        <span className="chip chip-dot chip-ok">Received</span>
+        {d.solanaSignature ? (
+          <a className="sig" href={explorerTx(d.solanaSignature)} target="_blank" rel="noreferrer">
+            <SolanaMark size={12} /> Donation receipt {shortSig(d.solanaSignature)}
+          </a>
+        ) : (
+          <span className="muted">No devnet receipt</span>
+        )}
+      </div>
+      <dl className="lc-totals">
+        <div><dt>Amount</dt><dd>{usd(d.amountCents)}</dd></div>
+        <div><dt>Date</dt><dd>{shortDate(d.at)}</dd></div>
+        <div><dt>Given by this donor in total</dt><dd>{usd(o.totalGivenCents)}</dd></div>
+        <div><dt>Gifts from this donor</dt><dd>{o.giftCount}</dd></div>
+      </dl>
+
+      <section className="lc-section">
+        <h3><Icon name="heart" /> Donor</h3>
+        <p className="lc-meta"><strong>{o.name}</strong> · {DONOR_KIND[o.kind]}{o.fictional ? " (fictional)" : ""}</p>
+        {o.description && <p className="lc-meta">{o.description}</p>}
+        {o.anonymous ? (
+          <p className="lc-meta muted">This donor asked not to be named. The amount, date and receipts stay public.</p>
+        ) : (
+          <dl className="lc-facts">
+            <div><dt>EIN</dt><dd className="mono">{o.ein ?? "Not applicable"}</dd></div>
+            <div><dt>Contact</dt><dd>{o.contact ?? "Not listed"}</dd></div>
+            <div className="lc-full"><dt>Address</dt><dd>{o.address ?? "Not listed"}</dd></div>
+            <div><dt>Website</dt><dd className="lc-wrap">{o.website ?? "Not listed"}</dd></div>
+            <div><dt>Giving since</dt><dd>{o.firstGiftAt ? shortDate(o.firstGiftAt) : "Unknown"}</dd></div>
+          </dl>
+        )}
+      </section>
+
+      {d.purpose && (
+        <section className="lc-section">
+          <h3><Icon name="info" /> Purpose</h3>
+          <blockquote className="lc-note">{d.purpose}</blockquote>
+        </section>
+      )}
+
+      <section className="lc-section">
+        <h3><Icon name="receipt" /> Proof</h3>
+        <dl className="lc-facts">
+          <div><dt>Paid by</dt><dd>{d.rail === "nessie" ? "Bank transfer (Nessie sandbox)" : "Devnet SOL"}</dd></div>
+          <div><dt>Nessie deposit</dt><dd className="mono lc-wrap">{d.nessieDepositId ?? "None"}</dd></div>
+          <div className="lc-full"><dt>Solana receipt</dt><dd className="mono lc-wrap">{d.solanaSignature ?? "Pending"}</dd></div>
+        </dl>
+      </section>
+
+      <section className="lc-section">
+        <h3><Icon name="wallet" /> Received by</h3>
+        <dl className="lc-facts">
+          <div><dt>Fund</dt><dd>{d.fund.name}</dd></div>
+          <div><dt>Available to grant today</dt><dd>{usd(d.fund.availableCents)}</dd></div>
+          <div><dt>Nessie fund account</dt><dd className="mono lc-wrap">{d.fund.nessieAccountId ?? "Not shown"}</dd></div>
+          <div className="lc-full"><dt>Solana treasury</dt><dd className="mono lc-wrap">{d.fund.treasuryAddress ?? "Not shown"}</dd></div>
+        </dl>
+      </section>
+    </div>
   );
 }
