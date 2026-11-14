@@ -3,18 +3,15 @@ import Link from "next/link";
 // Index of every screen for the team and the pitch. Not part of the patient flow.
 const SCREENS = [
   ["/pair", "Staff: set up this device (pairing)"],
-  ["/kiosk", "1. Welcome / check-in"],
-  ["/t/demo", "Card tap: known patient (paired kiosk)"],
+  ["/intake", "Admin: hospital intake (log a visit)"],
+  ["/t/hospital", "Card tap on a hospital device (mock)"],
+  ["/kiosk", "Patient: welcome / tap your CareCard"],
+  ["/t/demo", "Card tap on the patient kiosk"],
+  ["/kiosk/bill", "Patient: my bill, request help, $0"],
+  ["/review", "Admin: final reviewer queue with decision briefs"],
   ["/t/unknown", "Card tap: unknown card"],
-  ["/t/unpaired", "8. Card tap on an unpaired phone"],
-  ["/t/provider", "Card tap on a provider terminal (mock)"],
-  ["/kiosk/bills", "2. Bills found"],
-  ["/kiosk/explain", "3. Explanation / request"],
-  ["/kiosk/status", "4. Request status"],
-  ["/review", "5. Caseworker queue (Gemini order)"],
-  ["/review?order=formula", "5b. Caseworker queue (formula fallback)"],
-  ["/provider", "6. Provider terminal"],
-  ["/fund", "7. Fund dashboard (donate)"],
+  ["/t/unpaired", "Card tap on an unpaired phone"],
+  ["/", "Public: community fund"],
 ] as const;
 
 export default function DemoIndex() {

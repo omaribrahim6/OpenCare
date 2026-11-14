@@ -1358,3 +1358,15 @@
 .desk .d-bar .cap { background: #ded4f6; }
 .desk .d-bar.on i,
 .desk .d-bar.on .cap { background: #8d77ec; }
+
+/* Revision 6: decision brief in the case drawer */
+.dr-brief { border: 1px solid #d9e6f5; background: #f5f9fe; border-radius: 12px; padding: 14px 16px; }
+.dr-path { list-style: none; margin: 8px 0 10px; padding: 0; }
+.dr-path li { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px dashed #d9e6f5; }
+.dr-path li:last-child { border-bottom: 0; font-weight: 700; }
+.dr-path strong { font-variant-numeric: tabular-nums; }
+.dr-flags { list-style: none; margin: 8px 0; padding: 0; color: #9a3412; }
+.dr-flags li { display: flex; gap: 6px; align-items: flex-start; }
+.dr-flags svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+.dr-suggest { margin: 10px 0 4px; display: flex; gap: 6px; align-items: flex-start; }
+.dr-suggest svg { width: 16px; height: 16px; flex: none; margin-top: 3px; }
