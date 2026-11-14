@@ -1,14 +1,14 @@
 /* Public landing page (/). Same palette as the violet fund dashboard (site.css .violet). */
 
 .landing {
-  --ln-violet: #7968df;
-  --ln-violet-ink: #5141b3;
-  --ln-violet-soft: #efebff;
-  --ln-ink: #191822;
+  --ln-violet: #075deb;
+  --ln-violet-ink: #104fb6;
+  --ln-violet-soft: #edf4ff;
+  --ln-ink: #111c2b;
   --ln-ink-2: #393742;
-  --ln-muted: #64636d;
-  --ln-line: #eceaf2;
-  --ln-bg: #f1f2f4;
+  --ln-muted: #536375;
+  --ln-line: #dfe7f1;
+  --ln-bg: #f3f6fa;
   --ln-surface: #fff;
   --ln-ok: #1f8a57;
   --ln-radius: 20px;
@@ -16,8 +16,6 @@
   padding: clamp(16px, 2.6vw, 36px);
   color: var(--ln-ink);
   background:
-    radial-gradient(1200px 520px at 8% -10%, #e9e4ff 0%, transparent 60%),
-    radial-gradient(900px 480px at 100% 0%, #e7f1ff 0%, transparent 55%),
     var(--ln-bg);
   font-family: var(--font-sans);
 }
@@ -96,7 +94,7 @@
 .ln-tag {
   padding: 4px 9px;
   border-radius: 999px;
-  background: #f4f3f8;
+  background: #f2f5f9;
   color: var(--ln-muted);
   font-size: 12px;
   font-weight: 560;
@@ -122,7 +120,7 @@
   max-width: 17ch;
   margin: 0;
   font-size: clamp(32px, 4.4vw, 58px);
-  font-weight: 650;
+  font-weight: 630;
   line-height: 1.02;
   letter-spacing: -.045em;
   text-wrap: balance;
@@ -141,7 +139,7 @@
   gap: 8px;
   min-height: 46px;
   padding: 0 20px;
-  border: 1px solid #e3e1ec;
+  border: 1px solid #d9e4f1;
   border-radius: 999px;
   background: var(--ln-surface);
   color: var(--ln-ink) !important;
@@ -150,14 +148,14 @@
   transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
 }
 .ln-btn svg { width: 17px; height: 17px; }
-.ln-btn:hover { transform: translateY(-1px); background: #faf9fd; }
+.ln-btn:hover { transform: translateY(-1px); background: #f9fbfd; }
 .ln-btn-primary {
   border-color: transparent;
-  background: var(--ln-ink);
+  background: var(--ln-violet);
   color: #fff !important;
   box-shadow: 0 8px 22px rgba(25, 24, 34, .18);
 }
-.ln-btn-primary:hover { background: #2a2836; box-shadow: 0 10px 26px rgba(25, 24, 34, .24); }
+.ln-btn-primary:hover { background: #004bc3; box-shadow: 0 10px 26px rgba(25, 24, 34, .24); }
 
 /* The shrinking bill */
 .ln-path {
@@ -175,7 +173,7 @@
   height: 8px;
   margin-bottom: 8px;
   border-radius: 999px;
-  background: #f1eff7;
+  background: #eff2f7;
   position: relative;
   overflow: hidden;
 }
@@ -185,7 +183,7 @@
   inset: 0 auto 0 0;
   width: var(--w);
   border-radius: inherit;
-  background: linear-gradient(90deg, #a79af8, var(--ln-violet));
+  background: linear-gradient(90deg, #69a6ff, var(--ln-violet));
 }
 .ln-path .is-zero .ln-path-bar::after { background: var(--ln-ok); }
 .ln-path-label { color: var(--ln-muted); font-size: 12.5px; font-weight: 520; }
@@ -201,7 +199,7 @@
   align-items: center;
   gap: 12px;
   padding: 11px 0;
-  border-bottom: 1px solid #f3f2f7;
+  border-bottom: 1px solid #f1f4f8;
 }
 .ln-donor-list li:last-child { border-bottom: 0; }
 .ln-rank { color: #a9a7b3; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
@@ -232,17 +230,17 @@
 .ln-mark svg { width: 18px; height: 18px; }
 .ln-mark-logo {
   overflow: hidden;
-  border: 1px solid #ecebf1;
+  border: 1px solid #e8edf4;
   border-radius: 12px;
   background: #fff;
 }
 .ln-mark-logo img { width: 100%; height: 100%; object-fit: contain; }
-.ln-mark-state_program { background: #e9e6ff; color: #4b3bb0; box-shadow: inset 0 0 0 2px #d3ccff; }
+.ln-mark-state_program { background: #eaf2ff; color: #154c9e; box-shadow: inset 0 0 0 2px #c8deff; }
 .ln-mark-federal_program { background: #e3eefb; color: #2b5a98; box-shadow: inset 0 0 0 2px #c9dcf4; }
 .ln-mark-hospital { background: #fde9ee; color: #a3324a; }
 .ln-mark-foundation { background: #e2f4ec; color: #1d7451; border-radius: 50% 50% 12px 12px; }
 .ln-mark-corporate { background: #fbf0dc; color: #8a5a0c; border-radius: 8px; }
-.ln-mark-community { background: #f3e8fb; color: #7a3b9e; border-radius: 50%; }
+.ln-mark-community { background: #e8effb; color: #3b619e; border-radius: 50%; }
 .ln-mark-individual,
 .ln-mark-anon { background: #eef0f2; color: #4a4f57; border-radius: 50%; }
 
@@ -274,13 +272,13 @@
   gap: 10px;
   margin: 0;
 }
-.ln-stats div { padding: 14px 16px; border-radius: 14px; background: #f7f6fb; }
+.ln-stats div { padding: 14px 16px; border-radius: 14px; background: #f6f8fb; }
 .ln-stats dt { color: var(--ln-muted); font-size: 12.5px; }
 .ln-stats dd { margin: 4px 0 0; font-size: 22px; font-weight: 650; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 
 /* Claims */
 .ln-claim-list { list-style: none; margin: 0; padding: 0; }
-.ln-claim-list li { border-bottom: 1px solid #f3f2f7; }
+.ln-claim-list li { border-bottom: 1px solid #f1f4f8; }
 .ln-claim-list li:last-child { border-bottom: 0; }
 .ln-claim-row {
   display: grid;
@@ -292,7 +290,7 @@
   border-radius: 12px;
   transition: background .15s ease;
 }
-.ln-claim-row:hover { background: #f8f7fc; }
+.ln-claim-row:hover { background: #f7f9fc; }
 .ln-claim-what { display: grid; gap: 2px; min-width: 0; }
 .ln-claim-what strong { overflow: hidden; font-size: 14.5px; font-weight: 580; white-space: nowrap; text-overflow: ellipsis; }
 .ln-claim-what small { color: var(--ln-muted); font-size: 12.5px; }
@@ -340,3 +338,13 @@
   .ln-card { animation: none; }
   .ln-btn { transition: none; }
 }
+
+.ln-hero { border-color: #dce6f2; }
+.ln-hero h1 { letter-spacing: -.056em; }
+.ln-lede { text-wrap: pretty; }
+.ln-donors .ln-donor-list li { border-bottom-color: #e5edf6; }
+.ln-donor-amount, .ln-claim-num, .ln-path strong { font-variant-numeric: tabular-nums; }
+.ln-claim-row:hover { background: #f0f6ff; }
+.ln-brand .logo-mark { width: 33px; height: 33px; flex: 0 0 33px; }
+.ln-brand .logo-mark rect { fill: #075deb; }
+.ln-brand .logo-mark path { fill: #fff; }

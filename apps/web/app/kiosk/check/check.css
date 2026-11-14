@@ -1,9 +1,9 @@
 /* Stepped bill check after a kiosk tap (/kiosk/check). Classes are prefixed bw-. */
 
 .bw {
-  --violet: #654dc7;
-  --violet-soft: #ece5fc;
-  --ink: #191822;
+  --violet: #075deb;
+  --violet-soft: #eaf2ff;
+  --ink: #111c2b;
   --muted: #5d5a70;
   --saved: #1f7a52;
   --v-rgb: 101 77 199;
@@ -17,7 +17,7 @@
   padding: 5px 10px;
   border-radius: 999px;
   background: var(--violet-soft);
-  color: #4b3fa0;
+  color: #194d9b;
   font-size: 13px;
 }
 
@@ -30,7 +30,7 @@
   gap: 4px;
   padding: 18px 20px;
   border-radius: 22px;
-  background: linear-gradient(150deg, #ffffff, #f3efff);
+  background: linear-gradient(150deg, #ffffff, #f3f7ff);
   border: 1px solid rgb(var(--v-rgb) / 0.18);
   box-shadow: 0 10px 30px rgb(var(--v-rgb) / 0.12);
 }
@@ -45,7 +45,7 @@
 }
 .bw-balance small { color: var(--muted); font-size: 14px; min-height: 1.2em; }
 .bw-meter { height: 8px; border-radius: 999px; background: rgb(var(--v-rgb) / 0.12); overflow: hidden; margin: 6px 0 2px; }
-.bw-meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #8f7bea, var(--violet)); transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+.bw-meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #5a9aff, var(--violet)); transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
 
 /* Steps */
 .bw-steps { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 10px; }
@@ -109,12 +109,12 @@
 .bw-panel h2 { margin: 0 0 4px; color: var(--ink); }
 .bw-panel p { margin: 0; color: var(--muted); }
 .bw-done { color: var(--saved); }
-.bw-ask { display: grid; gap: 4px; background: linear-gradient(150deg, #ffffff, #f3efff); }
+.bw-ask { display: grid; gap: 4px; background: linear-gradient(150deg, #ffffff, #f3f7ff); }
 .bw-ask .btn { margin-top: 8px; background: var(--violet); border-color: var(--violet); }
 .bw-explain { display: grid; gap: 10px; padding: 0 4px; color: var(--muted); }
 .bw-explain p { margin: 0; }
 .bw-explain .btn { justify-self: start; }
-.bw-link { display: inline-flex; align-items: center; gap: 4px; justify-self: start; color: #4b3fa0; font-weight: 600; }
+.bw-link { display: inline-flex; align-items: center; gap: 4px; justify-self: start; color: #194d9b; font-weight: 600; }
 
 @media (prefers-reduced-motion: reduce) {
   .bw-step, .bw-result { animation: none; }
