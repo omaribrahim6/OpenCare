@@ -1,38 +1,39 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { Icon } from "@/components/Icon";
-import { Logo } from "@/components/Logo";
-import { TapRings } from "@/components/TapRings";
-import { DemoButton } from "./DemoButton";
+import type { Metadata, Viewport } from "next";
+import { Bricolage_Grotesque, IBM_Plex_Sans_Arabic } from "next/font/google";
+import { KioskTap, type KioskLang } from "./tap/KioskTap";
+import "./tap/tap.css";
 
-export const metadata: Metadata = { title: "Patient kiosk" };
+const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-kiosk-display", display: "swap" });
+const arabic = IBM_Plex_Sans_Arabic({ subsets: ["arabic"], weight: ["600", "700"], variable: "--font-kiosk-arabic", display: "swap" });
+
+// Added to the Home Screen, the kiosk runs full screen with the background behind the status bar.
+export const metadata: Metadata = {
+  title: "Patient kiosk",
+  manifest: "/kiosk.webmanifest",
+  appleWebApp: { capable: true, title: "CareCard", statusBarStyle: "black-translucent" },
+  icons: { apple: "/kiosk-icon-180.png" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#c9c1f0",
+  viewportFit: "cover",
+};
+
+const LANGS: KioskLang[] = ["en", "es", "ar"];
 
 export default async function KioskPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ended?: string }>;
+  searchParams: Promise<{ ended?: string; lang?: string; who?: string }>;
 }) {
-  const { ended } = await searchParams;
-
+  const { ended, lang, who } = await searchParams;
   return (
-    <main className="page station station-welcome">
-      <header className="station-bar">
-        <Logo href={null} />
-        <Link href="/review" className="btn secondary">Admin</Link>
-      </header>
-      <div className="station-intro">
-        <h1>Tap your CareCard</h1>
-        <p>Find a medical bill or check a request.</p>
-      </div>
-      <section className="station-tap" aria-label="Card instructions">
-        <TapRings size={156} />
-        <p>Hold your card near the top of this device and open the link that appears.</p>
-        {ended && <p className="station-message" role="status">Your session has ended.</p>}
-        <DemoButton />
-      </section>
-      <footer className="station-foot">
-        <Icon name="lock" /> Your session is private and ends automatically.
-      </footer>
-    </main>
+    <div className={`${display.variable} ${arabic.variable}`}>
+      <KioskTap
+        lang={LANGS.includes(lang as KioskLang) ? (lang as KioskLang) : "en"}
+        ended={Boolean(ended)}
+        who={who}
+      />
+    </div>
   );
 }
