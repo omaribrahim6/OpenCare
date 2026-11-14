@@ -4,6 +4,8 @@ Team: `@omaribrahim6` (Omar, team lead), `@ibragot` (Noureldin), `@CaptainCrasi`
 
 Agents work on their own inside a **lane** their human gives them, and hand each other tasks on the board. Humans only step in to hand out the next lane.
 
+**Read first:** [docs/SPEC.md](docs/SPEC.md) is the product spec. The lanes and their folders are in §11: `api`, `payments`, `web`, `ai`.
+
 ## 1. The board (pinned GitHub issue #1)
 
 Every agent reads and posts on the pinned "Message Board" issue via `tools/board` (needs only `gh`, logged in). Set `BOARD_ISSUE` if it is not issue #1.
@@ -22,7 +24,7 @@ Commands: `tools/board unread` (new posts, marks read; flags MENTION), `tools/bo
 
 ## 2. Lanes
 
-A lane is one domain your human assigned you (for example "design: UI components and styling") plus the folders it covers. You own those folders until you finish the lane.
+A lane is one domain your human assigned you (normally one of the four in SPEC §11) plus the folders it covers. You own those folders until you finish the lane. A human may give their agent a second lane, or a part of one, only when that lane's owner agrees on the board.
 
 **Declare it.** When your human gives you a lane:
 1. Run `tools/board lanes` and check that your folders don't overlap someone else's active lane. If they do, agree on a split on the board before editing anything.
@@ -54,10 +56,28 @@ No lane yet? Take no tasks from the board. Ask your human for a lane, and tell a
 
 Humans over agents. Your human can change your lane at any time. Only the team lead (`@omaribrahim6`) reassigns work between teammates or settles lane overlaps.
 
-## 5. Workflow
+## 5. Git and GitHub (mandatory for every agent)
 
-1. Branch `<lane>-<slug>` from fresh `main`.
-2. Small commits. Stage only your own files (no `git add -A`).
-3. Open a PR. The author merges their own PR once it works locally.
-4. Always `git fetch` and rebase before pushing. Never force-push shared branches.
-5. If a merge changes something other teammates depend on (an API, a schema, an env var), post on the board when it lands.
+Judges will read our history, so it has to show steady, clean progress.
+
+**Check for conflicts before every GitHub interaction.** Run `tools/preflight` immediately before every `git push`, `gh pr create`, and `gh pr merge`. Act only if it prints `PASS`. It checks that:
+- you're not on `main` and have no uncommitted changes
+- your branch merges cleanly into `main` and doesn't conflict with any other open PR
+- every commit message follows the convention below
+- no secrets or generated files are included
+
+If it fails on a conflict, resolve it only in your own lane's files (`git rebase origin/main`). If the conflict is in another lane's file or a shared file, run `git rebase --abort`, tag the owner on the board, and wait.
+
+**Commit structured, commit often.**
+- Every commit is [Conventional Commits](https://www.conventionalcommits.org): `type(scope): summary`, e.g. `feat(payments): make grant redemption idempotent`. The `.githooks/commit-msg` hook enforces it; `tools/preflight` turns the hook on.
+- Types: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `style`, `build`, `ci`, `chore`, `revert`. Scope: your lane (`api`, `payments`, `web`, `ai`), or `contracts`, `repo`, `docs`, `agents`, `tooling`, `deps`.
+- The summary is imperative, specific, lowercase, 72 characters or fewer, with no period. Never "wip", "update", or "fix stuff".
+- One logical change per commit. Stage only your own files (no `git add -A`).
+- Commit each time a step works, and push to your branch at least every 30–45 minutes of work (after `tools/preflight`), so progress shows up over time.
+
+**Branches and PRs.**
+1. Never commit or push to `main`. Branch `<lane>/<slug>` (e.g. `web/check-in-screen`) from fresh `main`.
+2. Keep PRs small: one feature each, merged within a few hours. Fill in the PR template.
+3. The author merges their own PR once it works locally and `tools/preflight` passes, using **Rebase and merge** only (`gh pr merge --rebase --delete-branch`), so every commit stays in `main`'s history. Squash and merge commits are turned off.
+4. After a rebase, force-push only your own branch, and only with `git push --force-with-lease`.
+5. If a merge changes something other teammates depend on (an API, a contract, a schema, an env var), post on the board when it lands.
