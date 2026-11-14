@@ -45,6 +45,8 @@ From the proposal's own §17. Not yet confirmed by the team; anyone who disagree
 - **Revision 2:** the order is insurance → hospital policies → community care fund. Each step only sees what the previous steps left.
 - **Revision 2:** the fund's queue order uses a fixed algorithm; Gemini interprets it into a decision brief; a human final reviewer approves or denies.
 - **Revision 2 (Musa):** everyone is eligible for the fund. The algorithm only prioritizes; it never excludes anyone.
+- **Revision 2 (Musa): two frontends.** The **patient app** (CareCard check-in) and the **admin panel** (the final reviewer). Hospital intake is a simulated hospital-staff tab in the admin panel.
+- **Revision 2 (Musa): the live demo.** One teammate is signed into the admin panel. The patient has a hospital visit and requests help, the admin approves, and the patient's bill goes to $0. Approval pays the hospital directly; the provider redemption tap is dropped.
 
 ## Open questions
 
@@ -62,7 +64,7 @@ The full list is in §16 of the proposal text below. These are the ones that blo
 | Q9 | When the AI "applies" to a hospital policy, who decides it? | Musa's Claude | **Musa:** the hospital approves it. For the demo that approval is simulated (the policy's rules decide) and always labeled "hospital decision (simulated)" | **Decided** (Musa; accepted by Omar) |
 | Q10 | Is the fund's algorithm an eligibility cut-off, a ranking, or both? | Musa's Claude | **Musa: ranking only, no cut-off.** Everyone is eligible (the point of Medicare for All is that it's for everyone); the fixed algorithm puts the most eligible first and the less eligible further down the queue | **Decided** (Musa; accepted by Omar) |
 | Q11 | Does the decision brief recommend an amount? | Musa's Claude | **Musa: yes, the full remaining balance.** The amount is computed from the case data, not chosen by the AI. The reviewer can change it; the brief never changes the score or the queue position | **Decided** (Musa; accepted by Omar) |
-| Q12 | Where does insurance data come from, and which lane owns adjudication? | Musa's Claude | **Musa:** a made-up insurance plan per demo patient, also used for the final demo (deductible, coinsurance, out-of-pocket max). Which lane owns adjudication is still open (suggestion: core, api lane) | **Decided** (data). Owning lane still open |
+| Q12 | Where does insurance data come from, and which lane owns adjudication? | Musa's Claude | **Musa:** a made-up insurance plan per demo patient, also used for the final demo (deductible, coinsurance, out-of-pocket max). Which lane owns adjudication is still open (suggestion: core, api lane) | **Decided** (data). Decided by Musa in the spec PR: the api lane (core) |
 | Q13 | What does Nessie do now that the bill comes from the hospital? | Musa's Claude | **Musa agrees:** Nessie pays the hospital from the fund (existing payout) and takes donations; the patient's Nessie account supplies the income-from-deposits check. Bill discovery from Nessie is dropped | **Decided** (Musa; accepted by Omar) |
 | Q8 | What if there's no Gemini key by demo time? | Noureldin | Every AI step needs a deterministic path that works without a key; Gemini only improves it. **Update (Omar):** his Vertex AI key is approved for every agent, so Gemini steps can run live in the demo. Keep the fallbacks so a failed call never breaks the flow | **Decided:** live Gemini, with fallbacks kept |
 
@@ -84,6 +86,7 @@ Revision 2, accepted with the proposal. Musa can still adjust it; the spec PR is
      Every number is checked against the case data, with a template fallback (no Gemini key, or a mismatch). The brief never changes the score or the queue position; the reviewer can change the amount.
   6. **Final reviewer queue** (today's caseworker desk): the brief beside the score; approve or deny; Nessie pays the hospital; Solana receipt.
   7. **Patient bill page** (kiosk): the bill shrinking step by step, with what's confirmed and what's pending.
+  8. **Two frontends** (Musa): the patient app and the admin panel; hospital intake is a tab in the admin panel. **Approval pays the hospital directly** (no provider tap), so the patient's bill drops to $0 live.
 - **Cut:** real insurers or claims, real hospital policies, OCR, identity verification, appeals, Gemini ranking the queue, and bill discovery from Nessie.
 - **Lane impact (draft, to be confirmed by each lane):**
   - **api:** visit and line-item models, insurance plan and adjudication, hospital policy catalog and application records, the bill ledger (reductions vs payments), the eligibility minimum, routes.
@@ -156,6 +159,7 @@ Musa's Claude (an opinion): agree, with changes. The pivot only works with the M
 - 2026-11-14 12:35 EST, Musa's Claude (steward): recorded Musa's answers. Q9: the hospital approves, simulated and labeled. Q10: ranking only, no cut-off. Q12: a made-up plan per demo patient. Q13: agreed. Q11 is awaiting clarification.
 - 2026-11-14 12:45 EST, Musa's Claude (steward): Q11 answered by Musa; the brief suggests the full remaining balance. MVP item 5 now spells out the brief.
 - 2026-11-14 12:50 EST, Musa's Claude (steward): recorded Omar's decision. Status Accepted, decision log, answered questions marked decided, Q8 updated for the approved Vertex key. Q6 and Q12's owning lane remain open for Musa.
+- 2026-11-14 13:15 EST, Musa's Claude (steward): recorded Musa's two frontends (patient app and admin panel), the live-demo flow and payout on approval. Q12's lane is the api lane. Spec revision 6 drafted from this doc.
 
 ## Proposal (revision 1, for history)
 
