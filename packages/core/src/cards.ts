@@ -4,8 +4,8 @@
 
 import type { Device, PatientSummary, TapResult } from "@abdulcare/contracts";
 import type { Db } from "./db";
-import { listGrants } from "./grants";
 import { getInsurancePlan } from "./insurance";
+
 
 import { CoreError, hmac, newSecret, requireEnv, sha256 } from "./util";
 
@@ -58,16 +58,8 @@ export async function resolveTap(
   const sessionSecret = await startSession(db, device.id, patient.id);
   if (device.role === "kiosk") return { result: { kind: "session", patient }, sessionSecret };
   // Rev 6: a hospital terminal tap selects the patient for intake (POST /api/visits uses it).
-  if (device.role === "hospital") {
-    return { result: { kind: "intake", patient, plan: await getInsurancePlan(db, patient.id) }, sessionSecret };
-  }
-
-  const redeemableGrants = await listGrants(db, {
-    status: "approved",
-    patientId: patient.id,
-    providerId: device.providerId ?? "",
-  });
-  return { result: { kind: "redemption", patient, redeemableGrants }, sessionSecret };
+  // Legacy "provider" devices are hospital terminals now: the redemption tap is gone (SPEC §8).
+  return { result: { kind: "intake", patient, plan: await getInsurancePlan(db, patient.id) }, sessionSecret };
 }
 
 async function startSession(db: Db, deviceId: string, patientId: string): Promise<string> {
