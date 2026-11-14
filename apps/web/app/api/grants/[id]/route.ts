@@ -1,20 +1,24 @@
 // GET /api/grants/:id: status and receipt. Polling this reconciles a pending payout (SPEC §5).
-// Allowed: caseworkers, the grant's provider device, and the patient's own kiosk session.
+// Allowed: reviewers (with the case screen), the grant's hospital device, and the patient's own
+// kiosk session (with the updated bill).
 
 import type { GrantResponse } from "@abdulcare/contracts";
-import { CoreError, getDb, getGrant } from "@abdulcare/core";
+import { CoreError, getBill, getCaseDetail, getDb, getGrant } from "@abdulcare/core";
 import { reconcileGrant } from "@abdulcare/payments";
 import { optionalSessionPatient, requireDevice } from "@/app/api/_lib/auth";
-import { payments } from "@/app/api/_lib/deps";
+import { billEngine, needEngine, payments } from "@/app/api/_lib/deps";
 import { ok, route, type IdParams } from "@/app/api/_lib/http";
+
+export const maxDuration = 30;
 
 export const GET = route(async (_req: Request, { params }: IdParams) => {
   const { id } = await params;
-  const device = await requireDevice(["kiosk", "provider", "reviewer"]);
-  let grant = await getGrant(getDb(), id);
+  const device = await requireDevice(["kiosk", "hospital", "provider", "reviewer"]);
+  const db = getDb();
+  let grant = await getGrant(db, id);
 
-  if (device.role === "provider" && grant.provider.id !== device.providerId) {
-    throw new CoreError("forbidden", "This grant is for another provider");
+  if ((device.role === "provider" || device.role === "hospital") && grant.provider.id !== device.providerId) {
+    throw new CoreError("forbidden", "This grant is for another hospital");
   }
   if (device.role === "kiosk") {
     const patient = await optionalSessionPatient(device);
@@ -29,5 +33,12 @@ export const GET = route(async (_req: Request, { params }: IdParams) => {
       console.error("[api] reconcile failed; returning stored state:", (err as Error).message);
     }
   }
-  return ok<GrantResponse>({ grant });
+
+  const body: GrantResponse = { grant };
+  if (grant.visit && device.role === "reviewer") {
+    body.case = (await getCaseDetail(db, { need: needEngine, bills: billEngine }, id)) ?? undefined;
+  } else if (grant.visit && device.role === "kiosk") {
+    body.bill = await getBill(db, grant.visit.id, { patientId: grant.patient.id });
+  }
+  return ok<GrantResponse>(body);
 });
