@@ -35,7 +35,6 @@ export function ReadAloud({ text }: { text: string }) {
 
   return (
     <button type="button" className="btn secondary" onClick={toggle} aria-pressed={speaking}>
-      <span aria-hidden="true">{speaking ? "■" : "🔊"}</span>
       {speaking ? "Stop reading" : "Read aloud"}
     </button>
   );

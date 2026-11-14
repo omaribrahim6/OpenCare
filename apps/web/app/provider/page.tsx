@@ -24,9 +24,7 @@ export default function ProviderTerminal() {
       {phase === "waiting" && (
         <div style={{ textAlign: "center" }}>
           <h1>Ask the patient to tap their CareCard</h1>
-          <div className="tap-target" aria-hidden="true">
-            ◉
-          </div>
+          <div className="tap-target" aria-hidden="true" />
           <button className="btn secondary" onClick={() => setPhase("grant")}>
             Simulate card tap (demo)
           </button>

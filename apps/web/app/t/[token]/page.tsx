@@ -9,9 +9,7 @@ export default async function TapLanding({ params }: { params: Promise<{ token: 
   if (result.kind === "unpaired_device") {
     return (
       <main className="page" style={{ textAlign: "center" }}>
-        <div className="tap-target" aria-hidden="true">
-          ◉
-        </div>
+        <div className="tap-target" aria-hidden="true" />
         <h1>Tap at a participating kiosk</h1>
         <p className="muted">
           This is an AbdulCare CareCard. To use it, tap it on the kiosk phone at a participating clinic or
