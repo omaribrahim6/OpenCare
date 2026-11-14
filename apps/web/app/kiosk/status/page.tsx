@@ -2,7 +2,7 @@ import Link from "next/link";
 import { KioskSession } from "@/components/KioskSession";
 import { ReadAloud } from "@/components/ReadAloud";
 import { STATUS_LABEL, StatusBadge } from "@/components/StatusBadge";
-import { formatCents, getGrant } from "@/lib/mock";
+import { formatCents, getMyGrant } from "@/lib/mock";
 import type { GrantStatus } from "@/lib/types";
 
 const NEXT_STEP: Record<GrantStatus, string> = {
@@ -19,7 +19,7 @@ const NEXT_STEP: Record<GrantStatus, string> = {
 // Screen 4: Request status.
 export default async function RequestStatus({ searchParams }: { searchParams: Promise<{ new?: string }> }) {
   const { new: isNew } = await searchParams;
-  const grant = await getGrant();
+  const grant = await getMyGrant();
   if (!grant) {
     return (
       <KioskSession step={3} totalSteps={3}>
