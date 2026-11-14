@@ -7,10 +7,9 @@ const SCREENS = [
   ["/t/unknown", "Card tap: unknown card"],
   ["/t/unpaired", "9. Card tap on an unpaired phone"],
   ["/kiosk/bills", "2. Bills found"],
-  ["/kiosk/scan", "3. Capture / review"],
-  ["/kiosk/explain", "4. Explanation / options"],
+  ["/kiosk/explain", "3–4. Explanation / request"],
   ["/kiosk/status", "5. Request status"],
-  ["/review", "6. Reviewer console"],
+  ["/review", "6. Reviewer queue (ranked by need)"],
   ["/provider", "7. Provider terminal"],
   ["/fund", "8. Fund dashboard"],
 ] as const;

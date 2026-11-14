@@ -1,59 +1,40 @@
 import Link from "next/link";
 import { KioskSession } from "@/components/KioskSession";
+import { ReadAloud } from "@/components/ReadAloud";
 import { formatCents, getExplanation } from "@/lib/mock";
 
-// Screen 4: Explanation / options.
-export default async function ExplainOptions() {
-  const ex = await getExplanation();
-  const fits = ex.matches.filter((m) => m.possibleFit);
-  const others = ex.matches.filter((m) => !m.possibleFit);
+// Screen 4: Explanation / request.
+export default async function ExplainRequest({ searchParams }: { searchParams: Promise<{ bill?: string }> }) {
+  const { bill } = await searchParams;
+  const ex = await getExplanation(bill);
+  const amount = formatCents(ex.amountCents);
 
   return (
-    <KioskSession step={3}>
-      <h1>What this bill is</h1>
+    <KioskSession step={2} totalSteps={3}>
+      <h1>About this bill</h1>
       <div className="card">
-        <p className="big">{formatCents(ex.amountCents)}</p>
-        <p style={{ marginBottom: 0 }}>{ex.summary}</p>
+        <p className="big">{amount}</p>
+        <p>{ex.summary}</p>
+        <ReadAloud text={`This bill is ${amount}. ${ex.summary}`} />
       </div>
 
-      <h2>Help you might be able to get</h2>
-      <p className="muted">These are possible matches, not a promise. A person reviews every request.</p>
-
-      {fits.map((m) => (
-        <div key={m.programId} className="card">
-          <div className="row" style={{ justifyContent: "space-between" }}>
-            <strong>{m.name}</strong>
-            <span className="badge ok">
-              <span aria-hidden="true">✓</span> Possible fit
-            </span>
-          </div>
-          <ul>
-            {m.reasons.map((r) => (
-              <li key={r}>{r}</li>
-            ))}
-          </ul>
-          {m.missingInfo.length > 0 && <p className="muted">Still needed: {m.missingInfo.join(", ")}</p>}
-          <Link className="btn block" href="/kiosk/status?new=1">
-            Ask for {formatCents(Math.min(ex.amountCents, m.maxCents))} from this fund
-          </Link>
-        </div>
-      ))}
-
-      {others.length > 0 && (
-        <details className="card">
-          <summary style={{ cursor: "pointer" }}>Programs that don&apos;t fit ({others.length})</summary>
-          {others.map((m) => (
-            <div key={m.programId} style={{ marginTop: 12 }}>
-              <strong>{m.name}</strong>
-              <ul>
-                {m.reasons.map((r) => (
-                  <li key={r}>{r}</li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </details>
-      )}
+      <h2>What the fund can do</h2>
+      <div className="card">
+        <p>
+          If your request is approved, the fund pays <strong>{ex.provider.name}</strong> directly. You won&apos;t
+          handle any money.
+        </p>
+        <p className="muted">
+          The fund has a limited budget, so a person reviews requests and helps those with the greatest need first.
+          Approval isn&apos;t guaranteed.
+        </p>
+        <Link className="btn block" href="/kiosk/status?new=1">
+          Request help with {amount}
+        </Link>
+      </div>
+      <Link className="btn secondary block" href="/kiosk/bills">
+        Pick a different bill
+      </Link>
     </KioskSession>
   );
 }

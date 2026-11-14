@@ -1,19 +1,24 @@
 import Link from "next/link";
 import { KioskSession } from "@/components/KioskSession";
 import { formatCents, getBills } from "@/lib/mock";
+import { CATEGORY_LABEL } from "@/lib/types";
 
-// Screen 2: Bills found (P1).
+// Screen 2: Bills found. Bills come only from the linked Nessie account (SPEC rev 4).
 export default async function BillsFound() {
   const bills = await getBills();
   const medical = bills.filter((b) => b.likelyMedical);
   const other = bills.filter((b) => !b.likelyMedical);
 
   return (
-    <KioskSession step={1}>
+    <KioskSession step={1} totalSteps={3}>
       <h1>Bills we found</h1>
       <p className="muted">
         From your linked bank account. We marked the ones that look medical. Pick the one you want help with.
       </p>
+
+      {medical.length === 0 && (
+        <p className="card">We didn&apos;t find any medical bills. Ask staff if you think one is missing.</p>
+      )}
 
       <ul className="stack" style={{ listStyle: "none", padding: 0 }}>
         {medical.map((b) => (
@@ -25,12 +30,13 @@ export default async function BillsFound() {
               </span>
             </div>
             <p className="muted" style={{ margin: "4px 0 12px" }}>
-              {b.date} · <span className="badge info">Looks medical</span>
+              {b.date ?? "No date"} ·{" "}
+              <span className="badge info">{b.category ? CATEGORY_LABEL[b.category] : "Medical"}</span>
               <br />
               Why: {b.reason}
             </p>
-            <Link className="btn block" href={`/kiosk/scan?bill=${b.id}`}>
-              Use this bill
+            <Link className="btn block" href={`/kiosk/explain?bill=${encodeURIComponent(b.id)}`}>
+              Get help with this bill
             </Link>
           </li>
         ))}
@@ -48,10 +54,6 @@ export default async function BillsFound() {
           </ul>
         </details>
       )}
-
-      <Link className="btn secondary block" href="/kiosk/scan">
-        Scan a paper bill instead
-      </Link>
     </KioskSession>
   );
 }
