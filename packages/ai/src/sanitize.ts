@@ -35,7 +35,8 @@ const INJECTION_PATTERNS: Array<[RegExp, string]> = [
   [/\b(ignore|disregard|forget|override)\b.{0,40}\b(instructions?|rules?|prompts?|above|previous|system)\b/i, "asks the AI to ignore its rules"],
   [/\b(system|developer)\s*(prompt|message|instructions?)\b/i, "mentions system instructions"],
   [/\byou are (now )?(an?|the) (ai|assistant|model|chatbot)\b/i, "tries to change the AI's role"],
-  [/\b(approve|authori[sz]e|release|grant)\b.{0,30}(\$\s?\d|\bto (the |this |my )?(wallet|address|account)\b|\b(immediately|automatically)\b)/i, "asks for an approval or payment"],
+  // "grant" after a count or article is the noun ("received 1 grant ($150)"), not an order to pay.
+  [/\b(approve|authori[sz]e|release|(?<!\b(?:\d+|a|an|one|the|prior|previous|each|per)\s)grant)\b.{0,30}(\$\s?\d|\bto (the |this |my )?(wallet|address|account)\b|\b(immediately|automatically)\b)/i, "asks for an approval or payment"],
   [/\b(send|transfer|pay|wire)\b.{0,40}\b(to|into)\b.{0,40}\b(wallet|address|routing)\b/i, "names a payment destination"],
   [/\b[1-9A-HJ-NP-Za-km-z]{32,44}\b/, "contains what looks like a crypto wallet address"],
   [/\b(rank|move|put|place|prioriti[sz]e)\b.{0,20}\b(this|my) (request|application|case|bill)\b.{0,20}\b(first|top|highest|above)\b/i, "tries to change the queue order"],
