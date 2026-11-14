@@ -2,8 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-
-const MAX_NOTE = 500;
+import { MAX_HARDSHIP_NOTE_CHARS } from "@/lib/types";
 
 /** "Request help" with an optional short hardship note (SPEC rev 5 §4). Mock: the note isn't sent anywhere yet. */
 export function RequestHelpForm({ amountLabel }: { amountLabel: string }) {
@@ -26,13 +25,13 @@ export function RequestHelpForm({ amountLabel }: { amountLabel: string }) {
         <textarea
           id="hardship"
           rows={3}
-          maxLength={MAX_NOTE}
+          maxLength={MAX_HARDSHIP_NOTE_CHARS}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           aria-describedby="hardship-help"
         />
         <small id="hardship-help" className="muted">
-          A person reads this. It doesn&apos;t change your place in line. {note.length}/{MAX_NOTE}
+          A person reads this. It doesn&apos;t change your place in line. {note.length}/{MAX_HARDSHIP_NOTE_CHARS}
         </small>
       </div>
       <button className="btn block" type="submit" disabled={sending}>
