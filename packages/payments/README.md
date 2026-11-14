@@ -15,7 +15,11 @@ Payments lane (SPEC §8): Capital One Nessie mock banking and Solana devnet rece
    npm run solana:setup -w @abdulcare/payments
    ```
    The devnet RPC airdrop is closed, so fund the printed treasury address at https://faucet.solana.com, then re-run the script to open the provider wallet.
-4. Copy the `NESSIE_*`, `SOLANA_RPC_URL`, `TREASURY_SECRET_KEY`, `RECEIPT_LAMPORTS` and `PROVIDER_SOLANA_WALLET` values into Vercel's environment variables.
+4. Optional live check against real Nessie and devnet, using an embedded database (each run adds a $1 payout and a $1 donation to the fund's Nessie history):
+   ```bash
+   npm run payments:smoke -w @abdulcare/payments
+   ```
+5. Copy the `NESSIE_*`, `SOLANA_RPC_URL`, `TREASURY_SECRET_KEY`, `RECEIPT_LAMPORTS` and `PROVIDER_SOLANA_WALLET` values into Vercel's environment variables.
 
 ## What's in here
 
@@ -26,6 +30,14 @@ Payments lane (SPEC §8): Capital One Nessie mock banking and Solana devnet rece
 | `src/solana.ts` | Receipts: `buildReceipt` (signed transfer plus an opaque memo, persisted before broadcast), `broadcast`, `checkSignature`, `sendReceipt`, `verifySolDonation` |
 | `src/redeem.ts` | `redeemGrant` and `reconcileGrant`, plus `paymentsFromEnv(db)` to build the deps |
 | `src/donations.ts` | `donateByCard`: the Nessie deposit, then core's `recordDonation` (once per deposit ID), then a memo-only receipt via `setDonationReceipt`. Also `recordSolDonation`, which verifies a devnet transfer to the treasury and records it once per signature |
+
+## How live Nessie behaves (api.nessieisreal.com)
+
+These were found by running against the live API, and the code handles each one:
+- **Whole dollars only.** Nessie silently truncates cents ($64.20 is stored as $64). Every write here refuses non-whole-dollar amounts. Donations must be whole dollars, and `redeemGrant` refuses a grant approved with cents *before* claiming it. Caseworkers should approve whole-dollar amounts.
+- **No `GET /purchases/{id}`.** It answers 403. Payouts are read back from the fund account's purchase list (`findPurchase`), matched by ID or by the idempotency key in the description.
+- **Balances never change.** Deposits and purchases don't update `balance`, so the fund's real balance is core's ledger, not Nessie's balance field.
+- **Any key string is accepted.** Data is scoped per key, so everyone must use the same `NESSIE_API_KEY` to see the same accounts.
 
 ## For the api lane (route handlers)
 
