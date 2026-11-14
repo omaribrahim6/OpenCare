@@ -8,6 +8,7 @@ import type {
   CreateDonationRequest,
   CreateGrantRequest,
   CurrentDeviceResponse,
+  CreateVisitRequest,
   DocumentResponse,
   DonationResponse,
   FundSummary,
@@ -17,12 +18,18 @@ import type {
   GrantStatus,
   PairDeviceRequest,
   PairDeviceResponse,
+  PatientBillResponse,
+  PatientListResponse,
   ProviderListResponse,
+  RequestHelpRequest,
   ReviewQueue,
   SolanaDonationRequest,
   TapResult,
+  VisitResponse,
+  VisitTemplatesResponse,
 } from "@abdulcare/contracts";
 import * as mock from "./mock";
+import * as mock6 from "./mock-rev6";
 
 export const LIVE = process.env.NEXT_PUBLIC_API_MODE === "live";
 
@@ -101,8 +108,9 @@ export const getReviewQueue = (formulaFallback = false) =>
 export const listGrants = (status?: GrantStatus) =>
   LIVE ? get<GrantListResponse>(`/api/grants${status ? `?status=${encodeURIComponent(status)}` : ""}`) : mock.listGrants(status);
 
+/** Approval pays the hospital directly in revision 6 (no provider tap). */
 export const decideGrant = (id: string, req: GrantDecisionRequest) =>
-  LIVE ? post<GrantResponse>(`/api/grants/${encodeURIComponent(id)}/decision`, req) : mock.decideGrant(id, req);
+  LIVE ? post<GrantResponse>(`/api/grants/${encodeURIComponent(id)}/decision`, req) : mock6.decideGrant(id, req);
 
 // Provider --------------------------------------------------------------------------------------
 
@@ -121,3 +129,23 @@ export const donateByCard = (req: CardDonationRequest) =>
 
 export const recordSolDonation = (req: SolanaDonationRequest) =>
   LIVE ? post<DonationResponse>("/api/fund/donations/solana", req) : mock.donateSol(req.signature);
+
+// SPEC revision 6: hospital intake, the patient's bill, and the briefed review queue ------------
+
+export const getVisitTemplates = () =>
+  LIVE ? get<VisitTemplatesResponse>("/api/visit-templates") : mock6.getVisitTemplates();
+
+/** Demo patients (names and IDs only), for "pick the demo patient" when no card is at hand. */
+export const listPatients = () => (LIVE ? get<PatientListResponse>("/api/patients") : mock6.listPatients());
+
+/** Log a visit for the patient selected by the last card tap on this hospital device (or patientId). */
+export const createVisit = (req: CreateVisitRequest) =>
+  LIVE ? post<VisitResponse>("/api/visits", req) : mock6.createVisit(req.templateId, req.patientId);
+
+export const getMyBill = () => (LIVE ? get<PatientBillResponse>("/api/patients/me/bill") : mock6.getMyBill());
+
+export const requestHelp = (req: RequestHelpRequest) =>
+  LIVE ? post<GrantResponse>("/api/grants", req) : mock6.requestHelp(req.visitId, req.hardshipNote);
+
+/** Formula-ordered queue; each row carries its decision brief, path and remaining balance. */
+export const getBriefedQueue = () => (LIVE ? get<ReviewQueue>("/api/review/queue") : mock6.getReviewQueue());

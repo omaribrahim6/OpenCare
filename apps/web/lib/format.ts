@@ -68,3 +68,6 @@ export function relativeTime(iso: string, now = Date.now()): string {
 export const shortSig = (sig: string) => (sig.length > 16 ? `${sig.slice(0, 6)}…${sig.slice(-6)}` : sig);
 
 export const explorerTx = (sig: string) => `https://explorer.solana.com/tx/${encodeURIComponent(sig)}?cluster=devnet`;
+
+/** Bill step labels carry "(simulated)" for the record; screens show that as a separate tag instead. */
+export const stepLabel = (label: string) => label.replace(/ \((hospital decision, )?simulated\)$/, "");

@@ -57,6 +57,12 @@ export async function resolveTap(token: string): Promise<TapResult> {
       redeemableGrants: demoGrant.status === "approved" ? [demoGrant] : [],
     };
   }
+  if (token === "hospital") {
+    // Revision 6: a tap on a paired hospital device selects the patient for intake.
+    const { setIntakePatient } = await import("./mock-rev6");
+    setIntakePatient(DEMO_PATIENT);
+    return { kind: "intake", patient: DEMO_PATIENT, plan: null };
+  }
   if (token === "unpaired") return { kind: "unpaired_device" };
   return { kind: "unknown_card" };
 }
@@ -545,7 +551,7 @@ export async function getReviewQueue(formulaFallback = false): Promise<ReviewQue
 
 const FUND: FundSummary = {
   totalCents: 250000,
-  availableCents: 195500,
+  availableCents: 250000,
   reservedCents: 4500,
   paidCents: 50000,
   approvedCount: 4,
