@@ -72,7 +72,7 @@ export function PairDevice() {
 
   return (
     <main className="page station station-pair">
-      <header className="station-bar"><Logo /><Link href="/">Community fund</Link></header>
+      <header className="station-bar"><Logo /><Link href="/review">Admin</Link></header>
       <h1>Set up this device</h1>
 
       {device === undefined ? (

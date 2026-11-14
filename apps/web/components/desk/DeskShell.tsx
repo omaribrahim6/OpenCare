@@ -6,7 +6,7 @@ import type { Device } from "@abdulcare/contracts";
 import { Icon } from "../Icon";
 import { LogoMark } from "../Logo";
 
-export type DeskView = "queue" | "decided";
+export type DeskView = "queue" | "decided" | "fund" | "ledger";
 
 export function DeskShell({
   view,
@@ -56,6 +56,12 @@ export function DeskShell({
 
         <p className="d-section">Review</p>
         <nav className="d-nav" aria-label="Review">
+          <button aria-current={view === "fund" ? "page" : undefined} onClick={() => { onView("fund"); setMenu(false); }}>
+            <Icon name="wallet" /> Fund overview
+          </button>
+          <button aria-current={view === "ledger" ? "page" : undefined} onClick={() => { onView("ledger"); setMenu(false); }}>
+            <Icon name="receipt" /> Ledger
+          </button>
           <button
             aria-current={view === "queue" ? "page" : undefined}
             onClick={() => {
@@ -77,6 +83,11 @@ export function DeskShell({
             <Icon name="checkCircle" />
             Decided
           </button>
+        </nav>
+
+        <nav className="d-nav" aria-label="Staff tools">
+          <Link href="/intake"><Icon name="hospital" /> Hospital intake</Link>
+          <Link href="/kiosk"><Icon name="tap" /> Patient</Link>
         </nav>
 
         <p className="d-side-foot">Prototype. Fictional patients, Nessie sandbox money and Solana devnet receipts.</p>
