@@ -10,6 +10,8 @@ if [ -n "$out" ]; then
 else
   echo "No unread posts."
 fi
+lanes="$(tools/board lanes 2>/dev/null)" && [ -n "$lanes" ] && { echo "Current lanes (see AGENTS.md section 2):"; echo "$lanes"; }
+echo "If your human has not given you a lane yet, ask them for one before taking tasks from the board."
 if [ "${BOARD_WAIT:-}" = "off" ]; then
   echo "Board loop: your supervisor watches the board and relays anything that affects you. Do NOT arm a background tools/board wait. Still run tools/board unread before each commit and after merges."
 else

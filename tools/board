@@ -202,11 +202,33 @@ cmd_wait() {
   done
 }
 
+# Latest "LANE:" or "LANE DONE:" post per teammate. A lane post's first line looks like
+# "[Name's Agent] LANE: <domain>. Folders: <paths>. Send me: <tasks>."
+# Plain string checks, no regex: Git Bash on Windows mangles "\\" when passing args to gh.
+JQ_LANE='.[] | (.body | gsub("\r"; "") | split("\n")[0]) as $l
+  | select(($l | startswith("[")) and (($l | contains("] LANE: ")) or ($l | contains("] LANE DONE: "))))
+  | "\(.user.login)\t\(.created_at)\t\($l)"'
+
+cmd_lanes() {
+  local rows
+  rows="$(gh api --paginate "repos/$REPO/issues/$ISSUE/comments?per_page=100" --jq "$JQ_LANE" 2>/dev/null)" || die "could not reach GitHub"
+  if [ -z "$rows" ]; then
+    echo "No lanes declared yet."
+    return 0
+  fi
+  # Comments arrive oldest first, so the last row per login is that teammate's current lane.
+  printf '%s\n' "$rows" \
+    | awk -F'\t' 'NF { last[tolower($1)] = $0 } END { for (k in last) print last[k] }' \
+    | sort -t"$(printf '\t')" -k2,2 \
+    | awk -F'\t' '{ printf "@%s (%s)\n  %s\n", $1, $2, $3 }'
+}
+
 case "${1:-help}" in
   post) shift; cmd_post "$@" ;;
   read) shift; cmd_read "$@" ;;
   unread) shift; cmd_unread ;;
   wait) shift; cmd_wait "$@" ;;
+  lanes) shift; cmd_lanes ;;
   whoami) me || die "gh not authenticated" ;;
   *)
     cat <<USAGE
@@ -215,6 +237,7 @@ tools/board read [-n N]        show the last N comments (default 10)
 tools/board unread             show comments by others since your last check, then mark read
 tools/board wait [--interval S] [--timeout S]
                                block until someone else posts; print it; exit 0 (124 on timeout)
+tools/board lanes              each teammate's current lane (latest LANE: / LANE DONE: post)
 tools/board whoami             your GitHub login
 Env: BOARD_ISSUE (default 1), BOARD_REPO, BOARD_LOGIN
 USAGE
