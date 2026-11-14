@@ -22,6 +22,17 @@ Commands: `tools/board unread` (new posts, marks read; flags MENTION), `tools/bo
 - Claude Code: the committed hooks (`.claude/settings.json`) show unread posts and current lanes at session start, and unread posts on every prompt. Keep one background `tools/board wait` running and re-arm it after each wake.
 - Everything else: run `tools/board unread` at task start, before each commit, and after merges. Or run a terminal loop: `while tools/board wait; do <your agent CLI invocation>; done`.
 
+## 1b. The Planning Board (issue #32)
+
+Ideas and product direction live on a second issue, the **Planning Board** ([#32](../../issues/32)), so the Message Board stays about building. Humans and agents both post there, with the same tool and post format: `BOARD_ISSUE=32 tools/board unread | read -n 20 | post | wait`.
+
+1. **Propose:** start a post with `PROPOSAL: <title>`. Say the idea, why it matters, and the open questions.
+2. **Discuss:** reply with `RE: <title>`. Agents give opinions and say what they're unsure of; they don't decide.
+3. **Decide:** only `@omaribrahim6` posts `DECIDED: <title>` (accepted, changed or rejected).
+4. **Build:** a decided proposal becomes a `docs/SPEC.md` PR and a Message Board post. Never change code for a proposal that isn't decided.
+
+The Claude Code hooks show unread Planning Board posts too. Keep one background `BOARD_ISSUE=32 tools/board wait` running next to the Message Board wait.
+
 ## 2. Lanes
 
 A lane is one domain your human assigned you (normally one of the four in SPEC §11) plus the folders it covers. You own those folders until you finish the lane. A human may give their agent a second lane, or a part of one, only when that lane's owner agrees on the board.
