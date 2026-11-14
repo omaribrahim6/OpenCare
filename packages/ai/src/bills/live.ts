@@ -203,11 +203,14 @@ export async function explainBillLive(input: BillExplanationInput, deps: LiveDep
   const template = explanationTemplate(input);
   try {
     const client = deps.client ?? createGeminiClient();
+    const totalSavedCents = input.steps.reduce((sum, st) => sum + st.reductionCents, 0);
     const facts = {
       hospital: safeText(input.hospitalName, "the hospital"),
       visitType: CATEGORY_LABELS[input.category],
       steps: input.steps.map((s) => ({ step: cleanUntrusted(s.label, 80), reduction: usd(s.reductionCents), balance: usd(s.balanceCents), simulated: s.simulated, status: s.status })),
       remaining: usd(input.remainingCents),
+      // Given so the model doesn't add up the savings itself.
+      totalSaved: usd(totalSavedCents),
     };
     // Line-item text is untrusted: flagged items are replaced, the rest is fenced.
     const items = input.lineItems.slice(0, 8).map((li) => `${safeText(li.description, "Other charge")}: ${usd(li.cents)}`).join("\n");
@@ -226,6 +229,8 @@ export async function explainBillLive(input: BillExplanationInput, deps: LiveDep
     const questions = Array.isArray(obj.questionsToAsk) ? obj.questionsToAsk.map((q) => cleanUntrusted(q, 160)).filter(Boolean).slice(0, 3) : [];
     const allowed = allowedNumbers([
       dollars(input.remainingCents),
+      // A true total of the reductions above, e.g. "$4,368.00 in savings", is not an invented amount.
+      dollars(totalSavedCents),
       ...input.lineItems.flatMap((li) => [dollars(li.cents), safeText(li.description, "")]),
       ...input.steps.flatMap((s) => [dollars(s.reductionCents), dollars(s.balanceCents), s.label]),
     ]);
