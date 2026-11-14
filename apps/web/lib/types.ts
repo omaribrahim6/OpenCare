@@ -1,106 +1,94 @@
-// Local UI types that mirror docs/SPEC.md §8–9.
-// Replace with imports from packages/contracts once the api lane merges them.
+// UI types. Stable shapes come from @abdulcare/contracts; the need-ranking shapes below
+// mirror SPEC rev 4 §7 locally until the api lane's migration 003 contracts land.
 
-export type Cents = number;
+import type { Cents, GrantStatus, PatientSummary, Provider, Receipt } from "@abdulcare/contracts";
 
-export type GrantStatus =
-  | "draft"
-  | "pending_review"
-  | "approved"
-  | "rejected"
-  | "canceled"
-  | "payment_pending"
-  | "paid";
+export type { Cents, FundSummary, GrantStatus, PatientSummary, Provider, Receipt } from "@abdulcare/contracts";
 
-export type ReceiptStatus = "receipt_pending" | "receipt_confirmed";
+export const EXPENSE_CATEGORIES = [
+  "pharmacy",
+  "emergency",
+  "hospital",
+  "primary_care",
+  "dental_vision",
+  "other_medical",
+] as const;
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 
-export type DocumentSource = "scan" | "nessie_bill" | "nessie_purchase";
-
-export interface Patient {
-  id: string;
-  displayName: string;
-}
-
-export interface Provider {
-  id: string;
-  name: string;
-  kind: string;
-}
+export const CATEGORY_LABEL: Record<ExpenseCategory, string> = {
+  pharmacy: "Pharmacy",
+  emergency: "Emergency",
+  hospital: "Hospital",
+  primary_care: "Primary care",
+  dental_vision: "Dental / vision",
+  other_medical: "Other medical",
+};
 
 export interface FoundBill {
   id: string;
-  source: Exclude<DocumentSource, "scan">;
+  source: "nessie_bill" | "nessie_purchase";
   merchant: string;
-  date: string;
+  date: string | null;
   amountCents: Cents;
   likelyMedical: boolean;
+  category: ExpenseCategory | null;
   reason: string;
 }
 
-export interface ExtractedField<T = string> {
-  value: T | null; // null = unknown, never guessed
-  evidence?: string;
-}
+export type TapResult =
+  | { kind: "session"; patient: PatientSummary }
+  | { kind: "unknown_card" }
+  | { kind: "unpaired_device" };
 
-export interface ExtractedFields {
-  provider: ExtractedField;
-  documentType: ExtractedField;
-  currency: ExtractedField;
-  totalCents: ExtractedField<Cents>;
-  date: ExtractedField;
-}
-
-export interface ProgramMatch {
-  programId: string;
-  name: string;
-  fictional: boolean;
-  possibleFit: boolean;
-  reasons: string[];
-  missingInfo: string[];
-  maxCents: Cents;
-}
-
-export interface Explanation {
+export interface BillExplanation {
   summary: string;
   amountCents: Cents;
-  matches: ProgramMatch[];
+  provider: Provider;
 }
 
-export interface Grant {
+export type InsuranceStatus = "uninsured" | "underinsured" | "insured" | "unknown";
+
+export type FactorKey = "income" | "cost_burden" | "insurance" | "cost_of_care" | "urgency" | "wait_time" | "prior_support";
+
+export interface NeedFactor {
+  key: FactorKey;
+  label: string;
+  /** Human-readable input, e.g. "80% of poverty guideline". */
+  input: string;
+  points: number;
+  maxPoints: number;
+  unknown?: boolean;
+}
+
+export interface NeedAssessment {
+  score: number; // 0–100, "need score", never "eligibility"
+  formulaVersion: string;
+  factors: NeedFactor[];
+  rationale: string;
+  incomePctOfPoverty: number | null;
+  incomeEstimatedFromDeposits: boolean;
+  suspiciousContent: { excerpt: string; field: string } | null;
+}
+
+export interface QueueItem {
+  rank: number;
+  grantId: string;
+  patient: PatientSummary;
+  provider: Provider;
+  bill: { merchant: string; description: string; date: string | null; category: ExpenseCategory };
+  requestedCents: Cents;
+  daysWaiting: number;
+  hardshipNote: string | null;
+  profile: { householdSize: number; monthlyIncomeCents: Cents | null; insurance: InsuranceStatus };
+  assessment: NeedAssessment;
+}
+
+export interface GrantView {
   id: string;
-  patientId: string;
-  patientName: string;
-  documentId: string;
+  patient: PatientSummary;
   provider: Provider;
   requestedCents: Cents;
   approvedCents: Cents | null;
   status: GrantStatus;
-  createdAt: string;
-  fields: ExtractedFields;
-  programName: string;
-  receipt?: {
-    nessiePaymentId: string | null;
-    solanaSignature: string | null;
-    receiptStatus: ReceiptStatus;
-  };
+  receipt: Receipt | null;
 }
-
-export interface FundSummary {
-  contributionsCents: Cents;
-  availableCents: Cents;
-  reservedCents: Cents;
-  approvedCount: number;
-  paidCount: number;
-  paidCents: Cents;
-  ledger: {
-    kind: "donation" | "payout";
-    reference: string;
-    signature: string;
-    at: string;
-  }[];
-}
-
-export type TapResult =
-  | { kind: "session"; patient: Patient }
-  | { kind: "unknown_card" }
-  | { kind: "unpaired_device" };
