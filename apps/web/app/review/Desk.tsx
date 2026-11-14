@@ -167,10 +167,10 @@ export function Desk({ initialView }: { initialView: DeskView }) {
           <span className="d-tile-icon" style={{ width: 48, height: 48, borderRadius: 12 }}>
             <Icon name="lock" size={22} />
           </span>
-          <h2>This browser isn&apos;t a caseworker device</h2>
-          <p>Requests are private. Pair this browser as a caseworker with the staff PIN to open the queue.</p>
+          <h2>Staff access required</h2>
+          <p>Use your staff PIN to authorize this browser to review requests and manage the fund.</p>
           <Link className="d-btn d-btn-teal" href="/pair">
-            <Icon name="key" /> Set up this device
+            <Icon name="key" /> Set up staff access
           </Link>
         </div>
       </div>,
