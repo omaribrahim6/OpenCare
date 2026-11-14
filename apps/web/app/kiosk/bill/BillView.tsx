@@ -79,7 +79,7 @@ export function BillView({ visitId, showInsurance, demo }: { visitId?: string; s
         <VisitBill demo={demo} key={selected.bill.visit.id} data={selected} refresh={load} />
       ) : (
         <>
-          <h1>My visits</h1>
+          <header className="patient-list-heading"><h1>My visits</h1>{state.visits.length > 0 && <span>{state.visits.length} {state.visits.length === 1 ? "visit" : "visits"}</span>}</header>
           {visitId && <p role="status">That bill is unavailable in this session.</p>}
           {!state.visits.length && <p className="patient-panel">Visits appear here after hospital staff log them with your CareCard.</p>}
           <ul className="patient-visits">
@@ -123,7 +123,7 @@ function Coverage({ bill, grant }: VisitData) {
   return (
     <section className="patient-panel patient-coverage" aria-labelledby="coverage-title">
       <div className="patient-section-header">
-        <h2 id="coverage-title">How your bill is covered</h2>
+        <h2 id="coverage-title">Bill breakdown</h2>
         <span>{usd(bill.chargesCents)} original bill</span>
       </div>
       <div className="patient-bar" role="group" aria-label="Bill coverage breakdown">
@@ -143,7 +143,7 @@ function Coverage({ bill, grant }: VisitData) {
         {parts.map(({ id, label, cents, waiting }) => (
           <button type="button" key={id} aria-pressed={id === active.id} onClick={() => setSelected(id)}>
             <span className="patient-dot" data-part={id} />
-            <span>{label}<strong>{usd(cents)}</strong>{waiting > 0 && <small>{usd(waiting)} pending</small>}</span>
+            <span>{label}<strong>{usd(waiting > 0 && cents === 0 ? waiting : cents)}</strong>{waiting > 0 && <small>{cents === 0 ? "Pending" : `${usd(waiting)} pending`}</small>}</span>
           </button>
         ))}
       </div>
@@ -170,15 +170,20 @@ function VisitBill({ data, refresh, demo }: { data: VisitData; refresh: () => Pr
   return (
     <>
       <Link href={visitHref(demo)} className="patient-back"><Icon name="arrowLeft" size={16} /> All visits</Link>
-      <h1>{cleanName(bill.visit.hospital.name)}</h1>
-      <p className="patient-visit-subtitle muted">{shortDate(bill.visit.date)} · {bill.visit.description}</p>
-      <section className="patient-balance" aria-live="polite" aria-label="Visit balance">
-        <span>Amount you still owe</span>
-        <strong>{usd(bill.remainingCents)}</strong>
-        <span className="patient-status" data-paid={bill.remainingCents === 0}>{visitStatus(data)}</span>
-      </section>
-
-      <Coverage {...data} />
+      <article className="patient-visit-sheet">
+        <header className="patient-visit-heading">
+          <div>
+            <h1>{cleanName(bill.visit.hospital.name)}</h1>
+            <p className="patient-visit-subtitle">{bill.visit.description} · {shortDate(bill.visit.date)}</p>
+          </div>
+          <Icon name="hospital" size={28} />
+        </header>
+        <div className="patient-balance" aria-live="polite" aria-label="Visit balance">
+          <div><span>Remaining balance</span><strong>{usd(bill.remainingCents)}</strong></div>
+          <span className="patient-status" data-paid={bill.remainingCents === 0}>{visitStatus(data)}</span>
+        </div>
+        <Coverage {...data} />
+      </article>
 
       {canApply && (
         <section className="patient-panel patient-action" aria-labelledby="savings-title">
@@ -210,20 +215,6 @@ function VisitBill({ data, refresh, demo }: { data: VisitData; refresh: () => Pr
         </section>
       )}
 
-      {approvals.length > 0 && (
-        <section className="patient-panel" aria-live="polite">
-          <h2>{applied ? "Savings applied" : "Hospital savings"}</h2>
-          <ul className="patient-lines">
-            {approvals.map((application) => (
-              <li key={application.id}>
-                <span>{application.policy.name}<small>{POLICY_STATUS_LABEL[application.status]}</small></span>
-                <strong>{usd(application.reductionCents)}</strong>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       {pendingPolicy && <p className="patient-panel" role="status">Hospital assistance is pending a simulated decision.</p>}
 
       {!canApply && !pendingPolicy && !grant && bill.remainingCents > 0 && (
@@ -235,34 +226,53 @@ function VisitBill({ data, refresh, demo }: { data: VisitData; refresh: () => Pr
       )}
 
       {grant && (
-        <section className="patient-panel" aria-live="polite">
-          <h2>Community care request</h2>
-          {grant.status === "pending_review" && <p>Request sent for {usd(grant.requestedCents)}. A reviewer will look at it.</p>}
-          {(grant.status === "approved" || grant.status === "payment_pending") && <p>Approved. Hospital payment is pending.</p>}
-          {grant.status === "paid" && <p>The fund paid {usd(grant.approvedCents)} directly to the hospital.</p>}
-          {grant.status === "rejected" && <p>The fund declined this request. Ask the hospital about other payment options.</p>}
-          {grant.status === "canceled" && <p>This request was cancelled.</p>}
-          {receipt?.nessiePaymentId && <p className="muted">Payment reference {receipt.nessiePaymentId}</p>}
-          {receipt?.solanaSignature && (LIVE && !demo ? (
-            <a href={receipt.explorerUrl ?? explorerTx(receipt.solanaSignature)} target="_blank" rel="noreferrer">View public receipt</a>
-          ) : <p className="muted">Demo receipt recorded</p>)}
+        <section className="patient-panel patient-request" aria-live="polite">
+          <span className="patient-request-icon"><Icon name={grant.status === "paid" ? "checkCircle" : "heart"} size={22} /></span>
+          <div>
+            <h2>Community care request</h2>
+            {grant.status === "pending_review" && <p>Request sent for {usd(grant.requestedCents)}. A reviewer will look at it.</p>}
+            {(grant.status === "approved" || grant.status === "payment_pending") && <p>Approved. Hospital payment is pending.</p>}
+            {grant.status === "paid" && <p>The fund paid {usd(grant.approvedCents)} directly to the hospital.</p>}
+            {grant.status === "rejected" && <p>The fund declined this request. Ask the hospital about other payment options.</p>}
+            {grant.status === "canceled" && <p>This request was cancelled.</p>}
+            {receipt?.nessiePaymentId && <p className="muted">Payment reference {receipt.nessiePaymentId}</p>}
+            {receipt?.solanaSignature && (LIVE && !demo ? (
+              <a href={receipt.explorerUrl ?? explorerTx(receipt.solanaSignature)} target="_blank" rel="noreferrer">View public receipt</a>
+            ) : <p className="muted">Demo receipt recorded</p>)}
+          </div>
         </section>
       )}
 
-      <details className="patient-panel patient-details">
-        <summary>Itemized charges</summary>
-        <ul className="patient-lines">
-          {bill.visit.lineItems.map((item, index) => <li key={index}><span>{item.description}</span><strong>{usd(item.cents)}</strong></li>)}
-        </ul>
-      </details>
-      {explanation && (
-        <details className="patient-panel patient-details">
-          <summary>Read or hear the bill explanation</summary>
-          <p>{explanation.summary}</p>
-          <ul>{explanation.points.map((point) => <li key={point}>{point}</li>)}</ul>
-          <ReadAloud text={[explanation.summary, ...explanation.points].join(" ")} />
+      <div className="patient-visit-details">
+        {approvals.length > 0 && (
+          <details className="patient-details">
+            <summary><Icon name="shield" size={18} /> {applied ? "Savings applied" : "Hospital savings"} <Icon name="chevronDown" size={16} /></summary>
+            <ul className="patient-lines">
+              {approvals.map((application) => (
+                <li key={application.id}>
+                  <span>{application.policy.name}<small>{POLICY_STATUS_LABEL[application.status]}</small></span>
+                  <strong>{usd(application.reductionCents)}</strong>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+
+        <details className="patient-details">
+          <summary><Icon name="receipt" size={18} /> Itemized charges <Icon name="chevronDown" size={16} /></summary>
+          <ul className="patient-lines">
+            {bill.visit.lineItems.map((item, index) => <li key={index}><span>{item.description}</span><strong>{usd(item.cents)}</strong></li>)}
+          </ul>
         </details>
-      )}
+        {explanation && (
+          <details className="patient-details">
+            <summary><Icon name="speaker" size={18} /> Bill explanation <Icon name="chevronDown" size={16} /></summary>
+            <p>{explanation.summary}</p>
+            <ul>{explanation.points.map((point) => <li key={point}>{point}</li>)}</ul>
+            <ReadAloud text={[explanation.summary, ...explanation.points].join(" ")} />
+          </details>
+        )}
+      </div>
     </>
   );
 }
