@@ -5,7 +5,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { Device } from "@abdulcare/contracts";
 import { DeskShell, type DeskView } from "@/components/desk/DeskShell";
 import { Icon } from "@/components/Icon";
-import { ApiRequestError, currentDevice, getReviewQueue, LIVE } from "@/lib/api";
+import { ApiRequestError, currentDevice, getBriefedQueue, getReviewQueue, LIVE } from "@/lib/api";
 import { cleanName, initials, usd, usdCompact, usdParts } from "@/lib/format";
 import type { Grant, NeedFactor, QueueItem, ReviewQueue } from "@/lib/types";
 import { CATEGORY_LABEL } from "@/lib/types";
@@ -48,7 +48,8 @@ export function Desk({ formulaPreview }: { formulaPreview: boolean }) {
     (quiet = false) => {
       if (quiet) setRefreshing(true);
       else setLoad((s) => (s.phase === "done" ? s : { phase: "loading" }));
-      return getReviewQueue(formulaPreview)
+      // Revision 6: formula order with a decision brief per request (?order=formula keeps the old preview).
+      return (formulaPreview ? getReviewQueue(true) : getBriefedQueue())
         .then((queue) => setLoad({ phase: "done", queue }))
         .catch((e) =>
           setLoad(
@@ -103,7 +104,9 @@ export function Desk({ formulaPreview }: { formulaPreview: boolean }) {
 
   function onDecided(g: Grant) {
     setToast(
-      g.status === "approved"
+      g.status === "paid" || g.status === "payment_pending"
+        ? `Approved and paid ${usd(g.approvedCents)} to ${g.provider.name}`
+        : g.status === "approved"
         ? `Approved ${usd(g.approvedCents)} for ${cleanName(g.patient.displayName)}`
         : g.status === "rejected"
           ? `Declined the request from ${cleanName(g.patient.displayName)}`

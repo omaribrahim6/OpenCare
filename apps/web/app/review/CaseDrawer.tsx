@@ -5,7 +5,7 @@ import type { GrantDecisionRequest } from "@abdulcare/contracts";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Icon } from "@/components/Icon";
 import { decideGrant } from "@/lib/api";
-import { cleanName, shortDate, usd } from "@/lib/format";
+import { cleanName, shortDate, stepLabel, usd } from "@/lib/format";
 import type { Grant, QueueItem } from "@/lib/types";
 import { CATEGORY_LABEL, INSURANCE_LABEL, SECOND_APPROVAL_ABOVE_CENTS, SUSPICIOUS_FIELD_LABEL } from "@/lib/types";
 
@@ -25,7 +25,13 @@ export function CaseDrawer({
   // Nessie settles whole dollars only. A second approval must match the first amount.
   const firstApproval = grant.approvals[0]?.approvedCents;
   const [amount, setAmount] = useState(
-    String(Math.floor((grant.awaitingSecondApproval && firstApproval ? firstApproval : grant.requestedCents) / 100)),
+    String(
+      Math.floor(
+        (grant.awaitingSecondApproval && firstApproval
+          ? firstApproval
+          : (item.brief?.suggestedCents ?? item.remainingCents ?? grant.requestedCents)) / 100,
+      ),
+    ),
   );
   const [confirm, setConfirm] = useState<"approve" | "reject" | null>(null);
   const [busy, setBusy] = useState(false);
@@ -45,7 +51,10 @@ export function CaseDrawer({
   const g = grant;
   const pending = g.status === "pending_review";
   const cents = Number(amount || 0) * 100;
-  const amountValid = /^\d+$/.test(amount) && cents >= 100 && cents <= g.requestedCents;
+  // Revision 6: approval pays at most the visit's remaining balance (the request amount for older grants).
+  const maxCents = item.remainingCents ?? g.requestedCents;
+  const amountValid = /^\d+$/.test(amount) && cents >= 100 && cents <= maxCents;
+  const brief = item.brief;
   const needsSecond = amountValid && cents > SECOND_APPROVAL_ABOVE_CENTS && !g.awaitingSecondApproval;
   const name = cleanName(g.patient.displayName);
   const topKey = [...a.factors].filter((f) => f.maxPoints > 0).sort((x, y) => y.points - x.points)[0]?.key;
@@ -94,6 +103,48 @@ export function CaseDrawer({
             </div>
           )}
 
+          {brief && (
+            <section className="dr-sec dr-brief" aria-labelledby="brief-title">
+              <h3 id="brief-title">
+                Decision brief ·{" "}
+                {brief.source === "gemini" ? "written by Gemini, numbers checked" : "standard template"}
+              </h3>
+              <ol className="dr-path">
+                {brief.path.map((s, i) => (
+                  <li key={`${s.label}-${i}`}>
+                    <span>
+                      {stepLabel(s.label)}
+                      {s.simulated ? " · simulated" : ""}
+                    </span>
+                    <strong>{usd(s.balanceCents)}</strong>
+                  </li>
+                ))}
+              </ol>
+              {brief.reasons.map((r) => (
+                <p key={r} className="dr-why">
+                  {r}
+                </p>
+              ))}
+              {brief.flags.length > 0 && (
+                <ul className="dr-flags">
+                  {brief.flags.map((f) => (
+                    <li key={f.detail}>
+                      <Icon name="alert" /> {f.detail}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="dr-suggest">
+                <Icon name="sparkles" />
+                <span>
+                  Suggested: approve the full remaining balance of <strong>{usd(brief.suggestedCents)}</strong>.
+                  {brief.needsSecondApproval ? " It's over the limit, so a second reviewer must also approve." : ""}
+                </span>
+              </p>
+              <p className="dr-hint">The brief is advice. It can&apos;t change the score, the order or the amount; you decide.</p>
+            </section>
+          )}
+
           <div className="dr-trio">
             <div>
               <small>Need score</small>
@@ -108,14 +159,16 @@ export function CaseDrawer({
               </strong>
             </div>
             <div>
-              <small>Requested</small>
-              <strong>{usd(g.requestedCents)}</strong>
+              <small>Remaining</small>
+              <strong>{usd(maxCents)}</strong>
             </div>
           </div>
 
           <section className="dr-sec">
             <h3>{source === "gemini" ? "Why Gemini ranked it here" : "Why it ranks here"}</h3>
-            <p className="dr-why">{item.rationale}</p>
+            <p className="dr-why">
+              {brief ? `#${item.rank} of the waiting requests by the published need formula (score ${a.score}).` : item.rationale}
+            </p>
             {source === "gemini" && item.disagreesWithFormula && (
               <p className="dr-hint" style={{ marginTop: 8 }}>
                 Gemini placed this {Math.abs(item.formulaRank - item.rank)} positions {item.formulaRank > item.rank ? "higher" : "lower"} than
@@ -178,7 +231,7 @@ export function CaseDrawer({
           </section>
 
           <section className="dr-sec">
-            <h3>Bill from the bank record</h3>
+            <h3>{g.visit ? "Hospital visit" : "Bill from the bank record"}</h3>
             <dl className="dr-kv">
               <div>
                 <dt>Billed by</dt>
@@ -245,7 +298,7 @@ export function CaseDrawer({
                 <p className="dr-hint">Over {usd(SECOND_APPROVAL_ABOVE_CENTS)}: a second caseworker must also approve before it can be paid.</p>
               ) : !amountValid ? (
                 <p className="dr-hint" style={{ color: "#c2412f" }}>
-                  Enter whole dollars from $1 up to the {usd(g.requestedCents)} requested.
+                  Enter whole dollars from $1 up to the {usd(maxCents)} remaining.
                 </p>
               ) : null}
               {error && (
@@ -258,7 +311,7 @@ export function CaseDrawer({
                   Decline
                 </button>
                 <button className="d-btn d-btn-lg d-btn-teal" onClick={() => setConfirm("approve")} disabled={busy || !amountValid}>
-                  Approve {amountValid ? usd(cents) : ""}
+                  {g.visit ? "Approve and pay" : "Approve"} {amountValid ? usd(cents) : ""}
                 </button>
               </div>
             </>
@@ -268,7 +321,13 @@ export function CaseDrawer({
             </div>
           ) : (
             <div className="dr-result ok" role="status">
-              <Icon name="checkCircle" /> Approved for {usd(g.approvedCents)}. The amount and recipient are now fixed.
+              <Icon name="checkCircle" />{" "}
+              {g.status === "paid"
+                ? `Paid ${usd(g.approvedCents)} to ${g.provider.name}. The patient's bill is updated.`
+                : g.status === "payment_pending"
+                  ? `Approved ${usd(g.approvedCents)}. Paying ${g.provider.name} now…`
+                  : `Approved for ${usd(g.approvedCents)}. The amount and recipient are now fixed.`}
+              {g.receipt?.nessiePaymentId && <small> Nessie payment {g.receipt.nessiePaymentId}</small>}
             </div>
           )}
         </footer>
@@ -286,7 +345,9 @@ export function CaseDrawer({
         <p style={{ color: "#5c5f5e" }}>
           {needsSecond
             ? `This records your approval for ${name}. Nothing is reserved until a second caseworker approves the same amount.`
-            : `This reserves ${usd(cents)} from the fund for ${name}, payable only to ${g.provider.name}. The amount and recipient can't be changed afterward.`}
+            : g.visit
+              ? `This pays ${usd(cents)} from the community care fund to ${g.provider.name} now, toward ${name}'s bill. It can't be undone.`
+              : `This reserves ${usd(cents)} from the fund for ${name}, payable only to ${g.provider.name}. The amount and recipient can't be changed afterward.`}
         </p>
       </ConfirmDialog>
       <ConfirmDialog
