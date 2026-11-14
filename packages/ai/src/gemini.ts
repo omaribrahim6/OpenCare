@@ -16,7 +16,11 @@ export interface ModelRequest {
   /** Gemini responseSchema (OpenAPI subset). */
   schema: Record<string, unknown>;
   temperature?: number;
+  /** Gemini 3 thinking level for this call. Pure rewording passes "minimal"; default comes from the env. */
+  thinkingLevel?: ThinkingLevel;
 }
+
+export type ThinkingLevel = "minimal" | "low" | "medium" | "high";
 
 /** Anything that turns a request into raw JSON text. Tests pass a fake. */
 export interface ModelClient {
@@ -80,7 +84,7 @@ export function createGeminiClient(opts: GeminiOptions = {}): ModelClient {
         systemInstruction: { parts: [{ text: req.system }] },
         contents: [{ role: "user", parts: req.parts }],
         generationConfig: {
-          ...generationTuning(model, req.temperature),
+          ...generationTuning(model, req.temperature, req.thinkingLevel),
           responseMimeType: "application/json",
           responseSchema: req.schema,
         },
@@ -125,13 +129,14 @@ export function createGeminiClient(opts: GeminiOptions = {}): ModelClient {
 
 /**
  * Gemini 3 models think before answering; at the default level a queue ranking can take over 20s.
- * GEMINI_THINKING_LEVEL ("minimal" | "low" | "medium" | "high", default "low") keeps it fast.
+ * GEMINI_THINKING_LEVEL ("minimal" | "low" | "medium" | "high", default "low") keeps it fast;
+ * a request's own thinkingLevel wins (the bill rewrites use "minimal": they only reword a template).
  * Google advises leaving Gemini 3 at its default temperature (1.0): lower values can loop.
  * Older models keep the caller's temperature (default 0).
  */
-export function generationTuning(model: string, temperature?: number): Record<string, unknown> {
+export function generationTuning(model: string, temperature?: number, thinkingLevel?: ThinkingLevel): Record<string, unknown> {
   if (/^gemini-3/.test(model)) {
-    const level = process.env.GEMINI_THINKING_LEVEL || "low";
+    const level = thinkingLevel || process.env.GEMINI_THINKING_LEVEL || "low";
     const keepTemp = process.env.GEMINI3_TEMPERATURE;
     return { thinkingConfig: { thinkingLevel: level }, ...(keepTemp ? { temperature: Number(keepTemp) } : {}) };
   }
@@ -148,7 +153,13 @@ export const S = {
     nullable: true,
     ...(description && { description }),
   }),
-  list: (items: Record<string, unknown>, description?: string) => ({ type: "ARRAY", items, ...(description && { description }) }),
+  list: (items: Record<string, unknown>, description?: string, size?: { min?: number; max?: number }) => ({
+    type: "ARRAY",
+    items,
+    ...(description && { description }),
+    ...(size?.min !== undefined && { minItems: size.min }),
+    ...(size?.max !== undefined && { maxItems: size.max }),
+  }),
   obj: (properties: Record<string, unknown>, required: string[] = Object.keys(properties)) => ({
     type: "OBJECT",
     properties,
