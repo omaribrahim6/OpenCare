@@ -85,7 +85,10 @@ export async function writeApplicationLive(input: ApplicationTextInput, deps: Li
       allowed: allowedNumbers([template.text]),
       noDecisions: true,
       maxLength: 1600,
-      mustInclude: [usd(input.evaluation.reductionCents), safePolicyName(input.policy.name)],
+      mustInclude: [
+        { label: "reduction amount", cents: input.evaluation.reductionCents },
+        { label: "policy name", text: safePolicyName(input.policy.name) },
+      ],
     });
     if (problem) {
       logFallback("application", problem);
@@ -223,7 +226,7 @@ export async function explainBillLive(input: BillExplanationInput, deps: LiveDep
       ...input.steps.flatMap((s) => [dollars(s.reductionCents), dollars(s.balanceCents), s.label]),
     ]);
     const opts = { allowed, noDecisions: true, maxLength: 600 };
-    const mustInclude = input.remainingCents > 0 ? [usd(input.remainingCents)] : [];
+    const mustInclude = input.remainingCents > 0 ? [{ label: "remaining balance", cents: input.remainingCents }] : [];
     const problem = checkText(summary, { ...opts, mustInclude });
     if (problem) {
       logFallback("explanation", problem);

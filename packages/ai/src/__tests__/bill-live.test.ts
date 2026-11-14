@@ -209,6 +209,33 @@ test("application: the policy name in other case and whole-dollar amounts still 
   assert.equal(off.source, "template");
 });
 
+test("application: the reduction matches by value and the policy name ignores punctuation", async () => {
+  for (const letter of [
+    "I am applying for Charity care and request a reduction of $1728.00 on my balance of $2160.00.",
+    "I am applying under your charity-care policy and request a reduction of 1,728 dollars.",
+    "I am applying for CHARITY CARE. Please consider a reduction of $1,728 on my balance.",
+  ]) {
+    const a = await engineWith(JSON.stringify({ text: letter })).engine.writeApplication(appInput);
+    assert.equal(a.source, "gemini", letter);
+  }
+});
+
+test("application: the fallback log names which required item was missing, without case data", async () => {
+  const lines: string[] = [];
+  const orig = console.warn;
+  console.warn = (msg: string) => lines.push(msg);
+  try {
+    await engineWith(JSON.stringify({ text: "I am applying for financial assistance and request $1,728.00 off." })).engine.writeApplication(appInput);
+    await engineWith(JSON.stringify({ text: "I am applying for Charity care for my balance of $2,160.00." })).engine.writeApplication(appInput);
+  } finally {
+    console.warn = orig;
+  }
+  assert.deepEqual(lines, [
+    "[ai] application used the template: missing the policy name",
+    "[ai] application used the template: missing the reduction amount",
+  ]);
+});
+
 test("application: new numbers, approval claims, a missing reduction or failures fall back", async () => {
   for (const text of [
     "I am applying for Charity care and request $1,728.00 off. My income is $1,900.00 a month.",
