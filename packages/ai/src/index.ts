@@ -9,3 +9,5 @@ export { explainBill, templateExplanation, DISCLAIMER } from "./explain";
 export type { BillToExplain } from "./explain";
 export { createGeminiClient, ModelUnavailableError, DEFAULT_MODEL } from "./gemini";
 export type { ModelClient } from "./gemini";
+export { vertexFromEnv, VERTEX_DEFAULT_MODEL } from "./vertex";
+export type { VertexConfig } from "./vertex";
