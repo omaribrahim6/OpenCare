@@ -229,6 +229,8 @@ export async function decideGrant(
 
     const cents = decision.approvedCents;
     if (!isPositiveCents(cents)) throw new CoreError("bad_request", "approvedCents must be a positive integer");
+    // Nessie stores whole dollars only, so a payout of cents would be truncated (payments lane).
+    if (cents % 100 !== 0) throw new CoreError("bad_request", "Approve whole dollars only");
     if (cents > Number(grant.requested_cents)) {
       throw new CoreError("bad_request", "Can't approve more than was requested");
     }
