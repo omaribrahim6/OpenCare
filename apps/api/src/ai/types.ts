@@ -85,7 +85,7 @@ export interface TransactionClassification {
   likelyMedical: boolean;
   /** Short reason shown to the patient. */
   reason: string;
-  /** Who decided: the model, the keyword fallback, or both agreeing. */
+  /** Who decided: the model, or the keyword rules (model unavailable or suspicious text). */
   basis: "ai" | "rules";
 }
 
