@@ -5,10 +5,13 @@ import { Icon, SolanaMark, type IconName } from "@/components/Icon";
 import { VioletOverview } from "@/components/site/VioletOverview";
 import { DonatePanel } from "@/components/site/DonatePanel";
 import { PublicShell } from "@/components/site/PublicShell";
-import { getFundSummary } from "@/lib/api";
+import { LedgerCaseDrawer } from "@/components/site/LedgerCaseDrawer";
+import { getFundSummary, getLedger } from "@/lib/api";
 import { explorerTx, shortDate, shortSig, usd, usdParts } from "@/lib/format";
 import { FORMULA_WEIGHTS } from "@/lib/mock";
+import type { LedgerEntry, LedgerResponse } from "@abdulcare/contracts";
 import type { FundSummary } from "@/lib/types";
+import { CATEGORY_LABEL } from "@/lib/types";
 import { SECOND_APPROVAL_ABOVE_CENTS } from "@/lib/types";
 
 // Public home: the community fund. Aggregates only; nothing here identifies a patient.
@@ -24,7 +27,9 @@ const EVENT: Record<string, { label: string; icon: IconName; bg: string; fg: str
   donation: { label: "Donation", icon: "heart", bg: "var(--mint-soft)", fg: "#2a7a5f", sign: "+" },
   reservation: { label: "Reserved for a grant", icon: "lock", bg: "var(--lilac-soft)", fg: "#5a51a8", sign: "" },
   release: { label: "Reservation released", icon: "refresh", bg: "#f0f1f0", fg: "#5d625f", sign: "" },
-  payout: { label: "Paid to provider", icon: "store", bg: "var(--rose-soft)", fg: "#a5513f", sign: "−" },
+  payout: { label: "Paid to hospital", icon: "store", bg: "var(--rose-soft)", fg: "#a5513f", sign: "−" },
+  pending: { label: "Approved, paying", icon: "clock", bg: "var(--lilac-soft)", fg: "#5a51a8", sign: "−" },
+  declined: { label: "Request declined", icon: "xCircle", bg: "#f0f1f0", fg: "#5d625f", sign: "" },
   receipt: { label: "Receipt", icon: "receipt", bg: "var(--sky-soft)", fg: "#3b6c9a", sign: "" },
 };
 
@@ -35,6 +40,7 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<Tab>("overview");
   const [s, setS] = useState<FundSummary | null>(null);
+  const [ledger, setLedger] = useState<LedgerResponse | null>(null);
   const [failed, setFailed] = useState(false);
 
   const load = useCallback(() => {
@@ -42,27 +48,37 @@ export default function Home() {
     getFundSummary()
       .then(setS)
       .catch(() => setFailed(true));
+    getLedger()
+      .then(setLedger)
+      .catch(() => setFailed(true));
   }, []);
   useEffect(load, [load]);
 
   function exportLedger() {
-    if (!s?.recent.length) return;
-    const field = (value: string | number | null) => {
+    if (!ledger?.entries.length) return;
+    const field = (value: string | number | null | undefined) => {
       const text = String(value ?? "");
       return '"' + text.replaceAll('"', '""') + '"';
     };
-    const rows = s.recent.map((event) => [
-      EVENT[event.type].label,
-      event.at,
-      event.amountCents / 100,
-      event.solanaSignature,
+    const rows = ledger.entries.map((e) => [
+      EVENT[e.kind]?.label ?? e.kind,
+      e.at,
+      e.reference,
+      e.donorLabel ?? e.hospital ?? "",
+      e.summary ?? "",
+      e.chargesCents == null ? "" : e.chargesCents / 100,
+      e.insurerPaidCents == null ? "" : e.insurerPaidCents / 100,
+      e.hospitalAssistanceCents == null ? "" : e.hospitalAssistanceCents / 100,
+      e.amountCents / 100,
+      e.needScore ?? "",
+      e.solanaSignature,
     ].map(field).join(","));
     const url = URL.createObjectURL(new Blob([
-      ["Event,Date,Amount (USD),Solana signature", ...rows].join("\r\n"),
+      ["Event,Date,Reference,Funder or hospital,Care,Cost of care (USD),Insurance paid (USD),Hospital assistance (USD),Fund amount (USD),Need score,Solana signature", ...rows].join("\r\n"),
     ], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
     link.href = url;
-    link.download = "abdulcare-fund-activity.csv";
+    link.download = "abdulcare-public-ledger.csv";
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -84,14 +100,14 @@ export default function Home() {
           {tab === "overview"
             ? "Pays medical bills straight to the provider. A caseworker approves every grant."
             : tab === "ledger"
-              ? "Every dollar in and out. References are opaque and never identify a patient."
+              ? "Every dollar in and every case decided, with the bill behind it. Open a case to audit it; no one is named."
               : "Tap, pick a bill, a caseworker decides, the provider is paid."}
         </small>
       </h1>
         {tab !== "about" && (
           <div className="v-page-actions">
             {s?.recent[0] && <span className="v-outline v-date"><Icon name="calendar" /> {shortDate(s.recent[0].at)}</span>}
-            <button className="v-outline" onClick={exportLedger} disabled={!s?.recent.length}><Icon name="arrowUpRight" /> Export</button>
+            <button className="v-outline" onClick={exportLedger} disabled={!ledger?.entries.length}><Icon name="arrowUpRight" /> Export</button>
           </div>
         )}
       </div>
@@ -109,7 +125,7 @@ export default function Home() {
       )}
 
       {tab === "overview" && <VioletOverview summary={s} showLedger={() => { setSearch(""); setTab("ledger"); }} showRules={() => setTab("about")} showDonation={showDonation} />}
-      {tab === "ledger" && <LedgerTable s={s} search={search} />}
+      {tab === "ledger" && <LedgerTable ledger={ledger} search={search} />}
       {tab === "about" && <About s={s} />}
 
       <p className="proto-note">HackUMass prototype · fictional people · Nessie sandbox money · Solana devnet receipts</p>
@@ -121,23 +137,38 @@ export default function Home() {
   );
 }
 
-function LedgerTable({ s, search }: { s: FundSummary | null; search: string }) {
+function LedgerTable({ ledger, search }: { ledger: LedgerResponse | null; search: string }) {
   const term = search.trim().toLowerCase();
-  const filtered = s && term ? {
-    ...s,
-    recent: s.recent.filter((event) => [EVENT[event.type]?.label, event.reference, event.solanaSignature].some((value) => value?.toLowerCase().includes(term))),
-  } : s;
-  return <LedgerResults key={term} s={filtered} />;
+  const entries = (ledger?.entries ?? []).filter(
+    (e) =>
+      !term ||
+      [EVENT[e.kind]?.label, e.reference, e.solanaSignature, e.hospital, e.summary, e.donorLabel, e.region]
+        .some((value) => value?.toLowerCase().includes(term)),
+  );
+  return <LedgerResults key={term} ledger={ledger} entries={entries} />;
 }
 
-function LedgerResults({ s }: { s: FundSummary | null }) {
-  const [filter, setFilter] = useState<"all" | "donation" | "payout">("all");
-  const rows = (s?.recent ?? []).filter((e) => filter === "all" || e.type === filter);
+type LedgerFilter = "all" | "donation" | "payout" | "declined";
+
+function LedgerResults({ ledger, entries }: { ledger: LedgerResponse | null; entries: LedgerEntry[] }) {
+  const [filter, setFilter] = useState<LedgerFilter>("all");
+  const [open, setOpen] = useState<string | null>(null);
+  const [limit, setLimit] = useState(60);
+  const rows = entries.filter((e) => filter === "all" || e.kind === filter || (filter === "payout" && e.kind === "pending"));
+  const t = ledger?.totals;
   return (
     <section className="g-card" aria-label="Ledger">
+      {t && (
+        <dl className="lc-summary">
+          <div><dt>Donated</dt><dd>{usd(t.donatedCents)}</dd></div>
+          <div><dt>Paid to hospitals</dt><dd>{usd(t.paidCents)}</dd></div>
+          <div><dt>Cost of care reviewed</dt><dd>{usd(t.careCostCents)}</dd></div>
+          <div><dt>Cases decided</dt><dd>{t.cases.toLocaleString()} <small>({t.declined} declined)</small></dd></div>
+        </dl>
+      )}
       <div className="g-head" style={{ marginBottom: 18, alignItems: "center" }}>
         <p className="g-sub" style={{ margin: 0 }}>
-          Latest {s?.recent.length ?? 0} events
+          {rows.length.toLocaleString()} events · select a case to see its bill
         </p>
         <div className="tabs" role="tablist" aria-label="Filter">
           {(
@@ -145,6 +176,7 @@ function LedgerResults({ s }: { s: FundSummary | null }) {
               ["all", "All"],
               ["donation", "Donations"],
               ["payout", "Payouts"],
+              ["declined", "Declined"],
             ] as const
           ).map(([f, label]) => (
             <button key={f} role="tab" aria-selected={filter === f} onClick={() => setFilter(f)}>
@@ -158,7 +190,8 @@ function LedgerResults({ s }: { s: FundSummary | null }) {
           <thead>
             <tr>
               <th scope="col">Event</th>
-              <th scope="col">Reference</th>
+              <th scope="col">Details</th>
+              <th scope="col" className="right">Cost of care</th>
               <th scope="col">Date</th>
               <th scope="col">Solana receipt</th>
               <th scope="col" className="right">
@@ -167,11 +200,16 @@ function LedgerResults({ s }: { s: FundSummary | null }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((e, i) => {
-              const m = EVENT[e.type] ?? EVENT.release;
+            {rows.slice(0, limit).map((e, i) => {
+              const m = EVENT[e.kind] ?? EVENT.release;
               const [w, c] = usdParts(e.amountCents);
+              const isCase = e.kind !== "donation";
               return (
-                <tr key={`${e.reference}-${i}`}>
+                <tr
+                  key={`${e.reference}-${i}`}
+                  className={isCase ? "lc-clickable" : undefined}
+                  onClick={isCase ? () => setOpen(e.reference) : undefined}
+                >
                   <td>
                     <span className="ev">
                       <span className="act-icon" style={{ "--bg-c": m.bg, "--fg-c": m.fg } as React.CSSProperties}>
@@ -180,13 +218,28 @@ function LedgerResults({ s }: { s: FundSummary | null }) {
                       {m.label}
                     </span>
                   </td>
-                  <td className="mono muted">{e.reference}</td>
+                  <td className="lc-detail">
+                    {isCase ? (
+                      <button type="button" className="lc-link" onClick={(ev) => { ev.stopPropagation(); setOpen(e.reference); }}>
+                        <strong>{e.summary}</strong>
+                        <small className="muted">
+                          {e.hospital} · {e.category ? CATEGORY_LABEL[e.category] : ""}{e.needScore != null ? ` · need ${e.needScore}/100` : ""} · <span className="mono">{e.reference}</span>
+                        </small>
+                      </button>
+                    ) : (
+                      <>
+                        <strong>{e.donorLabel ?? "Anonymous donor"}</strong>
+                        <small className="muted mono">{e.reference}</small>
+                      </>
+                    )}
+                  </td>
+                  <td className="right num muted">{e.chargesCents != null ? usd(e.chargesCents) : "—"}</td>
                   <td>
-                    {new Date(e.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    {new Date(e.at).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </td>
                   <td>
                     {e.solanaSignature ? (
-                      <a className="sig" href={explorerTx(e.solanaSignature)} target="_blank" rel="noreferrer">
+                      <a className="sig" href={explorerTx(e.solanaSignature)} target="_blank" rel="noreferrer" onClick={(ev) => ev.stopPropagation()}>
                         <SolanaMark size={12} />
                         {shortSig(e.solanaSignature)}
                       </a>
@@ -195,16 +248,22 @@ function LedgerResults({ s }: { s: FundSummary | null }) {
                     )}
                   </td>
                   <td className="right num">
-                    {m.sign}
-                    {w}
-                    <span className="cents">{c}</span>
+                    {e.kind === "declined" ? (
+                      <span className="muted">$0</span>
+                    ) : (
+                      <>
+                        {m.sign}
+                        {w}
+                        <span className="cents">{c}</span>
+                      </>
+                    )}
                   </td>
                 </tr>
               );
             })}
-            {s && rows.length === 0 && (
+            {ledger && rows.length === 0 && (
               <tr>
-                <td colSpan={5} className="muted">
+                <td colSpan={6} className="muted">
                   Nothing here yet.
                 </td>
               </tr>
@@ -212,6 +271,12 @@ function LedgerResults({ s }: { s: FundSummary | null }) {
           </tbody>
         </table>
       </div>
+      {rows.length > limit && (
+        <div style={{ textAlign: "center", marginTop: 14 }}>
+          <button className="v-outline" onClick={() => setLimit((n) => n + 100)}>Show more</button>
+        </div>
+      )}
+      {open && <LedgerCaseDrawer reference={open} onClose={() => setOpen(null)} />}
     </section>
   );
 }
