@@ -188,7 +188,7 @@ test("application: a checked Gemini letter is used, with the simulated footer ad
   const { engine } = engineWith(JSON.stringify({ text: letter }));
   const a = await engine.writeApplication(appInput);
   assert.deepEqual([a.source, a.model], ["gemini", "fake-model/bills-v1"]);
-  assert.match(a.text, /^Dear Valley General/);
+  assert.match(a.text, /^Application for Charity care at Valley General Hospital\n\nDear Valley General/);
   assert.match(a.text, /Submission and the hospital's decision are simulated\.$/);
 });
 
@@ -225,15 +225,22 @@ test("application: the fallback log names which required item was missing, witho
   const orig = console.warn;
   console.warn = (msg: string) => lines.push(msg);
   try {
-    await engineWith(JSON.stringify({ text: "I am applying for financial assistance and request $1,728.00 off." })).engine.writeApplication(appInput);
     await engineWith(JSON.stringify({ text: "I am applying for Charity care for my balance of $2,160.00." })).engine.writeApplication(appInput);
   } finally {
     console.warn = orig;
   }
-  assert.deepEqual(lines, [
-    "[ai] application used the template: missing the policy name",
-    "[ai] application used the template: missing the reduction amount",
-  ]);
+  assert.deepEqual(lines, ["[ai] application used the template: missing the reduction amount"]);
+});
+
+test("application: a letter that never names the policy gets the template heading from code", async () => {
+  const letter = "Dear billing office,\nI am applying for financial assistance and request a reduction of $1,728.00 on my balance of $2,160.00.\nThank you.";
+  const a = await engineWith(JSON.stringify({ text: letter })).engine.writeApplication(appInput);
+  const heading = applicationTemplate(appInput).text.split("\n")[0];
+  assert.equal(a.source, "gemini");
+  assert.ok(a.text.startsWith(`${heading}\n\nDear billing office,`), a.text);
+  // A letter that already starts with the heading is not given a second one.
+  const again = await engineWith(JSON.stringify({ text: `${heading}\n\n${letter}` })).engine.writeApplication(appInput);
+  assert.equal(again.text.split(heading).length, 2);
 });
 
 test("application: new numbers, approval claims, a missing reduction or failures fall back", async () => {
