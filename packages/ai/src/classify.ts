@@ -1,12 +1,12 @@
 // Transaction classification (SPEC §7 job 1). For each Nessie bill and purchase: likely
 // medical or not, an expense category, and a short reason. Keyword rules back up the model
-// and replace it when it's unavailable or when a merchant name looks like an attack.
+// and replace it when it's unavailable or when the bank text looks like an attack.
 
 import { EXPENSE_CATEGORIES, type ExpenseCategory, type TransactionClassification, type TransactionInput } from "@abdulcare/contracts";
 import { createGeminiClient, S, type ModelClient } from "./gemini";
 import { asRecord, parseModelJson } from "./json";
 import { keywordHit } from "./keywords";
-import { BASE_RULES, cleanUntrusted, detectInjection, fenceUntrusted } from "./sanitize";
+import { BASE_RULES, cleanUntrusted, detectInjection, fenceUntrusted, firstInjectionMatch } from "./sanitize";
 
 export const MAX_TRANSACTIONS = 100;
 
@@ -35,6 +35,29 @@ function byRules(t: TransactionInput): TransactionClassification {
   return hit
     ? { id: t.id, likelyMedical: true, category: hit.category, reason: `Looks like a ${hit.label}`, basis: "rules" }
     : { id: t.id, likelyMedical: false, category: null, reason: "No sign of a healthcare provider", basis: "rules" };
+}
+
+/** Each field cut at its first injection-like text, so only what precedes it is classified. */
+function textBeforeInjection(t: TransactionInput): string {
+  return [t.merchant, t.description ?? ""]
+    .map((raw) => {
+      const clean = cleanUntrusted(raw, 200);
+      const match = firstInjectionMatch(clean);
+      return match ? clean.slice(0, match[0]) : clean;
+    })
+    .join(" ");
+}
+
+/**
+ * Suspicious rows never reach the model. They are classified by the keyword rules on the text
+ * before the injected part, so the injection changes nothing (SPEC §7): the tampered demo bill
+ * from "Valley Urgent Care" stays an emergency expense and carries core's warning badge.
+ */
+function bySuspiciousRules(t: TransactionInput): TransactionClassification {
+  const hit = keywordHit(textBeforeInjection(t));
+  return hit
+    ? { id: t.id, likelyMedical: true, category: hit.category, reason: `Looks like a ${hit.label}; unusual text in the record was ignored`, basis: "rules" }
+    : { id: t.id, likelyMedical: false, category: null, reason: "Unusual text in the record, check this one by hand", basis: "rules" };
 }
 
 function safeReason(input: unknown, fallback: string): string {
@@ -80,10 +103,7 @@ export async function classifyTransactions(
   }
 
   return list.map((t): TransactionClassification => {
-    // Attacker-written text must not promote its own transaction, so suspicious rows are never flagged.
-    if (suspicious.has(t.id)) {
-      return { id: t.id, likelyMedical: false, category: null, reason: "Unusual merchant text, check this one by hand", basis: "rules" };
-    }
+    if (suspicious.has(t.id)) return bySuspiciousRules(t);
     const m = fromModel.get(t.id);
     if (!m) return byRules(t);
     if (m.likelyMedical !== true) {
