@@ -462,6 +462,23 @@ export async function donate(amountCents: number): Promise<DonationResponse> {
   };
 }
 
+/** Stand-in for POST /api/fund/donations/solana ({ signature } → DonationResponse). */
+export async function donateSol(signature: string): Promise<DonationResponse> {
+  await delay(900);
+  const amountCents = 0; // SOL has no dollar value; the fund's dollar totals don't change.
+  return {
+    donation: {
+      id: "don_mock_sol",
+      rail: "solana",
+      amountCents,
+      nessieDepositId: null,
+      solanaSignature: signature,
+      at: new Date().toISOString(),
+    },
+    fund: { ...FUND, donationCount: (FUND.donationCount ?? 0) + 1 },
+  };
+}
+
 /** The factor weights the dashboard shows publicly (SPEC §2, §7). Not part of FundSummary yet. */
 export const FORMULA_WEIGHTS = {
   formulaVersion: "need-v1",
