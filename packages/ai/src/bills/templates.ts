@@ -29,12 +29,25 @@ export const SIMULATED_FOOTER = "Prepared from the patient's TrumpCare profile. 
 export const BILL_DISCLAIMER =
   "Prototype with fictional data. Insurance and hospital decisions shown here are simulated. This is not medical, legal or financial advice.";
 
-const FIELD_LABELS: Record<string, string> = { hardship_note: "hardship note", merchant: "merchant name", description: "visit description" };
+const FIELD_LABELS: Record<string, string> = {
+  hardship_note: "hardship note",
+  merchant: "merchant name",
+  description: "visit description",
+  policy_text: "hospital policy text",
+};
 
 /** Untrusted visit text, shown only when it doesn't look like an instruction. */
 export function safeText(text: string, fallback: string, max = 80): string {
   const clean = cleanUntrusted(text, max);
   return clean && detectInjection(clean).length === 0 ? clean : fallback;
+}
+
+/** Policy text is untrusted too (SPEC §7): a flagged name or source is never shown or sent. */
+export function safePolicyName(name: string): string {
+  return safeText(name, "this hospital policy", 120);
+}
+export function safePolicySource(source: string): string {
+  return safeText(source, "withheld: the source text was flagged for review", 200);
 }
 
 // ---------------------------------------------------------------------------
@@ -44,7 +57,7 @@ export function applicationTemplate(input: ApplicationTextInput): ApplicationTex
   const p = input.profile;
   const e = input.evaluation;
   const lines = [
-    `Application for ${input.policy.name} at ${input.hospitalName}`,
+    `Application for ${safePolicyName(input.policy.name)} at ${safeText(input.hospitalName, "the hospital", 120)}`,
     `Visit: ${input.visitDate}, ${CATEGORY_LABELS[input.category]} care`,
     `Balance this application asks about: ${usd(input.balanceCents)}`,
     "",
@@ -58,7 +71,7 @@ export function applicationTemplate(input: ApplicationTextInput): ApplicationTex
     ...(e.missing.length ? ["", `Missing information: ${e.missing.join(", ")}.`] : []),
     "",
     `Requested reduction under the policy rules: ${usd(e.reductionCents)}.`,
-    `Policy source: ${input.policy.source} (reviewed ${input.policy.reviewedOn}).`,
+    `Policy source: ${safePolicySource(input.policy.source)} (reviewed ${input.policy.reviewedOn}).`,
     SIMULATED_FOOTER,
   ];
   return { text: lines.join("\n"), source: "template", model: null };
