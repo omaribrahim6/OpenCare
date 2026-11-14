@@ -4,10 +4,11 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { Device } from "@abdulcare/contracts";
 import { DeskShell, type DeskView } from "@/components/desk/DeskShell";
 import { Icon } from "@/components/Icon";
-import { ApiRequestError, currentDevice, getBriefedQueue, LIVE } from "@/lib/api";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ApiRequestError, currentDevice, decideGrant, getBriefedQueue, LIVE } from "@/lib/api";
 import { cleanName, initials, usd, usdCompact, usdParts } from "@/lib/format";
-import type { Grant, NeedFactor, QueueItem, ReviewQueue } from "@/lib/types";
-import { CATEGORY_LABEL } from "@/lib/types";
+import type { Grant, QueueItem, ReviewQueue } from "@/lib/types";
+import { CATEGORY_LABEL, SECOND_APPROVAL_ABOVE_CENTS } from "@/lib/types";
 import { AdminGate } from "./AdminGate";
 import { CaseDrawer } from "./CaseDrawer";
 import { FundWorkspace } from "./FundWorkspace";
@@ -19,10 +20,8 @@ type Load =
   | { phase: "done"; queue: ReviewQueue };
 
 type SortKey = "rank" | "amount" | "need" | "waiting";
-type Metric = "amount" | "need";
+type Metric = "count" | "amount";
 
-const topFactors = (factors: NeedFactor[], n = 3) =>
-  [...factors].filter((f) => f.maxPoints > 0).sort((a, b) => b.points - a.points).slice(0, n);
 
 /** Admin (SPEC §4 screen 5): behind a staff PIN, the need-ranked queue, why each request ranks there, and the decision. */
 export function Desk({ initialView }: { initialView: DeskView }) {
@@ -36,7 +35,7 @@ export function Desk({ initialView }: { initialView: DeskView }) {
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "rank", dir: 1 });
-  const [metric, setMetric] = useState<Metric>("amount");
+  const [metric, setMetric] = useState<Metric>("count");
   const [toast, setToast] = useState<string | null>(null);
   const [decidedTick, setDecidedTick] = useState(0);
 
@@ -257,15 +256,22 @@ export function Desk({ initialView }: { initialView: DeskView }) {
       ) : (
         <>
           <div className="d-split">
-            <BudgetChart
+            <InflowChart
               items={items}
               available={available}
               metric={metric}
               setMetric={setMetric}
-              selectedId={selected?.grant.id ?? null}
-              onSelect={setSelectedId}
             />
-            {selected && <Selected item={selected} onReview={() => setDrawerId(selected.grant.id)} />}
+            {selected && (
+              <NextUp
+                key={selected.grant.id}
+                items={items}
+                item={selected}
+                onSelect={setSelectedId}
+                onDetails={() => setDrawerId(selected.grant.id)}
+                onDecided={onDecided}
+              />
+            )}
           </div>
 
           <section className="d-card" aria-labelledby="rq-title">
@@ -415,174 +421,285 @@ function money(cents: number): string {
   return Math.abs(cents) >= 100_000_000 ? usdCompact(cents) : usd(cents);
 }
 
-const CHART_ROWS = 8;
+const DAY_MS = 86_400_000;
+
+/** Nice round step for a y-axis that tops out at or above max with 4 gridlines. */
+function niceStep(max: number): number {
+  const raw = Math.max(max, 1) / 4;
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+  const f = raw / pow;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * pow;
+}
 
 /**
- * Queue at a glance: the top requests in need order as horizontal bars, scaled to the requests
- * themselves (not the budget), with a line where the budget runs out if everything above were paid.
+ * Requests received per day (from how long each waiting request has waited), as vertical bars.
+ * Shows whether the queue is filling up or calming down. Hover or focus a bar for the day's detail.
  */
-function BudgetChart({
+function InflowChart({
   items,
   available,
   metric,
   setMetric,
-  selectedId,
-  onSelect,
 }: {
   items: QueueItem[];
   available: number;
   metric: Metric;
   setMetric: (m: Metric) => void;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
 }) {
-  const ranked = [...items].sort((a, b) => a.rank - b.rank);
-  // How many requests, taken in need order, the budget pays in full.
-  let running = 0;
-  let covered = 0;
-  for (const it of ranked) {
-    running += it.grant.requestedCents;
-    if (running > available) break;
-    covered++;
+  const [hover, setHover] = useState<number | null>(null);
+  const span = Math.min(30, Math.max(7, ...items.map((it) => it.daysWaiting + 1)));
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  // Oldest day first; index span-1 is today.
+  const days = Array.from({ length: span }, (_, i) => ({
+    date: new Date(today.getTime() - (span - 1 - i) * DAY_MS),
+    count: 0,
+    cents: 0,
+  }));
+  for (const it of items) {
+    const d = days[span - 1 - Math.min(it.daysWaiting, span - 1)];
+    d.count += 1;
+    d.cents += it.grant.requestedCents;
   }
-  const total = ranked.reduce((a, it) => a + it.grant.requestedCents, 0);
-  const all = covered === ranked.length;
-  const shown = ranked.slice(0, CHART_ROWS);
-  const value = (it: QueueItem) => (metric === "amount" ? it.grant.requestedCents : it.assessment.score);
-  const max = metric === "amount" ? Math.max(...shown.map(value), 1) : 100;
-  const label = (it: QueueItem) => (metric === "amount" ? usd(value(it)) : `${value(it)}`);
+  const val = (d: (typeof days)[number]) => (metric === "count" ? d.count : d.cents);
+  // Counts get whole-number gridlines (never "0.25 requests").
+  const step = metric === "count" ? Math.max(1, Math.ceil(niceStep(Math.max(...days.map(val))))) : niceStep(Math.max(...days.map(val)));
+  const top = step * 4;
+  const fmt = (v: number) => (metric === "count" ? String(v) : usdCompact(v));
+  const total = items.reduce((a, it) => a + it.grant.requestedCents, 0);
+  const coversAll = total <= available;
+  const labelEvery = span > 16 ? 3 : span > 8 ? 2 : 1;
+  const day = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const h = hover == null ? null : days[hover];
 
   return (
-    <section className="d-card d-rank-card" aria-labelledby="bc-title">
+    <section className="d-card d-inflow" aria-labelledby="inflow-title">
       <div className="d-rank-head">
         <div>
-          <h2 id="bc-title">Queue by need</h2>
+          <h2 id="inflow-title">Requests received</h2>
           <p className="d-note">
             <Icon name="wallet" />
             <span>
-              {all ? (
-                <>
-                  Budget <b>{money(available)}</b> covers all {ranked.length} {ranked.length === 1 ? "request" : "requests"} ({money(total)})
-                </>
-              ) : (
-                <>
-                  Budget <b>{money(available)}</b> covers the top <b>{covered} of {ranked.length}</b> in need order
-                </>
-              )}
+              Budget <b>{money(available)}</b> {coversAll ? `covers all ${items.length} waiting (${money(total)})` : `falls short of the ${money(total)} waiting`}
             </span>
           </p>
         </div>
         <div className="tabs" role="tablist" aria-label="Bars show">
+          <button role="tab" aria-selected={metric === "count"} onClick={() => setMetric("count")}>
+            Requests
+          </button>
           <button role="tab" aria-selected={metric === "amount"} onClick={() => setMetric("amount")}>
             Amount
-          </button>
-          <button role="tab" aria-selected={metric === "need"} onClick={() => setMetric("need")}>
-            Need score
           </button>
         </div>
       </div>
 
-      <ol className="d-rank" aria-label={metric === "amount" ? "Requested amount, highest need first" : "Need score out of 100, highest need first"}>
-        {shown.map((it, i) => {
-          const on = it.grant.id === selectedId;
-          const beyond = i >= covered;
-          const name = cleanName(it.grant.patient.displayName);
-          return (
-            <Fragment key={it.grant.id}>
-              {i === covered && !all && (
-                <li className="d-rank-cut" aria-label="The budget runs out here">
-                  <span>Budget runs out here</span>
-                </li>
-              )}
-              <li>
-                <button
-                  className={`d-rank-row${on ? " on" : ""}${beyond ? " beyond" : ""}`}
-                  onClick={() => onSelect(it.grant.id)}
-                  aria-pressed={on}
-                  aria-label={`Rank ${it.rank}, ${name}, ${metric === "amount" ? `requested ${usd(value(it))}` : `need score ${value(it)} of 100`}${beyond ? ", beyond the budget" : ""}`}
-                >
-                  <span className="d-rank-n">#{it.rank}</span>
-                  <span className="d-rank-name">{name}</span>
-                  <span className="d-rank-track" aria-hidden="true">
-                    <i style={{ width: `${Math.max(2, (value(it) / max) * 100)}%` }} />
-                  </span>
-                  <span className="d-rank-val">{label(it)}</span>
-                </button>
-              </li>
-            </Fragment>
-          );
-        })}
-      </ol>
-      {ranked.length > CHART_ROWS && (
-        <p className="d-rank-more">
-          Top {CHART_ROWS} of {ranked.length}. The full queue is in the table below.
-        </p>
-      )}
+      <div className="d-vbars">
+        <div className="d-vbars-grid" aria-hidden="true">
+          {[4, 3, 2, 1, 0].map((k) => (
+            <div key={k}>
+              <span>{fmt(step * k)}</span>
+            </div>
+          ))}
+        </div>
+        <div className="d-vbars-plot" role="list" aria-label={`Waiting requests by day received, last ${span} days`} onMouseLeave={() => setHover(null)}>
+          {days.map((d, i) => {
+            const v = val(d);
+            return (
+              <div
+                key={i}
+                role="listitem"
+                tabIndex={0}
+                className={`d-vbar${hover === i ? " on" : ""}${i === span - 1 ? " today" : ""}`}
+                onMouseEnter={() => setHover(i)}
+                onFocus={() => setHover(i)}
+                onBlur={() => setHover(null)}
+                aria-label={`${day(d.date)}: ${d.count} ${d.count === 1 ? "request" : "requests"}, ${usd(d.cents)}`}
+              >
+                <i style={{ height: v ? `max(4px, ${(v / top) * 100}%)` : 0 }} />
+                <span className="d-vbar-x">{i === span - 1 ? "Today" : (span - 1 - i) % labelEvery === 0 ? day(d.date) : ""}</span>
+              </div>
+            );
+          })}
+          {h && hover != null && (
+            <div className="d-vtip" style={{ left: `${((hover + 0.5) / span) * 100}%`, bottom: `calc(${(Math.min(val(h), top) / top) * 100}% + 8px)` }}>
+              <small>{hover === span - 1 ? "Today" : day(h.date)}</small>
+              <div>
+                <span>{h.count === 1 ? "1 request" : `${h.count} requests`}</span>
+                <span>{usd(h.cents)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
 
-function Selected({ item, onReview }: { item: QueueItem; onReview: () => void }) {
+/**
+ * The next request to decide: who it is, what approving pays and why it ranks first, with
+ * approve, decline and details one click away. Arrows step through the queue in need order.
+ */
+function NextUp({
+  items,
+  item,
+  onSelect,
+  onDetails,
+  onDecided,
+}: {
+  items: QueueItem[];
+  item: QueueItem;
+  onSelect: (id: string) => void;
+  onDetails: () => void;
+  onDecided: (g: Grant) => void;
+}) {
+  const [confirm, setConfirm] = useState<"approve" | "reject" | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const ranked = [...items].sort((a, b) => a.rank - b.rank);
+  const pos = ranked.findIndex((it) => it.grant.id === item.grant.id);
   const g = item.grant;
-  const top = topFactors(item.assessment.factors);
-  const colors = ["var(--d-teal)", "var(--d-sand)", "var(--d-mist)"];
+  const name = cleanName(g.patient.displayName);
+  // Same default as the case drawer: the brief's suggestion (the full remaining balance), in whole dollars for Nessie.
+  const firstApproval = g.approvals[0]?.approvedCents;
+  const cents =
+    g.awaitingSecondApproval && firstApproval
+      ? firstApproval
+      : Math.floor((item.brief?.suggestedCents ?? item.remainingCents ?? g.requestedCents) / 100) * 100;
+  const needsSecond = cents > SECOND_APPROVAL_ABOVE_CENTS && !g.awaitingSecondApproval;
+  const why = item.brief?.reasons[0] ?? item.insight?.summary ?? item.rationale;
+  const flags = [
+    ...(item.suspiciousContent ? ["Suspicious text in the request"] : []),
+    ...(item.brief?.flags.map((f) => f.detail) ?? []),
+  ];
+  const urgency = item.insight?.urgency;
+
+  async function decide(decision: "approve" | "reject") {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = (await decideGrant(g.id, decision === "approve" ? { decision, approvedCents: cents } : { decision })).grant;
+      setConfirm(null);
+      onDecided(next);
+    } catch (e) {
+      setConfirm(null);
+      setError(e instanceof Error ? e.message : "The decision wasn't saved. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <section className="d-card d-sel" aria-labelledby="sel-title">
-      <div className="d-sel-top">
-        <div className="d-card-head">
-          <h2 id="sel-title">{cleanName(g.patient.displayName)}</h2>
-          {item.suspiciousContent ? (
-            <span className="d-pill dot red">Flagged</span>
-          ) : g.awaitingSecondApproval ? (
-            <span className="d-pill dot blue">1 of 2 approvals</span>
-          ) : (
-            <span className="d-pill dot amber">Pending</span>
-          )}
-        </div>
-        <div className="d-trio">
-          <div>
-            <small>Need score</small>
-            <strong>{item.assessment.score} / 100</strong>
-          </div>
-          <div>
-            <small>Queue rank</small>
-            <strong>#{item.rank}</strong>
-          </div>
-          <div>
-            <small>Waiting</small>
-            <strong>
-              {item.daysWaiting} day{item.daysWaiting === 1 ? "" : "s"}
-            </strong>
-          </div>
-        </div>
-      </div>
-      <div className="d-sel-body">
-        <div className="d-sel-row">
-          <div style={{ minWidth: 0 }}>
-            <p className="d-figure" style={{ marginTop: 0 }}>
-              {usd(g.requestedCents)}
-            </p>
-            <p className="d-sel-cap">
-              {g.bill.merchant}
-              {g.bill.category ? ` · ${CATEGORY_LABEL[g.bill.category]}` : ""}
-            </p>
-          </div>
-          <button className="d-btn" onClick={onReview}>
-            <Icon name="bill" /> Review
+    <section className="d-card d-next" aria-labelledby="next-title">
+      <div className="d-next-head">
+        <span className="d-next-eyebrow">{pos === 0 ? "Next up" : "Selected"} · #{item.rank} by need</span>
+        <div className="d-next-nav">
+          <span>
+            {pos + 1} of {ranked.length}
+          </span>
+          <button className="d-icon-btn" aria-label="Previous request" disabled={pos <= 0} onClick={() => onSelect(ranked[pos - 1].grant.id)}>
+            <Icon name="chevronLeft" />
+          </button>
+          <button className="d-icon-btn" aria-label="Next request" disabled={pos >= ranked.length - 1} onClick={() => onSelect(ranked[pos + 1].grant.id)}>
+            <Icon name="chevronRight" />
           </button>
         </div>
-        <div className="d-cols" style={{ gridTemplateColumns: top.map((f) => `minmax(108px, ${Math.max(f.points, 1)}fr)`).join(" ") }}>
-          {top.map((f, i) => (
-            <div key={f.key}>
-              <strong>
-                {f.points} of {f.maxPoints} pts
-              </strong>
-              <small title={f.input}>{f.label}</small>
-              <i style={{ "--c": colors[i] } as React.CSSProperties} />
-            </div>
-          ))}
-        </div>
       </div>
+
+      <div className="d-next-who">
+        <span className="d-avatar-lg" aria-hidden="true">
+          {initials(g.patient.displayName)}
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <h2 id="next-title">{name}</h2>
+          <p>
+            {g.bill.merchant}
+            {g.bill.category ? ` · ${CATEGORY_LABEL[g.bill.category]}` : ""}
+          </p>
+        </div>
+        {flags.length ? (
+          <span className="d-pill dot red">Flagged</span>
+        ) : g.awaitingSecondApproval ? (
+          <span className="d-pill dot blue">1 of 2 approvals</span>
+        ) : urgency === "critical" || urgency === "high" ? (
+          <span className="d-pill dot amber">{urgency === "critical" ? "Critical" : "High urgency"}</span>
+        ) : null}
+      </div>
+
+      <dl className="d-next-facts">
+        <div>
+          <dt>Approve</dt>
+          <dd className="big">{usd(cents)}</dd>
+        </div>
+        <div>
+          <dt>Need score</dt>
+          <dd>
+            {item.assessment.score}
+            <small> / 100</small>
+          </dd>
+        </div>
+        <div>
+          <dt>Waiting</dt>
+          <dd>
+            {item.daysWaiting} day{item.daysWaiting === 1 ? "" : "s"}
+          </dd>
+        </div>
+      </dl>
+
+      {why && <p className="d-next-why">{why}</p>}
+      {flags.length > 0 && (
+        <p className="d-next-flag">
+          <Icon name="alert" /> {flags[0]}
+          {flags.length > 1 ? ` (+${flags.length - 1} more)` : ""}. Open the details before deciding.
+        </p>
+      )}
+      {error && (
+        <p className="d-next-flag" role="alert">
+          <Icon name="alert" /> {error}
+        </p>
+      )}
+
+      <div className="d-next-actions">
+        <button className="d-btn d-btn-teal" onClick={() => setConfirm("approve")} disabled={busy || cents < 100}>
+          <Icon name="check" /> Approve {usd(cents)}
+        </button>
+        <button className="d-btn d-btn-danger" onClick={() => setConfirm("reject")} disabled={busy}>
+          Decline
+        </button>
+        <button className="d-btn" onClick={onDetails}>
+          Details <Icon name="arrowRight" />
+        </button>
+      </div>
+
+      <ConfirmDialog
+        open={confirm === "approve"}
+        title={`Approve ${usd(cents)} for ${name}?`}
+        confirmLabel={`Approve ${usd(cents)}`}
+        confirmClass="d-btn d-btn-teal"
+        busy={busy}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => decide("approve")}
+      >
+        <p style={{ color: "#5c5f5e" }}>
+          {needsSecond
+            ? `This records your approval. Nothing is paid until a second caseworker approves the same amount.`
+            : g.visit
+              ? `This pays ${usd(cents)} from the community care fund to ${g.provider.name} now, toward ${name}'s bill. It can't be undone.`
+              : `This reserves ${usd(cents)} for ${name}, payable only to ${g.provider.name}. The amount and recipient can't be changed afterward.`}{" "}
+          To approve a different amount, use Details.
+        </p>
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={confirm === "reject"}
+        title={`Decline ${name}'s request?`}
+        confirmLabel="Decline"
+        confirmClass="d-btn d-btn-danger"
+        busy={busy}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => decide("reject")}
+      >
+        <p style={{ color: "#5c5f5e" }}>{name} will see that the request wasn&apos;t approved. No money is reserved.</p>
+      </ConfirmDialog>
     </section>
   );
 }
