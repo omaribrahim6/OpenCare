@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { Logo } from "@/components/Logo";
-import { TapRings } from "@/components/TapRings";
 import { DemoButton } from "./DemoButton";
 
-export const metadata: Metadata = { title: "Patient kiosk" };
+export const metadata: Metadata = { title: "Patient portal" };
 
 export default async function KioskPage({
   searchParams,
@@ -15,24 +14,30 @@ export default async function KioskPage({
   const { ended } = await searchParams;
 
   return (
-    <main className="page station station-welcome">
+    <main className="page station portal-screen">
       <header className="station-bar">
         <Logo href={null} />
-        <Link href="/review" className="btn secondary">Admin</Link>
+        <Link href="/review" className="btn secondary">Staff admin</Link>
       </header>
-      <div className="station-intro">
-        <h1>Tap your CareCard</h1>
-        <p>Find a medical bill or check a request.</p>
+      <div className="portal-intro">
+        <h1>Patient portal</h1>
+        <p>See your hospital visits, check what’s covered, and request help with a bill.</p>
       </div>
-      <section className="station-tap" aria-label="Card instructions">
-        <TapRings size={156} />
-        <p>Hold your card near the top of this device and open the link that appears.</p>
-        {ended && <p className="station-message" role="status">Your session has ended.</p>}
+      <section className="portal-panel portal-card-entry">
+        <span className="portal-entry-icon"><Icon name="tap" size={24} /></span>
+        <div>
+          <h2>Open your visits</h2>
+          <p>Tap your CareCard on a clinic’s check-in device and open the link that appears.</p>
+        </div>
+      </section>
+      <section className="portal-panel portal-demo-entry">
+        <div>
+          <h2>Explore the demo</h2>
+          <p>Use sample visits to try the patient flow without a card.</p>
+        </div>
         <DemoButton />
       </section>
-      <footer className="station-foot">
-        <Icon name="lock" /> Your session is private and ends automatically.
-      </footer>
+      {ended && <p role="status">Your session has ended.</p>}
     </main>
   );
 }
