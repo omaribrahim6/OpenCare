@@ -10,7 +10,10 @@ import { Icon } from "@/components/Icon";
 import { DONOR_KIND_LABEL, DonorMark, logoIdForName } from "@/components/landing/DonorMark";
 import { cleanName, usd, usdCompact } from "@/lib/format";
 import { CATEGORY_LABEL } from "@/lib/types";
+import { LogoMark } from "@/components/Logo";
+import { MedicareQuotes } from "@/components/landing/MedicareQuotes";
 import "./landing.css";
+import "./quotes.css";
 
 export const dynamic = "force-dynamic";
 
@@ -78,9 +81,7 @@ export default async function Landing() {
     <div className="landing">
       <header className="ln-top">
         <Link href="/" className="ln-brand" aria-label="AbdulCare home">
-          <span className="v-brand" aria-hidden="true">
-            <span /><span /><span /><span />
-          </span>
+          <LogoMark />
           AbdulCare
         </Link>
         <nav className="ln-nav" aria-label="Main">
@@ -118,6 +119,7 @@ export default async function Landing() {
               </li>
             ))}
           </ol>
+          <MedicareQuotes />
         </section>
 
         <aside className="ln-card ln-donors" aria-labelledby="ln-donors-title">
