@@ -6,7 +6,7 @@ import {
   type BillExplanationInput,
   type HospitalPolicy,
 } from "@abdulcare/contracts";
-import { billEngine } from "../index";
+import { billEngine, templateBillEngine } from "../index";
 import { evaluatePolicy } from "../bills/policy";
 import { applicationTemplate, briefTemplate, explanationTemplate, suggestedCents } from "../bills/templates";
 import { briefInput, demoPath } from "./fixtures";
@@ -30,7 +30,7 @@ test("billEngine is exported from @abdulcare/ai and evaluates policies", () => {
 });
 
 test("brief template: path as given, reasons from factor values, full balance suggested", async () => {
-  const b = await billEngine.writeBrief(briefInput());
+  const b = await templateBillEngine.writeBrief(briefInput());
   assert.deepEqual(b.path, demoPath);
   assert.equal(b.suggestedAction, "approve");
   assert.equal(b.suggestedCents, 43_200);
@@ -81,7 +81,7 @@ const explainInput: BillExplanationInput = {
 };
 
 test("explanation template: every step and charge, with exact amounts and simulated labels", async () => {
-  const e = await billEngine.explainBill(explainInput);
+  const e = await templateBillEngine.explainBill(explainInput);
   assert.equal(e.fallback, true);
   assert.equal(e.summary, "Your emergency visit at Valley General Hospital was charged $4,800.00. $432.00 is left. You can ask the community care fund to help with it.");
   assert.deepEqual(e.points, [
@@ -113,7 +113,7 @@ test("application template: profile fields, criteria, reduction and the simulate
     category: "emergency",
     balanceCents: 216_000,
   };
-  const a = await billEngine.writeApplication(input);
+  const a = await templateBillEngine.writeApplication(input);
   assert.deepEqual([a.source, a.model], ["template", null]);
   assert.match(a.text, /^Application for Charity care at Valley General Hospital/);
   assert.match(a.text, /Monthly household income: \$2,500\.00/);
