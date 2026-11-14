@@ -166,7 +166,7 @@ function LedgerResults({ ledger, entries }: { ledger: LedgerResponse | null; ent
           <div><dt>Cases decided</dt><dd>{t.cases.toLocaleString()} <small>({t.declined} declined)</small></dd></div>
         </dl>
       )}
-      <div className="g-head" style={{ marginBottom: 18, alignItems: "center" }}>
+      <div className="g-head lc-filter-row" style={{ marginBottom: 18, alignItems: "center" }}>
         <p className="g-sub" style={{ margin: 0 }}>
           {rows.length.toLocaleString()} events · select a case to see its bill
         </p>

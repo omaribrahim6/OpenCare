@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import { Icon, type IconName } from "@/components/Icon";
-import { shortDate, usd, usdParts } from "@/lib/format";
+import { shortDate, usd, usdCompact, usdParts } from "@/lib/format";
 import type { FundSummary } from "@/lib/types";
 
 const DAY = 86_400_000;
@@ -136,7 +136,7 @@ function Allocation({ summary }: { summary: FundSummary | null }) {
       <dl className="v-allocation-key">
         {sections.map((part) => (
           <div key={part.label} style={{ borderColor: part.color }}>
-            <dt>{part.label}</dt><dd>{summary ? usd(part.cents) : "—"}</dd>
+            <dt>{part.label}</dt><dd title={summary ? usd(part.cents) : undefined}>{summary ? (part.cents >= 100_000_000 ? usdCompact(part.cents) : usd(part.cents)) : "—"}</dd>
           </div>
         ))}
       </dl>
