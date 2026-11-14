@@ -180,7 +180,8 @@ export async function logVisit(
     status: PolicyApplicationStatus;
     reduction: number;
   }[] = [];
-  for (const policy of await listHospitalPolicies(db, template.hospitalId)) {
+  const policies = await listHospitalPolicies(db, template.hospitalId);
+  for (const policy of policies) {
     const evaluation = engines.bills.evaluatePolicy({
       policy,
       profile,
@@ -215,6 +216,12 @@ export async function logVisit(
       suspicious = await engines.need.detectSuspicious([
         { field: "description", text: template.description },
         ...template.lineItems.map((li) => ({ field: "description" as const, text: li.description })),
+        // Policy names and sources are untrusted too (SPEC §7); amounts only ever come from the rules.
+        ...policies.flatMap((p) => [
+          { field: "policy_text" as const, text: p.name },
+          { field: "policy_text" as const, text: p.source },
+        ]),
+
       ]);
     } catch {
       suspicious = null; // A warning only; it never blocks intake.
