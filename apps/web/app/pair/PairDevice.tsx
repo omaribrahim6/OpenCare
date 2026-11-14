@@ -8,7 +8,7 @@ import { ApiRequestError, currentDevice, listProviders, pairDevice } from "@/lib
 
 const ROLES: { role: DeviceRole; label: string; home: string; help: string }[] = [
   { role: "kiosk", label: "Kiosk", home: "/kiosk", help: "The clinic's check-in phone. Patients tap their CareCard here." },
-  { role: "provider", label: "Provider terminal", home: "/provider", help: "The pharmacy counter phone that collects approved grants." },
+  { role: "provider", label: "Hospital intake", home: "/intake", help: "Hospital staff log a patient's visit here after tapping their CareCard." },
   { role: "reviewer", label: "Caseworker", home: "/review", help: "Reviews and approves requests." },
 ];
 
@@ -107,7 +107,7 @@ export function PairDevice() {
                   checked={role === r.role}
                   onChange={() => {
                     setRole(r.role);
-                    setLabel(r.role === "kiosk" ? "Front desk kiosk" : r.role === "provider" ? "Pharmacy counter" : "Caseworker laptop");
+                    setLabel(r.role === "kiosk" ? "Front desk kiosk" : r.role === "provider" ? "Hospital intake desk" : "Caseworker laptop");
                   }}
                   style={{ width: 22, minHeight: 22, marginTop: 3 }}
                 />
@@ -124,7 +124,7 @@ export function PairDevice() {
         {role === "provider" &&
           (providers && providers.length > 0 ? (
             <div>
-              <label htmlFor="provider">Provider</label>
+              <label htmlFor="provider">Hospital</label>
               <select id="provider" value={providerId} onChange={(e) => setProviderId(e.target.value)} disabled={busy}>
                 {providers.map((p) => (
                   <option key={p.id} value={p.id}>
