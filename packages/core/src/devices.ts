@@ -29,10 +29,11 @@ export async function pairDevice(
   }
 
   let providerId: string | null = null;
-  if (input.role === "provider") {
-    if (!input.providerId) throw new CoreError("bad_request", "Provider devices need a providerId");
+  if (input.role === "provider" || input.role === "hospital") {
+    if (!input.providerId) throw new CoreError("bad_request", "Hospital devices need a providerId");
     const { rows } = await db.query("select id from providers where id = $1", [input.providerId]);
-    if (rows.length === 0) throw new CoreError("not_found", "Unknown provider");
+    if (rows.length === 0) throw new CoreError("not_found", "Unknown hospital");
+
     providerId = input.providerId;
   }
 

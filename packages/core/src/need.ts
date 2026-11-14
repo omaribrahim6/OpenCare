@@ -1,10 +1,15 @@
-// Need assessments and the caseworker queue (SPEC §7 jobs 2–3).
+// Need assessments and the reviewer queue (SPEC §7.3–7.4, rev 6).
 // Core gathers inputs and stores results; the formula and Gemini live in @abdulcare/ai, passed in
-// as a NeedEngine. Core re-checks Gemini's order (defense in depth) and caches it by input hash so
-// a reload never reshuffles the queue.
+// as a NeedEngine and a BillEngine. Rev 6: the queue is in formula order only (Gemini no longer
+// ranks it), and every pending request carries a decision brief cached by a hash of its inputs.
 
-import type {
-  Grant,
+import {
+  SECOND_APPROVAL_ABOVE_CENTS,
+  type BillEngine,
+  type BriefInput,
+  type CaseDetail,
+  type DecisionBrief,
+  type Grant,
   NeedAssessment,
   NeedEngine,
   NeedInput,
@@ -15,10 +20,12 @@ import type {
   ReviewQueue,
   SuspiciousContent,
 } from "@abdulcare/contracts";
+import { briefFallback } from "./bill-fallback";
 import type { Db } from "./db";
 import { getGrant, listGrants } from "./grants";
 import { getPatientWithProfile } from "./profiles";
 import { CoreError, sha256 } from "./util";
+import { getBill } from "./visits";
 
 const DAY_MS = 86_400_000;
 
@@ -167,7 +174,11 @@ export function isValidRanking(ranking: QueueRanking, rows: RankingRow[]): boole
  * The caseworker queue: every pending request, freshly assessed, in Gemini's order (cached by
  * input hash) or formula order on fallback. Gemini sees only anonymized RankingRows.
  */
-export async function getReviewQueue(db: Db, engine: NeedEngine, opts: { now?: Date } = {}): Promise<ReviewQueue> {
+export async function getReviewQueue(
+  db: Db,
+  engine: NeedEngine,
+  opts: { now?: Date; bills?: BillEngine } = {},
+): Promise<ReviewQueue> {
   const now = opts.now ?? new Date();
   const { rows: fund } = await db.query<{ available: number }>(
     "select (total_cents - reserved_cents - paid_cents)::bigint as available from fund where id = 'community'",
@@ -203,53 +214,124 @@ export async function getReviewQueue(db: Db, engine: NeedEngine, opts: { now?: D
     daysWaiting: a.days,
   }));
   const byLabel = new Map(rows.map((r, i) => [r.label, assessed[i]]));
-  const inputsHash = sha256(JSON.stringify({ ids: assessed.map((a) => a.grant.id), rows }));
 
-  let ranking: QueueRanking | null = null;
-  let rankedAt = now.toISOString();
-  const { rows: cached } = await db.query<{
-    source: QueueRanking["source"];
-    grant_order: string[];
-    rationales: Record<string, string>;
-    model: string | null;
-    computed_at: Date;
-  }>("select source, grant_order, rationales, model, computed_at from queue_rankings where inputs_hash = $1", [inputsHash]);
-  if (cached[0]) {
-    ranking = { source: cached[0].source, order: cached[0].grant_order, rationales: cached[0].rationales, model: cached[0].model };
-    rankedAt = new Date(cached[0].computed_at).toISOString();
-  } else {
-    try {
-      const candidate = await engine.rankQueue(rows);
-      ranking = isValidRanking(candidate, rows) ? candidate : formulaRanking(rows);
-    } catch {
-      ranking = formulaRanking(rows);
-    }
-    // Only Gemini results are cached; a fallback is retried on the next load.
-    if (ranking.source === "gemini") {
-      await db.query(
-        `insert into queue_rankings (inputs_hash, source, grant_order, rationales, model)
-         values ($1, $2, $3, $4, $5) on conflict (inputs_hash) do nothing`,
-        [inputsHash, ranking.source, JSON.stringify(ranking.order), JSON.stringify(ranking.rationales), ranking.model],
-      );
-    }
-  }
-
-  const formulaPos = new Map(rows.map((r, i) => [r.label, i + 1]));
-  const items: QueueItem[] = ranking.order.map((label, i) => {
+  // Rev 6: formula order only. Gemini writes the brief, never the order.
+  const ranking = formulaRanking(rows);
+  const items: QueueItem[] = [];
+  for (const [i, label] of ranking.order.entries()) {
     const a = byLabel.get(label)!;
-    const formulaRank = formulaPos.get(label)!;
-    return {
+    const bill = a.grant.visit ? await getBill(db, a.grant.visit.id) : null;
+    const suspicious = a.suspicious ?? bill?.suspiciousContent ?? null;
+    const remainingCents = bill ? bill.remainingCents : a.grant.requestedCents;
+    const brief = await getDecisionBrief(db, opts.bills, a.grant.id, {
+      path: bill?.steps ?? [],
+      remainingCents,
+      assessment: a.assessment,
+      factors: a.assessment.factors,
       rank: i + 1,
-      formulaRank,
-      disagreesWithFormula: ranking.source === "gemini" && Math.abs(i + 1 - formulaRank) >= DISAGREEMENT_POSITIONS,
+      queueLength: rows.length,
+      daysWaiting: a.days,
+      suspiciousContent: suspicious,
+      secondApprovalAboveCents: SECOND_APPROVAL_ABOVE_CENTS,
+    });
+    items.push({
+      rank: i + 1,
+      formulaRank: i + 1,
+      disagreesWithFormula: false,
       grant: a.grant,
       profile: a.profile,
       daysWaiting: a.days,
       assessment: a.assessment,
-      rationale: ranking.rationales[label] ?? templatedRationale(rows[formulaRank - 1]),
-      suspiciousContent: a.suspicious,
-    };
-  });
+      rationale: brief.reasons.join(" "),
+      suspiciousContent: suspicious,
+      brief,
+      path: bill?.steps ?? [],
+      remainingCents,
+    });
+  }
 
-  return { source: ranking.source, model: ranking.model, availableCents, items, rankedAt };
+  return { source: "formula", model: null, availableCents, items, rankedAt: now.toISOString() };
 }
+
+/**
+ * The decision brief for a pending request, cached by a hash of its inputs so reloads are stable.
+ * Core re-checks the amount (whole dollars, at most the remaining balance) and falls back to the
+ * template brief if the engine fails or breaks that rule.
+ */
+export async function getDecisionBrief(
+  db: Db,
+  engine: BillEngine | undefined,
+  grantId: string,
+  input: BriefInput,
+): Promise<DecisionBrief> {
+  const inputsHash = sha256(JSON.stringify(input));
+  const { rows } = await db.query<{ inputs_hash: string; brief: DecisionBrief | string }>(
+    "select inputs_hash, brief from decision_briefs where grant_id = $1",
+    [grantId],
+  );
+  if (rows[0] && rows[0].inputs_hash === inputsHash) {
+    const b = rows[0].brief;
+    return typeof b === "string" ? (JSON.parse(b) as DecisionBrief) : b;
+  }
+  let draft = briefFallback(input);
+  if (engine) {
+    try {
+      const candidate = await engine.writeBrief(input);
+      const okAmount =
+        Number.isSafeInteger(candidate.suggestedCents) &&
+        candidate.suggestedCents >= 0 &&
+        candidate.suggestedCents % 100 === 0 &&
+        candidate.suggestedCents <= input.remainingCents;
+      if (okAmount && Array.isArray(candidate.reasons) && Array.isArray(candidate.flags)) draft = candidate;
+    } catch {
+      // Keep the template brief.
+    }
+  }
+  const brief: DecisionBrief = { ...draft, grantId, computedAt: new Date().toISOString() };
+  await db.query(
+    `insert into decision_briefs (grant_id, inputs_hash, brief, source, checked, computed_at)
+     values ($1, $2, $3, $4, $5, now())
+     on conflict (grant_id) do update
+       set inputs_hash = excluded.inputs_hash, brief = excluded.brief, source = excluded.source,
+           checked = excluded.checked, computed_at = now()`,
+    [grantId, inputsHash, JSON.stringify(brief), brief.source, brief.checked],
+  );
+  return brief;
+}
+
+/** Everything the reviewer's case screen shows for one rev 6 request (SPEC §4 screen 7). */
+export async function getCaseDetail(
+  db: Db,
+  engines: { need: NeedEngine; bills?: BillEngine },
+  grantId: string,
+  opts: { now?: Date } = {},
+): Promise<CaseDetail | null> {
+  const grant = await getGrant(db, grantId);
+  if (!grant.visit) return null;
+  const { profile } = await getPatientWithProfile(db, grant.patient.id);
+  if (grant.status === "pending_review") {
+    const queue = await getReviewQueue(db, engines.need, { now: opts.now, bills: engines.bills });
+    const item = queue.items.find((it) => it.grant.id === grantId);
+    if (item) {
+      return { bill: await getBill(db, grant.visit.id), brief: item.brief ?? null, profile, assessment: item.assessment, rank: item.rank };
+    }
+  }
+  const parse = <T>(v: T | string | undefined): T | null =>
+    v == null ? null : typeof v === "string" ? (JSON.parse(v) as T) : v;
+  const { rows } = await db.query<{ assessment: NeedAssessment | string }>(
+    "select assessment from need_assessments where grant_id = $1",
+    [grantId],
+  );
+  const { rows: briefs } = await db.query<{ brief: DecisionBrief | string }>(
+    "select brief from decision_briefs where grant_id = $1",
+    [grantId],
+  );
+  return {
+    bill: await getBill(db, grant.visit.id),
+    brief: parse(briefs[0]?.brief),
+    profile,
+    assessment: parse(rows[0]?.assessment),
+    rank: null,
+  };
+}
+
