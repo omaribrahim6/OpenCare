@@ -161,3 +161,27 @@ export function assessNeed(input: NeedInput): NeedAssessment {
     incomeMismatch,
   };
 }
+
+/**
+ * Monthly income estimated from Nessie deposits (SPEC §7: used when the profile has no income).
+ * Takes deposits as returned by @abdulcare/payments listIncomeDeposits and averages the last
+ * 90 days into a month. Returns null when there are no positive deposits in the window.
+ */
+export function estimateMonthlyIncomeCents(
+  deposits: { date: string; amountCents: number }[],
+  opts: { now?: Date; days?: number } = {},
+): number | null {
+  const days = opts.days ?? 90;
+  const now = (opts.now ?? new Date()).getTime();
+  const since = new Date(now - days * 86_400_000).toISOString().slice(0, 10);
+  const today = new Date(now).toISOString().slice(0, 10);
+  let total = 0;
+  let count = 0;
+  for (const d of deposits) {
+    const date = typeof d.date === "string" ? d.date.slice(0, 10) : "";
+    if (date < since || date > today || !Number.isSafeInteger(d.amountCents) || d.amountCents <= 0) continue;
+    total += d.amountCents;
+    count++;
+  }
+  return count === 0 ? null : Math.round((total * 30) / days);
+}
