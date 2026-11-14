@@ -179,7 +179,7 @@ export interface SolanaDonationRequest {
 }
 // -> DonationResponse
 
-// GET /api/providers (paired devices): providers a patient can choose.
+// GET /api/providers (public): providers a patient can choose or a provider device pairs with.
 export interface ProviderListResponse {
   providers: Provider[];
 }
