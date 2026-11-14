@@ -101,7 +101,26 @@ export interface PatientBillResponse {
   grant: Grant | null;
 }
 
+// GET /api/patients/me/bill?visitId=… picks one of the patient's visits instead of the latest.
+
+// GET /api/patients/me/visits (kiosk session): every visit's bill, newest first.
+export interface PatientVisitsResponse {
+  bills: Bill[];
+}
+
+// GET /api/patients/me/insurance-plan and PUT /api/patients/me/insurance-plan (kiosk session):
+// the patient's saved plan (null = uninsured / none on file). PUT body: SaveInsurancePlanRequest.
+// A saved plan applies to new visits, and to an existing visit at its apply step when no savings
+// were applied yet. Plans are fictional and patient-reported.
+export interface SaveInsurancePlanRequest {
+  plan: InsurancePlan | null;
+}
+export interface InsurancePlanResponse {
+  plan: InsurancePlan | null;
+}
+
 /** @deprecated Revision 5 Nessie bill discovery (GET /api/patients/me/bills), removed in revision 6. */
+
 export interface BillsResponse {
   bills: FoundBill[];
 }
@@ -121,14 +140,24 @@ export interface PatientListResponse {
 }
 
 // POST /api/visits (hospital device): log a visit for the patient selected by the last card tap
-// on this device (or patientId). Runs insurance and every hospital policy, then returns the bill.
+// on this device (or patientId). Posts the charge and the insurance adjustment, and prepares one
+// application per hospital policy (status "prepared"). The patient applies them with
+// POST /api/visits/:id/apply, unless applyPolicies is true.
 export interface CreateVisitRequest {
   templateId: string;
   /** Optional when a card tap on this device selected the patient. */
   patientId?: string;
   /** Client-generated (crypto.randomUUID()) so a double submit logs one visit. */
   idempotencyKey: string;
+  /** True applies every policy at intake (the simulated hospital decides at once). Default false. */
+  applyPolicies?: boolean;
 }
+
+// POST /api/visits/:id/apply (the patient's own kiosk session): "Apply for savings". Submits the
+// prepared policy applications in order; each simulated hospital decision posts a confirmed
+// reduction. If the patient saved an insurance plan after intake and nothing was applied yet,
+// the insurance adjustment posts first. Idempotent: repeating it returns the same bill.
+// Body: {} -> VisitResponse
 export interface VisitResponse {
   bill: Bill;
 }
