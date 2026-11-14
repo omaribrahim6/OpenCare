@@ -135,7 +135,7 @@ export function briefFallback(input: BriefInput): BriefDraft {
     flags,
     suggestedAction: "approve",
     suggestedCents,
-    needsSecondApproval: suggestedCents > input.secondApprovalAboveCents,
+    needsSecondApproval: false, // one approval is enough at any amount
     source: "template",
     model: null,
     checked: true,

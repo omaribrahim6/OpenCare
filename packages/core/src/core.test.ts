@@ -66,7 +66,6 @@ let db: Db;
 let kiosk: Device;
 let provider: Device;
 let reviewer: Device;
-let reviewer2: Device;
 let nessieSeq = 0;
 
 async function billFor(patientId = "pat_1", amountCents = 4500): Promise<string> {
@@ -100,7 +99,6 @@ beforeEach(async () => {
   kiosk = (await pairDevice(db, { role: "kiosk", pin: "4242", label: "Kiosk" })).device;
   provider = (await pairDevice(db, { role: "provider", pin: "4242", label: "Counter", providerId: "prv_1" })).device;
   reviewer = (await pairDevice(db, { role: "reviewer", pin: "4242", label: "Laptop" })).device;
-  reviewer2 = (await pairDevice(db, { role: "reviewer", pin: "4242", label: "Laptop 2" })).device;
 });
 
 describe("devices", () => {
@@ -223,23 +221,31 @@ describe("grants", () => {
     await rejectsWith(decideGrant(db, grantId, reviewer.id, { decision: "reject" }), "invalid_state");
   });
 
-  test("grants above $500 need two different caseworkers approving the same amount", async () => {
+  test("one approval is enough above $500 too", async () => {
     const grantId = await pendingGrant("pat_1", 80_000);
-    // Even the first approval, which reserves nothing yet, must fit the available budget.
     await db.query("update fund set total_cents = 50000");
     await rejectsWith(decideGrant(db, grantId, reviewer.id, { decision: "approve", approvedCents: 80_000 }), "insufficient_funds");
     assert.equal((await getGrant(db, grantId)).approvals.length, 0); // rolled back
     await db.query("update fund set total_cents = 200000");
-    const first = await decideGrant(db, grantId, reviewer.id, { decision: "approve", approvedCents: 80_000 });
-    assert.equal(first.status, "pending_review");
-    assert.equal(first.awaitingSecondApproval, true);
-    assert.equal((await getFundSummary(db)).reservedCents, 0); // nothing reserved yet
-    await rejectsWith(decideGrant(db, grantId, reviewer.id, { decision: "approve", approvedCents: 80_000 }), "conflict");
-    await rejectsWith(decideGrant(db, grantId, reviewer2.id, { decision: "approve", approvedCents: 70_000 }), "bad_request");
-    const second = await decideGrant(db, grantId, reviewer2.id, { decision: "approve", approvedCents: 80_000 });
-    assert.equal(second.status, "approved");
-    assert.deepEqual(second.approvals.map((a) => a.reviewerLabel), ["Laptop", "Laptop 2"]);
+    const approved = await decideGrant(db, grantId, reviewer.id, { decision: "approve", approvedCents: 80_000 });
+    assert.equal(approved.status, "approved");
+    assert.equal(approved.awaitingSecondApproval, false);
+    assert.deepEqual(approved.approvals.map((a) => a.reviewerLabel), ["Laptop"]);
     assert.equal((await getFundSummary(db)).reservedCents, 80_000);
+  });
+
+  test("a grant holding one approval from the old rule completes on the next, from any device", async () => {
+    const grantId = await pendingGrant("pat_1", 80_000);
+    await db.query("update fund set total_cents = 200000");
+    await db.query(
+      "insert into grant_approvals (grant_id, reviewer_device_id, approved_cents) values ($1, $2, 80000)",
+      [grantId, reviewer.id],
+    );
+    assert.equal((await getGrant(db, grantId)).awaitingSecondApproval, false);
+    const approved = await decideGrant(db, grantId, reviewer.id, { decision: "approve", approvedCents: 70_000 });
+    assert.equal(approved.status, "approved");
+    assert.equal(approved.approvedCents, 70_000);
+    assert.equal((await getFundSummary(db)).reservedCents, 70_000);
   });
 
   test("pending and rejected grants can't be redeemed", async () => {

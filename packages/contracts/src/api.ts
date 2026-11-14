@@ -218,9 +218,7 @@ export interface GrantListResponse {
 // POST /api/grants/:id/decision (reviewer device)
 // Rev 6: approval (whole dollars, at most the remaining balance and the available budget) starts
 // the Nessie payout to the hospital and the Solana receipt in the same request; the response shows
-// payment_pending or paid. Above SECOND_APPROVAL_ABOVE_CENTS, the first approval leaves the grant
-// pending_review with awaitingSecondApproval = true; a second reviewer device approving the same
-// amount approves it.
+// payment_pending or paid. One approval is enough at any amount.
 export type GrantDecisionRequest =
   | { decision: "approve"; approvedCents: Cents; note?: string }
   | { decision: "reject"; note?: string };

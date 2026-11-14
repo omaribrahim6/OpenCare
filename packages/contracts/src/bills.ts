@@ -291,7 +291,7 @@ export interface DecisionBrief {
   /** Always "approve" in revision 6: the default is the full remaining balance. */
   suggestedAction: "approve";
   suggestedCents: Cents;
-  /** True when suggestedCents is above SECOND_APPROVAL_ABOVE_CENTS. */
+  /** @deprecated Always false: one approval is enough at any amount. */
   needsSecondApproval: boolean;
   source: "gemini" | "template";
   model: string | null;
