@@ -15,7 +15,8 @@ import { createGeminiClient, S, type ModelClient } from "../gemini";
 import { asRecord, parseModelJson, usd } from "../json";
 import { BASE_RULES, cleanUntrusted, fenceUntrusted } from "../sanitize";
 import { allowedNumbers, checkText, dollars, withDeadline } from "./checks";
-import { applicationTemplate, briefTemplate, CATEGORY_LABELS, explanationTemplate, safeText, SIMULATED_FOOTER } from "./templates";
+import { policyTextSuspicious } from "../suspicious";
+import { applicationTemplate, briefTemplate, CATEGORY_LABELS, explanationTemplate, safePolicyName, safeText, SIMULATED_FOOTER } from "./templates";
 
 export const BILL_PROMPT_VERSION = "bills-v1";
 
@@ -43,6 +44,8 @@ Use plain text, no markdown headings. Write amounts exactly as they appear in th
 
 export async function writeApplicationLive(input: ApplicationTextInput, deps: LiveDeps = {}): Promise<ApplicationText> {
   const template = applicationTemplate(input);
+  // Flagged policy text never reaches the model.
+  if (policyTextSuspicious(input.policy)) return template;
   try {
     const client = deps.client ?? createGeminiClient();
     const raw = await withDeadline(
@@ -59,7 +62,7 @@ export async function writeApplicationLive(input: ApplicationTextInput, deps: Li
       allowed: allowedNumbers([template.text]),
       noDecisions: true,
       maxLength: 1600,
-      mustInclude: [usd(input.evaluation.reductionCents), input.policy.name],
+      mustInclude: [usd(input.evaluation.reductionCents), safePolicyName(input.policy.name)],
     });
     if (problem) return template;
     return { text: text.includes(SIMULATED_FOOTER) ? text : `${text}\n\n${SIMULATED_FOOTER}`, source: "gemini", model: modelName(client) };

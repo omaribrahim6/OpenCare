@@ -14,6 +14,7 @@ import type {
 } from "@abdulcare/contracts";
 import { povertyLineCents } from "../formula";
 import { usd } from "../json";
+import { safePolicyName } from "./templates";
 
 const validCents = (x: number | null | undefined): x is number => typeof x === "number" && Number.isFinite(x) && x >= 0;
 const validSize = (x: number | null | undefined): x is number => typeof x === "number" && Number.isInteger(x) && x >= 1 && x <= 20;
@@ -107,6 +108,8 @@ export function evaluatePolicy(input: PolicyEvaluationInput): PolicyEvaluation {
 
   reduction = Math.min(Math.max(0, reduction), balance);
   const eligible = reduction > 0;
+  // Policy text is untrusted: the amounts come only from the structured rules above.
+  const name = safePolicyName(policy.name);
   return {
     policyId: policy.id,
     eligible,
@@ -114,12 +117,12 @@ export function evaluatePolicy(input: PolicyEvaluationInput): PolicyEvaluation {
     missing,
     reductionCents: reduction,
     reason: eligible
-      ? `${policy.name} takes ${usd(reduction)} off the remaining ${usd(balance)}.`
+      ? `${name} takes ${usd(reduction)} off the remaining ${usd(balance)}.`
       : missing.length
-        ? `${policy.name} can't be decided yet: ${missing.join(" and ")} unknown.`
+        ? `${name} can't be decided yet: ${missing.join(" and ")} unknown.`
         : balance === 0
-          ? `${policy.name} isn't needed: nothing is left to pay.`
-          : `${policy.name} doesn't apply to this patient.`,
+          ? `${name} isn't needed: nothing is left to pay.`
+          : `${name} doesn't apply to this patient.`,
   };
 }
 
