@@ -4,7 +4,8 @@
 // Nessie IDs come from the payments lane's Nessie seed (via env).
 
 import { join } from "node:path";
-import { addDonation, createPgDb, issueCard, type Db } from "../src";
+import { createPgDb, issueCard, recordDonation, setPatientProfile, type Db } from "../src";
+import type { PatientProfile } from "@abdulcare/contracts";
 
 try {
   process.loadEnvFile(join(__dirname, "..", "..", "..", ".env"));
@@ -12,9 +13,34 @@ try {
   // No .env file: rely on the environment.
 }
 
-const PATIENTS = [
-  { id: "pat_demo_alex", name: "Alex Rivera (fictional)", nessieAccount: process.env.NESSIE_PATIENT_ACCOUNT_ID },
-  { id: "pat_demo_sam", name: "Sam Patel (fictional)", nessieAccount: undefined },
+// Need profiles are set at enrollment (SPEC §3). All fictional; incomes are monthly, in cents.
+// Only the first two get physical CareCards; the others fill the ranked queue.
+const PATIENTS: { id: string; name: string; card: boolean; nessieAccount?: string; profile: PatientProfile }[] = [
+  {
+    id: "pat_demo_alex",
+    name: "Alex Rivera (fictional)",
+    card: true,
+    nessieAccount: process.env.NESSIE_PATIENT_ACCOUNT_ID,
+    profile: { householdSize: 3, monthlyIncomeCents: 180_000, insurance: "uninsured" },
+  },
+  {
+    id: "pat_demo_sam",
+    name: "Sam Patel (fictional)",
+    card: true,
+    profile: { householdSize: 1, monthlyIncomeCents: 420_000, insurance: "insured" },
+  },
+  {
+    id: "pat_demo_jordan",
+    name: "Jordan Lee (fictional)",
+    card: false,
+    profile: { householdSize: 4, monthlyIncomeCents: 260_000, insurance: "underinsured" },
+  },
+  {
+    id: "pat_demo_casey",
+    name: "Casey Morgan (fictional)",
+    card: false,
+    profile: { householdSize: 2, monthlyIncomeCents: null, insurance: "uninsured" },
+  },
 ];
 
 const PROVIDERS = [
@@ -38,6 +64,7 @@ async function seed(db: Db) {
          nessie_account_id = coalesce(excluded.nessie_account_id, patients.nessie_account_id)`,
       [p.id, p.name, p.nessieAccount ?? null],
     );
+    await setPatientProfile(db, p.id, p.profile);
   }
   for (const pr of PROVIDERS) {
     await db.query(
@@ -50,11 +77,11 @@ async function seed(db: Db) {
   }
 
   const { rows: fund } = await db.query<{ total_cents: number }>("select total_cents from fund where id = 'community'");
-  if (Number(fund[0]?.total_cents ?? 0) === 0) await addDonation(db, FUND_START_CENTS);
+  if (Number(fund[0]?.total_cents ?? 0) === 0) await recordDonation(db, { rail: "nessie", amountCents: FUND_START_CENTS });
 
   const newCards = process.argv.includes("--new-cards");
   console.log("\nCareCards (write each URL to an NFC tag with NFC Tools, then lock the tag):");
-  for (const p of PATIENTS) {
+  for (const p of PATIENTS.filter((x) => x.card)) {
     const { rows } = await db.query("select 1 from card_tokens where patient_id = $1 and status = 'active'", [p.id]);
     if (rows.length > 0 && !newCards) {
       console.log(`  ${p.name}: already has a card (pass --new-cards to issue another)`);
