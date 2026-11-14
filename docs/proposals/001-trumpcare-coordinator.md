@@ -61,7 +61,7 @@ The full list is in §16 of the proposal text below. These are the ones that blo
 | Q7 | Does the bill come from Nessie, from a seeded document, or both? | Proposal §3E | A seeded hospital-attested bill, with no OCR. The injection flag stays on the seeded documents and packet text (a tampered seeded bill is still a demo moment). Nessie keeps payouts and donations | Leaning: seeded (Musa's Claude, Noureldin) |
 | Q9 | When the AI "applies" to a hospital policy, who decides it? | Musa's Claude | **Musa:** the hospital approves it. For the demo that approval is simulated (the policy's rules decide) and always labeled "hospital decision (simulated)" | Answered by Musa; pending Omar |
 | Q10 | Is the fund's algorithm an eligibility cut-off, a ranking, or both? | Musa's Claude | **Musa: ranking only, no cut-off.** Everyone is eligible (the point of Medicare for All is that it's for everyone); the fixed algorithm puts the most eligible first and the less eligible further down the queue | Answered by Musa; pending Omar |
-| Q11 | Does the decision brief recommend an amount? | Musa's Claude | Suggestion: yes, from a rule (the remaining balance, capped by fund rules). The reviewer can change it; the brief never changes the score. Musa asked what the brief is; the explanation is pending his answer | Open |
+| Q11 | Does the decision brief recommend an amount? | Musa's Claude | **Musa: yes, the full remaining balance.** The amount is computed from the case data, not chosen by the AI. The reviewer can change it; the brief never changes the score or the queue position | Answered by Musa; pending Omar |
 | Q12 | Where does insurance data come from, and which lane owns adjudication? | Musa's Claude | **Musa:** a made-up insurance plan per demo patient, also used for the final demo (deductible, coinsurance, out-of-pocket max). Which lane owns adjudication is still open (suggestion: core, api lane) | Answered by Musa (data); lane open |
 | Q13 | What does Nessie do now that the bill comes from the hospital? | Musa's Claude | **Musa agrees:** Nessie pays the hospital from the fund (existing payout) and takes donations; the patient's Nessie account supplies the income-from-deposits check. Bill discovery from Nessie is dropped | Answered by Musa; pending Omar |
 | Q8 | What if there's no Gemini key by demo time? | Noureldin | Every AI step needs a deterministic path that works without a key; Gemini only improves it. No "Gemini reads policies" in the MVP, because it would show nothing on stage without a key | Leaning: required (Noureldin) |
@@ -75,7 +75,13 @@ Revision 2, first draft by the steward. It replaces the revision 1 five-screen p
   2. **Insurance step:** deterministic adjudication from the seeded plan, shown as one line on the bill.
   3. **Hospital policies step:** 3 fictional, labeled policies with hand-written rules (a source and review date each). The AI checks and applies to each; approved reductions post automatically and are labeled simulated. Gemini explains; a template is the fallback.
   4. **Fund request:** the remaining balance goes in automatically. Everyone is eligible; the `need-v1` score only sets the order of the queue (most in need first). There is no cut-off.
-  5. **Decision brief:** for each request, a short list (recommendation, suggested amount, reasons tied to the factors, flags) with a template fallback.
+  5. **Decision brief:** the note the final reviewer reads beside each request:
+     - the bill's path (charged → after insurance → after hospital policies → remaining);
+     - why it sits where it does in the queue, using the factor values;
+     - flags (injection, income mismatch);
+     - **suggested action: approve the full remaining balance**, with the second-approval notice over $500.
+
+     Every number is checked against the case data, with a template fallback (no Gemini key, or a mismatch). The brief never changes the score or the queue position; the reviewer can change the amount.
   6. **Final reviewer queue** (today's caseworker desk): the brief beside the score; approve or deny; Nessie pays the hospital; Solana receipt.
   7. **Patient bill page** (kiosk): the bill shrinking step by step, with what's confirmed and what's pending.
 - **Cut:** real insurers or claims, real hospital policies, OCR, identity verification, appeals, Gemini ranking the queue, and bill discovery from Nessie.
@@ -144,6 +150,7 @@ Musa's Claude (an opinion): agree, with changes. The pivot only works with the M
 - 2026-11-14 11:45 EST, Musa's Claude (steward): folded Noureldin's position into Q1–Q4 and Q7, added Q8 (no Gemini key), updated the MVP scope, cut list, ai lane estimate and risks.
 - 2026-11-14 12:15 EST, Musa's Claude (steward): recorded revision 2 from the team discussion relayed by Musa. New summary, the pipeline table, agreed points (funding assumption, order of steps, human final reviewer), Q9–Q13, a new MVP scope and risks. Revision 1 is kept for history.
 - 2026-11-14 12:35 EST, Musa's Claude (steward): recorded Musa's answers. Q9: the hospital approves, simulated and labeled. Q10: ranking only, no cut-off. Q12: a made-up plan per demo patient. Q13: agreed. Q11 is awaiting clarification.
+- 2026-11-14 12:45 EST, Musa's Claude (steward): Q11 answered by Musa; the brief suggests the full remaining balance. MVP item 5 now spells out the brief.
 
 ## Proposal (revision 1, for history)
 
