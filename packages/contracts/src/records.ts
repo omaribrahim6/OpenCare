@@ -17,15 +17,20 @@ export interface PatientProfile {
   insurance: InsuranceStatus | null;
 }
 
+/** A hospital in revision 6 (SPEC §9 "Hospital"): approval pays its Nessie merchant. */
 export interface Provider {
   id: string;
   name: string;
-  /** e.g. "pharmacy". */
+  /** e.g. "hospital". */
   kind: string;
 }
 
-/** "reviewer" is the caseworker's device (SPEC §2). */
-export const DEVICE_ROLES = ["kiosk", "provider", "reviewer"] as const;
+/**
+ * kiosk = patient app, hospital = intake terminal, reviewer = admin panel (SPEC §9).
+ * "provider" is the revision 5 redemption device; it goes away once the web screens move to "hospital".
+ */
+export const DEVICE_ROLES = ["kiosk", "hospital", "reviewer", "provider"] as const;
+
 export type DeviceRole = (typeof DEVICE_ROLES)[number];
 
 export interface Device {
