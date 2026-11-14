@@ -8,7 +8,7 @@ This is the ai lane (SPEC §7). It covers four jobs:
 
 It also flags text that looks like instructions aimed at the system.
 
-The package runs on the server only. Never import it from a client component, and never let `GEMINI_API_KEY` reach the browser.
+The package runs on the server only. Never import it from a client component, and never let a key or token reach the browser.
 
 It has no runtime dependencies besides `@abdulcare/contracts`, and it calls Gemini over REST with `fetch`. Every shape it uses comes from `@abdulcare/contracts` (`packages/contracts/src/ai.ts`).
 
@@ -78,4 +78,20 @@ npm run typecheck -w @abdulcare/ai
 GEMINI_API_KEY=... npm run smoke -w @abdulcare/ai      # live check against Gemini with fictional data
 ```
 
-`GEMINI_MODEL` overrides the default model, `gemini-2.5-flash`. An empty value falls back to the default.
+The smoke script refuses to run while `GOOGLE_GENAI_USE_VERTEXAI` is on (see below).
+
+## Model access
+
+There are two ways in (`src/gemini.ts`). When the model can't be reached, every job uses its fallback, and that is the expected state until a key is approved.
+
+| Path | Turned on by | Default model |
+| --- | --- | --- |
+| Gemini API | `GEMINI_API_KEY` | `gemini-2.5-flash` |
+| Vertex AI (`src/vertex.ts`) | `GOOGLE_GENAI_USE_VERTEXAI=true` + `GOOGLE_CLOUD_PROJECT` + `GOOGLE_SERVICE_ACCOUNT_JSON` or `GOOGLE_APPLICATION_CREDENTIALS`. Takes precedence over the API key | `gemini-3-flash-preview` |
+
+> **HARD RULE (AGENTS.md §7):** the Vertex service account is Omar's personal Google Cloud key. No agent may call Gemini or Vertex with it, or copy it anywhere. It stays off until `@omaribrahim6` lifts the rule himself.
+
+Other settings:
+- `GEMINI_MODEL` overrides the default model on either path. An empty value means the default.
+- Gemini 3 models run with a low thinking level (`GEMINI_THINKING_LEVEL`) and their default temperature, as Google advises. Set `GEMINI3_TEMPERATURE` to override. The ranking stays stable on reload because core caches each result by a hash of its inputs.
+- Older models run at the caller's temperature, which is 0 for ranking.
