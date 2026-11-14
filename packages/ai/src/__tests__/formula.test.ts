@@ -123,3 +123,18 @@ test("score is an integer within 0-100 for extreme and malformed inputs", () => 
   assert.equal(pts(assessNeed(cases[0]), "cost_burden").input, "$1,200.00 bill with no monthly income");
   assert.equal(assessNeed(cases[1]).score, 0);
 });
+
+test("deposit income: last 90 days averaged to a month, junk ignored", async () => {
+  const { estimateMonthlyIncomeCents } = await import("../formula");
+  const now = new Date("2026-11-14T12:00:00Z");
+  const deposits = [
+    { date: "2026-09-01", amountCents: 150_000 },
+    { date: "2026-10-01", amountCents: 150_000 },
+    { date: "2026-11-01", amountCents: 150_000 },
+    { date: "2026-05-01", amountCents: 999_999 }, // outside the window
+    { date: "2026-12-01", amountCents: 999_999 }, // future
+    { date: "2026-10-15", amountCents: -50_000 }, // not income
+  ];
+  assert.equal(estimateMonthlyIncomeCents(deposits, { now }), 150_000);
+  assert.equal(estimateMonthlyIncomeCents([], { now }), null);
+});
