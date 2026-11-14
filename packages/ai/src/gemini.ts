@@ -1,5 +1,9 @@
-// Minimal Gemini client over REST (no SDK dependency). Backend only: the key never
-// reaches the browser (SPEC §5, §10). We never log prompts, images or replies.
+// Minimal Gemini client over REST (no SDK dependency). Backend only: keys and tokens never
+// reach the browser (SPEC §5, §10). We never log prompts, images or replies.
+// Two ways in: Vertex AI with a service account (GOOGLE_GENAI_USE_VERTEXAI=true, see ./vertex),
+// or the Gemini API with GEMINI_API_KEY.
+
+import { VERTEX_DEFAULT_MODEL, vertexAccessToken, vertexEndpoint, vertexFromEnv, type VertexConfig } from "./vertex";
 
 export interface ModelPart {
   text?: string;
@@ -33,6 +37,8 @@ const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
 export interface GeminiOptions {
   apiKey?: string;
+  /** Vertex settings; defaults to vertexFromEnv() unless an apiKey is passed explicitly. */
+  vertex?: VertexConfig | null;
   model?: string;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
@@ -41,19 +47,40 @@ export interface GeminiOptions {
 export function createGeminiClient(opts: GeminiOptions = {}): ModelClient {
   // `||` so an empty value from .env ("GEMINI_MODEL=") falls back to the default.
   const apiKey = opts.apiKey ?? process.env.GEMINI_API_KEY;
-  const model = opts.model || process.env.GEMINI_MODEL || DEFAULT_MODEL;
+  let vertex: VertexConfig | null = null;
+  let vertexError: string | null = null;
+  try {
+    vertex = opts.vertex !== undefined ? opts.vertex : opts.apiKey !== undefined ? null : vertexFromEnv();
+  } catch (err) {
+    vertexError = (err as Error).message;
+  }
+  const model = opts.model || process.env.GEMINI_MODEL || (vertex ? VERTEX_DEFAULT_MODEL : DEFAULT_MODEL);
   const timeoutMs = opts.timeoutMs ?? 25_000;
   const doFetch = opts.fetchImpl ?? fetch;
 
   return {
     model,
     async generateJson(req) {
-      if (!apiKey) throw new ModelUnavailableError("GEMINI_API_KEY is not set");
+      if (vertexError) throw new ModelUnavailableError(`Vertex AI is misconfigured: ${vertexError}`);
+      if (!vertex && !apiKey) throw new ModelUnavailableError("GEMINI_API_KEY is not set (or turn on Vertex AI)");
+      let url: string;
+      let auth: Record<string, string>;
+      if (vertex) {
+        try {
+          auth = { authorization: `Bearer ${await vertexAccessToken(vertex, doFetch)}` };
+        } catch (err) {
+          throw new ModelUnavailableError(`Vertex AI auth failed: ${(err as Error).message}`);
+        }
+        url = vertexEndpoint(vertex, model);
+      } else {
+        auth = { "x-goog-api-key": apiKey as string };
+        url = `${BASE_URL}/${encodeURIComponent(model)}:generateContent`;
+      }
       const body = JSON.stringify({
         systemInstruction: { parts: [{ text: req.system }] },
         contents: [{ role: "user", parts: req.parts }],
         generationConfig: {
-          temperature: req.temperature ?? 0,
+          ...generationTuning(model, req.temperature),
           responseMimeType: "application/json",
           responseSchema: req.schema,
         },
@@ -63,9 +90,9 @@ export function createGeminiClient(opts: GeminiOptions = {}): ModelClient {
       for (let attempt = 0; attempt < 2; attempt++) {
         let res: Response;
         try {
-          res = await doFetch(`${BASE_URL}/${encodeURIComponent(model)}:generateContent`, {
+          res = await doFetch(url, {
             method: "POST",
-            headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+            headers: { "content-type": "application/json", ...auth },
             body,
             signal: AbortSignal.timeout(timeoutMs),
           });
@@ -94,6 +121,21 @@ export function createGeminiClient(opts: GeminiOptions = {}): ModelClient {
       throw lastError ?? new ModelUnavailableError("Gemini request failed");
     },
   };
+}
+
+/**
+ * Gemini 3 models think before answering; at the default level a queue ranking can take over 20s.
+ * GEMINI_THINKING_LEVEL ("minimal" | "low" | "medium" | "high", default "low") keeps it fast.
+ * Google advises leaving Gemini 3 at its default temperature (1.0): lower values can loop.
+ * Older models keep the caller's temperature (default 0).
+ */
+export function generationTuning(model: string, temperature?: number): Record<string, unknown> {
+  if (/^gemini-3/.test(model)) {
+    const level = process.env.GEMINI_THINKING_LEVEL || "low";
+    const keepTemp = process.env.GEMINI3_TEMPERATURE;
+    return { thinkingConfig: { thinkingLevel: level }, ...(keepTemp ? { temperature: Number(keepTemp) } : {}) };
+  }
+  return { temperature: temperature ?? 0 };
 }
 
 // Small helpers for building response schemas.
