@@ -5,7 +5,7 @@ Payments lane (SPEC §8): Capital One Nessie mock banking and Solana devnet rece
 ## Setup
 
 1. Put your Nessie key in the repo-root `.env` as `NESSIE_API_KEY=...`. Get it by logging in at the Nessie site or from the Capital One table.
-2. Seed the fictional Nessie data. This writes the fund, provider and patient IDs to `.env`:
+2. Seed the fictional Nessie data. It creates the fund, the provider pharmacy, and Alex, Sam, Jordan and Casey, matching the need profiles in core's seed. The IDs are written to `.env`:
    ```bash
    npm run nessie:seed -w @abdulcare/payments
    npm run nessie:check -w @abdulcare/payments
@@ -25,7 +25,7 @@ Payments lane (SPEC §8): Capital One Nessie mock banking and Solana devnet rece
 | `src/transactions.ts` | `listPatientTransactions` (open bills and purchases as `TransactionInput[]` for the ai classifier) and `listIncomeDeposits` (90 days of deposits for the ai income estimate) |
 | `src/solana.ts` | Receipts: `buildReceipt` (signed transfer plus an opaque memo, persisted before broadcast), `broadcast`, `checkSignature`, `sendReceipt`, `verifySolDonation` |
 | `src/redeem.ts` | `redeemGrant` and `reconcileGrant`, plus `paymentsFromEnv(db)` to build the deps |
-| `src/donations.ts` | `donateByCard` (Nessie deposit, memo receipt and `addDonation`) and `recordSolDonation` |
+| `src/donations.ts` | `donateByCard`: the Nessie deposit, then core's `recordDonation` (once per deposit ID), then a memo-only receipt via `setDonationReceipt`. Also `recordSolDonation`, which verifies a devnet transfer to the treasury and records it once per signature |
 
 ## For the api lane (route handlers)
 
@@ -45,8 +45,9 @@ const grant = await reconcileGrant(deps, grantId);
 // GET /api/patients/me/bills: feed this to the ai classifier
 const txns = await listPatientTransactions(deps.nessie, patient.nessieAccountId);
 
-// POST /api/fund/donations: pass a client-generated key so a double submit deposits once
-const receipt = await donateByCard(deps, { amountCents, idempotencyKey });
+// POST /api/fund/donations: pass a client-generated key so a double submit deposits once.
+// donateByCard records the donation itself, so the route doesn't call recordDonation.
+const { donation, explorerUrl } = await donateByCard(deps, { amountCents, idempotencyKey });
 ```
 
 Redemption follows the flow in `packages/core/README.md`:

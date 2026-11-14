@@ -18,29 +18,39 @@ const ADDRESS: NessieAddress = {
 
 const daysAgo = (n: number) => nessieDate(new Date(Date.now() - n * 86_400_000));
 
-/** Fictional patients (SPEC §10). Income drives the ai lane's deposit-based estimate. */
+/**
+ * Fictional patients (SPEC §10), matching the need profiles in packages/core/db/seed.ts. Deposits
+ * follow each profile's monthly income; Casey's profile has no income, so the ai lane estimates it
+ * from these deposits.
+ */
 const PATIENTS = [
   {
     env: "NESSIE_PATIENT_ACCOUNT_ID",
     first: "Alex",
     last: "Rivera",
-    monthlyIncomeCents: 210_000,
+    monthlyIncomeCents: 180_000,
     bills: [{ payee: "Pioneer Valley Community Pharmacy", nickname: "Prescription refill", cents: 4_500, demo: true }],
   },
   {
     env: "NESSIE_PATIENT2_ACCOUNT_ID",
     first: "Sam",
     last: "Patel",
-    monthlyIncomeCents: 130_000,
-    bills: [{ payee: "Valley Regional Hospital ER", nickname: "Emergency room visit", cents: 120_000 }],
+    monthlyIncomeCents: 420_000,
+    bills: [{ payee: "Amherst Family Medicine", nickname: "Office visit copay", cents: 3_000 }],
   },
   {
     env: "NESSIE_PATIENT3_ACCOUNT_ID",
     first: "Jordan",
     last: "Lee",
-    monthlyIncomeCents: 520_000,
+    monthlyIncomeCents: 260_000,
+    bills: [{ payee: "Valley Regional Hospital ER", nickname: "Emergency room visit", cents: 120_000 }],
+  },
+  {
+    env: "NESSIE_PATIENT4_ACCOUNT_ID",
+    first: "Casey",
+    last: "Morgan",
+    monthlyIncomeCents: 150_000,
     bills: [
-      { payee: "Amherst Family Medicine", nickname: "Office visit copay", cents: 3_000 },
       {
         // The tampered request (SPEC §7): injected instructions must be flagged and change nothing.
         payee: "Valley Urgent Care",
@@ -115,7 +125,8 @@ async function main() {
 
   console.log("\nDone. IDs are saved in .env:");
   console.log("  NESSIE_FUND_ACCOUNT_ID, NESSIE_PROVIDER_MERCHANT_ID, NESSIE_DEMO_BILL_ID,");
-  console.log("  NESSIE_PATIENT_ACCOUNT_ID (Alex), NESSIE_PATIENT2_ACCOUNT_ID (Sam), NESSIE_PATIENT3_ACCOUNT_ID (Jordan)");
+  console.log("  NESSIE_PATIENT_ACCOUNT_ID (Alex), NESSIE_PATIENT2_ACCOUNT_ID (Sam),");
+  console.log("  NESSIE_PATIENT3_ACCOUNT_ID (Jordan), NESSIE_PATIENT4_ACCOUNT_ID (Casey)");
   console.log("Next: npm run db:seed -w @abdulcare/core, and copy the same values into Vercel.");
 }
 
