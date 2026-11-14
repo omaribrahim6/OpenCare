@@ -1,12 +1,12 @@
 // POST /api/grants/:id/decision: a reviewer approves (whole dollars, reserving budget) or rejects.
-// Above $500 a second reviewer device must approve the same amount (SPEC §2).
+// One approval is enough at any amount. A rejection sends a devnet decision receipt.
 // Rev 6: approval pays the hospital in the same request (Nessie payout, then the Solana receipt);
 // there is no provider tap. Repeating an approval retries a payout that didn't finish, and never
 // pays twice.
 
 import type { Grant, GrantDecisionRequest, GrantResponse } from "@abdulcare/contracts";
 import { CoreError, decideGrant, getDb, getGrant } from "@abdulcare/core";
-import { redeemGrant } from "@abdulcare/payments";
+import { redeemGrant, sendDecisionReceipt } from "@abdulcare/payments";
 import { requireDevice } from "@/app/api/_lib/auth";
 import { payments } from "@/app/api/_lib/deps";
 import { ok, readJson, route, type IdParams } from "@/app/api/_lib/http";
@@ -35,6 +35,11 @@ export const POST = route(async (req: Request, { params }: IdParams) => {
   }
   if (grant.visit && (grant.status === "approved" || grant.status === "payment_pending")) {
     grant = await payHospital(grant);
+  }
+  if (grant.status === "rejected") {
+    // A declined request gets its own devnet receipt so the public ledger shows it as decided.
+    // No-op if one exists; never throws.
+    await sendDecisionReceipt(payments(), grant.id);
   }
   return ok<GrantResponse>({ grant });
 });
