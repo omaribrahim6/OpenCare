@@ -84,24 +84,20 @@ export function FundWorkspace({ initialTab, onLedger }: { initialTab: FundTab; o
         <button type="button" aria-pressed={tab === "overview"} onClick={() => setTab("overview")}>Overview</button>
         <button type="button" aria-pressed={tab === "about"} onClick={() => setTab("about")}>Fund rules</button>
       </nav>}
-      <div className="v-page-header">
+      {tab !== "about" && <div className="v-page-header">
         <h1 className="pub-h1">
-        {tab === "overview" ? "Community fund" : tab === "ledger" ? "Ledger" : "How it works"}
+        {tab === "overview" ? "Community fund" : "Ledger"}
         <small>
           {tab === "overview"
             ? "Pays medical bills straight to the provider. A caseworker approves every grant."
-            : tab === "ledger"
-              ? "Every dollar in and every case decided, with the bill behind it. Open a case to audit it; no one is named."
-              : "Tap, pick a bill, a caseworker decides, the provider is paid."}
+            : "Every dollar in and every case decided, with the bill behind it. Open a case to audit it; no one is named."}
         </small>
       </h1>
-        {tab !== "about" && (
-          <div className="v-page-actions">
-            {s?.recent[0] && <span className="v-outline v-date"><Icon name="calendar" /> {shortDate(s.recent[0].at)}</span>}
-            <button className="v-outline" onClick={exportLedger} disabled={!ledger?.entries.length}><Icon name="arrowUpRight" /> Export</button>
-          </div>
-        )}
-      </div>
+        <div className="v-page-actions">
+          {s?.recent[0] && <span className="v-outline v-date"><Icon name="calendar" /> {shortDate(s.recent[0].at)}</span>}
+          <button className="v-outline" onClick={exportLedger} disabled={!ledger?.entries.length}><Icon name="arrowUpRight" /> Export</button>
+        </div>
+      </div>}
 
       {failed && (
         <div className="notice notice-bad" role="alert" style={{ marginBottom: 16 }}>
@@ -125,7 +121,7 @@ export function FundWorkspace({ initialTab, onLedger }: { initialTab: FundTab; o
           <LedgerTable ledger={ledger} search={search} />
         </>
       )}
-      {tab === "about" && <About s={s} />}
+      {tab === "about" && <About />}
 
       <p className="proto-note">HackUMass prototype · fictional people · Nessie sandbox money · Solana devnet receipts</p>
       <dialog ref={donationDialog} className="v-donate-dialog" aria-label="Donate to AbdulCare">
@@ -292,55 +288,89 @@ function LedgerResults({ ledger, entries }: { ledger: LedgerResponse | null; ent
   );
 }
 
-function About({ s }: { s: FundSummary | null }) {
+const HOW = "/admin/how";
+
+function About() {
   const steps = [
-    ["Tap the CareCard", "At a participating clinic kiosk. No app, password or smartphone; the patient's profile is on file."],
-    ["Pick a bill", "AbdulCare finds medical bills in the linked bank account and explains each one in plain words, with read-aloud."],
-    ["A caseworker decides", "Requests are ranked by need. A caseworker reviews each one in private and approves or declines it."],
-    ["The provider is paid", "At the counter, the patient taps again and staff confirm. The fund pays the provider and records a public receipt."],
+    ["journey-01-tap-carecard", "Tap the CareCard", "At a participating clinic kiosk. No app, password or smartphone; the patient's profile is on file."],
+    ["journey-02-pick-a-bill", "Pick a bill", "AbdulCare finds medical bills in the linked bank account and explains each one in plain words, with read-aloud."],
+    ["journey-03-caseworker-decides", "A caseworker decides", "Requests are ranked by need. A caseworker reviews each one in private and approves or declines it."],
+    ["journey-04-provider-is-paid", "The provider is paid", "At the counter, the patient taps again and staff confirm. The fund pays the provider and records a public receipt."],
   ];
   const rules = [
-    ["Need first", "The queue follows a published 100-point need score. Gemini compares anonymized requests; the formula is the fallback."],
-    ["People decide", "A caseworker reviews every request and approves or declines it. One approval is enough to pay the hospital."],
-    ["Providers only", "Money goes to participating providers, never to the patient, so it can only pay for care."],
-    ["Private", "Names, demographics and diagnoses are never used to rank anyone and never go on-chain."],
+    ["rules-01-need-first", "Need first", "The queue follows a published 100-point need score. Gemini only writes the decision brief; it never sets the order."],
+    ["rules-02-people-decide", "People decide", "A caseworker reviews every request and approves or declines it. One approval is enough to pay the hospital."],
+    ["rules-03-providers-only", "Providers only", "Money goes to participating providers, never to the patient, so it can only pay for care."],
+    ["rules-04-private", "Private", "Names, demographics and diagnoses are never used to rank anyone and never go on-chain."],
+  ];
+  const features = [
+    ["features-01-fast-process", "Fast process", "From tap to payment, built for real clinic visits."],
+    ["features-02-human-reviewed", "Human-reviewed", "A caseworker reviews every request for a fair, careful decision."],
+    ["features-03-public-receipts", "Public receipts", "Every payment is recorded with a public receipt for trust."],
   ];
   return (
-    <div className="info-grid">
-      <section className="g-card" aria-labelledby="hw-title">
-        <h2 id="hw-title" className="g-title">
-          The journey
-        </h2>
-        <ol className="numbered">
-          {steps.map(([t, d], i) => (
-            <li key={t}>
-              <b>{i + 1}</b>
-              <span>
-                <strong>{t}</strong>
-                <p>{d}</p>
-              </span>
-            </li>
-          ))}
-        </ol>
-      </section>
-      <section className="g-card" aria-labelledby="rl-title">
-        <h2 id="rl-title" className="g-title">
-          The fund&apos;s rules
-        </h2>
-        <ol className="numbered">
-          {rules.map(([t, d]) => (
-            <li key={t}>
-              <b>
-                <Icon name="check" size={18} />
-              </b>
-              <span>
-                <strong>{t}</strong>
-                <p>{d}</p>
-              </span>
-            </li>
-          ))}
-        </ol>
-      </section>
+    <div className="hw">
+      <header className="hw-hero" style={{ backgroundImage: `url(${HOW}/hero.png)` }}>
+        <h1>How it works</h1>
+        <p>Tap, pick a bill, a caseworker decides, the provider is paid.</p>
+      </header>
+
+      <div className="hw-cols">
+        <section className="hw-card" aria-labelledby="hw-journey">
+          <h2 id="hw-journey">
+            <span className="hw-badge" aria-hidden="true">
+              <Icon name="pulse" />
+            </span>
+            The journey
+          </h2>
+          <ol>
+            {steps.map(([img, t, d], i) => (
+              <li key={t} className="hw-item">
+                <b className="hw-mark">{i + 1}</b>
+                <img src={`${HOW}/${img}.png`} alt="" width={112} height={84} loading="lazy" />
+                <span>
+                  <strong>{t}</strong>
+                  <p>{d}</p>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+        <section className="hw-card" aria-labelledby="hw-rules">
+          <h2 id="hw-rules">
+            <span className="hw-badge" aria-hidden="true">
+              <Icon name="shield" />
+            </span>
+            The fund&apos;s rules
+          </h2>
+          <ul>
+            {rules.map(([img, t, d]) => (
+              <li key={t} className="hw-item">
+                <b className="hw-mark" aria-hidden="true">
+                  <Icon name="check" size={16} />
+                </b>
+                <img src={`${HOW}/${img}.png`} alt="" width={112} height={84} loading="lazy" />
+                <span>
+                  <strong>{t}</strong>
+                  <p>{d}</p>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+
+      <ul className="hw-features">
+        {features.map(([img, t, d]) => (
+          <li key={t}>
+            <img src={`${HOW}/${img}.png`} alt="" width={56} height={56} loading="lazy" />
+            <span>
+              <strong>{t}</strong>
+              <p>{d}</p>
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
