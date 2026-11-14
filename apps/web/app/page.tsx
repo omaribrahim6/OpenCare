@@ -19,9 +19,7 @@ export default async function Welcome({
       <h1 style={{ marginTop: 32 }}>Welcome to AbdulCare</h1>
       <p className="muted">Tap your card. Understand your bill. Get help paying for care.</p>
 
-      <div className="tap-target" aria-hidden="true">
-        ◉
-      </div>
+      <div className="tap-target" aria-hidden="true" />
       <p className="big" style={{ fontSize: "1.8rem" }}>
         Tap your CareCard on the back of this phone
       </p>
