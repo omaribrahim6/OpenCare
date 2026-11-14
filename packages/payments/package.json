@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "solana:setup": "tsx scripts/solana-setup.ts",
     "nessie:seed": "tsx scripts/nessie-seed.ts",
-    "nessie:check": "tsx scripts/nessie-check.ts"
+    "nessie:check": "tsx scripts/nessie-check.ts",
+    "payments:smoke": "tsx scripts/live-smoke.ts"
   },
   "dependencies": {
     "@abdulcare/contracts": "*",
