@@ -171,7 +171,25 @@ describe("visits and the bill", () => {
     assert.equal(grant.requestedCents, 43_200);
   });
 
+  test("the admin intake tab (reviewer device) can log any hospital's template", async () => {
+    const reviewer = (await pairDevice(db, { role: "reviewer", pin: "4242", label: "Admin" })).device;
+    await rejectsWith(
+      logVisit(db, engines, { templateId: "tpl_other", patientId: "pat_1", device: reviewer, idempotencyKey: "k8" }),
+      "forbidden",
+    );
+    const bill = await logVisit(db, engines, {
+      templateId: "tpl_other",
+      patientId: "pat_1",
+      device: reviewer,
+      idempotencyKey: "k8",
+      anyHospital: true,
+    });
+    assert.equal(bill.visit.hospital.id, "prv_2");
+    assert.equal(bill.visit.attestedBy, "Admin");
+  });
+
   test("a hospital terminal tap selects the patient for intake", async () => {
+
     const { token } = await issueCard(db, "pat_1");
     const { result, sessionSecret } = await resolveTap(db, token, hospital);
     assert.equal(result.kind, "intake");

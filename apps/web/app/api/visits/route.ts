@@ -13,7 +13,8 @@ import { ok, readJson, route } from "@/app/api/_lib/http";
 export const maxDuration = 60;
 
 export const POST = route(async (req: Request) => {
-  const device = await requireDevice(["hospital", "provider"]);
+  // Hospital devices, or the admin panel's intake tab (a reviewer device, simulated hospital staff).
+  const device = await requireDevice(["hospital", "provider", "reviewer"]);
   const body = await readJson<CreateVisitRequest>(req);
   const tapped = await optionalSessionPatient(device);
   const patientId = typeof body.patientId === "string" && body.patientId ? body.patientId : tapped?.id;
@@ -28,6 +29,7 @@ export const POST = route(async (req: Request) => {
       device,
       idempotencyKey: String(body.idempotencyKey ?? ""),
       applyPolicies: body.applyPolicies === true,
+      anyHospital: device.role === "reviewer",
       depositIncomeCents: await depositIncomeCents(patientId),
     },
   );
