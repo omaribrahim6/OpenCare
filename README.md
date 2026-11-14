@@ -1,36 +1,42 @@
-# Trumpcare
+# AbdulCare — Care for All
 
-## Team agent board
+> Tap your card. Understand your bill. Get help paying for care.
 
-All of our coding agents coordinate on the pinned **Message Board** issue (#1) using `tools/board`. Team rules and folder owners are in [AGENTS.md](AGENTS.md).
+AbdulCare is an AI-assisted healthcare access kiosk built at HackUMass XIV. A patient taps an NFC **CareCard** on a clinic kiosk. AbdulCare finds or scans a medical bill and explains it in plain language, and the patient requests help from a community care fund. Once a human reviewer approves the grant, a second tap at the provider pays the bill through Capital One's Nessie API and records a privacy-safe public receipt on Solana devnet.
 
-### One-time setup (each teammate)
+**Built with:** Next.js · Node.js/TypeScript · Gemini API · MongoDB Atlas · Capital One Nessie · Solana devnet · NFC (NTAG) · 3D printing
 
-1. Install the GitHub CLI: https://cli.github.com
-2. Log in: `gh auth login`
-3. Clone the repo and check it works (run in Git Bash on Windows):
-   ```bash
-   git clone https://github.com/omaribrahim6/Trumpcare.git
-   cd Trumpcare
-   tools/board whoami
-   ```
-4. Say hi: `tools/board post "[YourName's Claude] online"`
+## Repository layout
 
-Claude Code picks up board posts automatically through the hooks in `.claude/`. Approve them the first time Claude Code asks. Other agents (Codex, Cursor, …) should run `tools/board unread` before each task.
+| Path | Contents | Lane |
+|---|---|---|
+| `apps/web/` | Mobile-first kiosk, reviewer, provider and dashboard views | `web` |
+| `apps/api/` | Backend API, auth, device pairing, grant state machine | `api` |
+| `apps/api/src/ai/` | Gemini extraction, explanations, assistance matching | `ai` |
+| `apps/api/src/payments/` | Nessie payouts and Solana receipts | `payments` |
+| `packages/contracts/` | Shared TypeScript types and API contracts | `api` (integration owner) |
+| `docs/` | [Product spec](docs/SPEC.md) and [agent board guide](docs/agent-board.md) | — |
+| `tools/` | `board` (agent message board) and `preflight` (conflict and commit checks) | — |
 
-### Commands
+## Getting started
 
-| Command | What it does |
-|---|---|
-| `tools/board post "[Name's Agent] text"` | Post to the board |
-| `tools/board unread` | New posts since your last check (flags ones that tag you) |
-| `tools/board wait` | Block until someone else posts |
-| `tools/board read -n 20` | Last 20 posts |
-| `tools/board lanes` | Who owns which domain right now |
-| `tools/board whoami` | Your GitHub login |
+```bash
+git clone https://github.com/omaribrahim6/Trumpcare.git
+cd Trumpcare
+cp .env.example .env    # fill in your lane's keys; never commit .env
+tools/preflight         # also enables the commit-message hook
+```
 
-### Lanes
+Each lane documents its own run commands in its folder.
 
-Give your agent one domain at a time ("you're on design: UI components in web/components"). It posts a `LANE:` line on the board, and other agents send it tasks in that domain. When it's done, it posts `LANE DONE:` and tells you it's ready for the next assignment. Full rules are in [AGENTS.md](AGENTS.md) section 2.
+## How we work
 
-Board setup adapted from [hackathon-agent-board](https://github.com/azizu06/hackathon-agent-board).
+- **Lanes:** each teammate's coding agent owns one lane ([SPEC §11](docs/SPEC.md#11-team-lanes)) and coordinates with the others on the pinned board issue ([guide](docs/agent-board.md)).
+- **Commits:** follow [Conventional Commits](https://www.conventionalcommits.org) (`feat(web): add check-in screen`). A git hook enforces it.
+- **Merging:** small PRs, `tools/preflight` before every push, PR, and merge, and rebase-merge only, so the full history stays visible.
+
+Full rules: [AGENTS.md](AGENTS.md).
+
+---
+
+Independent hackathon prototype. Not affiliated with or endorsed by Abdul El-Sayed. Demonstration uses fictional data, Capital One Nessie mock banking, and Solana devnet.
