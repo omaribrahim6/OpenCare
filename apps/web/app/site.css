@@ -1522,6 +1522,7 @@
 .lc-summary dd { margin: 4px 0 0; font-size: 19px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .lc-summary small { font-size: 12px; font-weight: 500; color: var(--v-muted, #64636d); }
 .lc-clickable { cursor: pointer; }
+.ledger-table td:nth-child(4) { white-space: nowrap; }
 .lc-clickable:hover td { background: #faf8ff; }
 .lc-detail strong, .lc-detail small { display: block; }
 .lc-detail strong { font-weight: 600; max-width: 380px; }
@@ -1584,8 +1585,16 @@
 .lc-small { grid-column: 1 / -1; margin: 6px 0 0; font-size: 12px; }
 .lc-error { margin: 8px 0 0; font-size: 13px; color: #a5513f; }
 
+.lc-filter-row { flex-wrap: wrap; gap: 10px; }
+.lc-summary dd { overflow-wrap: anywhere; }
+
 @media (max-width: 640px) {
-  .lc-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lc-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .lc-summary div { padding: 10px; }
+  .lc-summary dd { font-size: 15px; }
+  .lc-filter-row .g-sub { flex: 1 1 100%; }
+  .lc-filter-row .tabs { max-width: 100%; overflow-x: auto; }
+  .lc-head, .lc-body { padding-left: 16px; padding-right: 16px; }
   .lc-facts, .lc-totals { grid-template-columns: 1fr 1fr; }
   .lc-steps li { grid-template-columns: 1fr auto; }
   .lc-steps li .num:last-child { display: none; }
