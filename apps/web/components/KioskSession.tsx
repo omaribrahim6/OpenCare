@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { endSession } from "@/lib/api";
+import { Logo } from "./Logo";
 
 const IDLE_MS = 90_000;
 const WARN_MS = 15_000;
@@ -37,7 +38,7 @@ export function KioskSession({
         clearInterval(t);
         endSession()
           .catch(() => {})
-          .finally(() => router.replace("/?ended=idle"));
+          .finally(() => router.replace("/kiosk?ended=idle"));
       } else if (idle >= IDLE_MS - WARN_MS) {
         setSecondsLeft(Math.ceil((IDLE_MS - idle) / 1000));
       }
@@ -49,14 +50,16 @@ export function KioskSession({
   }, [router]);
 
   return (
-    <main className="page">
-      <div className="row" style={{ justifyContent: "space-between", marginBottom: 12 }}>
-        <strong>AbdulCare kiosk</strong>
+    <main className="page station station-session">
+      <div className="station-bar">
+        <Logo href={null} />
         <EndSessionButton style={{ minHeight: 44 }} />
       </div>
       <ol className="steps" aria-label={`Step ${step} of ${totalSteps}`}>
-        {Array.from({ length: totalSteps }, (_, i) => (
-          <li key={i} className={i < step ? "done" : ""} />
+        {["Bills", "Request help", "Status"].slice(0, totalSteps).map((label, i) => (
+          <li key={label} className={i < step ? "done" : ""} aria-current={i + 1 === step ? "step" : undefined}>
+            {label}
+          </li>
         ))}
       </ol>
       {secondsLeft !== null && (
@@ -91,7 +94,7 @@ export function EndSessionButton({
         setBusy(true);
         endSession()
           .catch(() => {})
-          .finally(() => router.replace("/?ended=user"));
+          .finally(() => router.replace("/kiosk?ended=user"));
       }}
     >
       {label}
