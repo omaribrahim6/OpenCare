@@ -140,8 +140,13 @@ input, select, textarea {
   margin: 24px auto;
   border-radius: 50%;
   border: 4px dashed var(--brand);
-  color: var(--brand);
-  font-size: 4rem;
+}
+.tap-target::after {
+  content: "";
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--brand);
 }
 
 .doc-preview {

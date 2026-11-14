@@ -61,7 +61,7 @@ export function ReviewQueue({ items }: { items: QueueItem[] }) {
                   <span className="row" style={{ gap: 6 }}>
                     {it.assessment.suspiciousContent && (
                       <span className="badge bad">
-                        <span aria-hidden="true">⚠</span> Suspicious content
+                        Suspicious content
                       </span>
                     )}
                     {status !== "pending_review" && <StatusBadge status={status} />}
@@ -110,7 +110,7 @@ function Detail({
       {a.suspiciousContent && (
         <div className="injection-warning" role="alert">
           <strong>
-            <span aria-hidden="true">⚠ </span>Suspicious content in the {a.suspiciousContent.field}
+            Suspicious content in the {a.suspiciousContent.field}
           </strong>
           <p style={{ margin: "6px 0" }}>
             It looks like instructions aimed at this system. It was ignored: the score, rank and payout are unchanged.
