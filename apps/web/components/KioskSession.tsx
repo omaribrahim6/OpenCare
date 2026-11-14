@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { endSession } from "@/lib/api";
 
 const IDLE_MS = 90_000;
 const WARN_MS = 15_000;
@@ -34,7 +34,10 @@ export function KioskSession({
     const t = setInterval(() => {
       const idle = Date.now() - last.current;
       if (idle >= IDLE_MS) {
-        router.replace("/?ended=idle");
+        clearInterval(t);
+        endSession()
+          .catch(() => {})
+          .finally(() => router.replace("/?ended=idle"));
       } else if (idle >= IDLE_MS - WARN_MS) {
         setSecondsLeft(Math.ceil((IDLE_MS - idle) / 1000));
       }
@@ -49,9 +52,7 @@ export function KioskSession({
     <main className="page">
       <div className="row" style={{ justifyContent: "space-between", marginBottom: 12 }}>
         <strong>AbdulCare kiosk</strong>
-        <Link href="/?ended=user" className="btn secondary" style={{ minHeight: 44 }}>
-          End session
-        </Link>
+        <EndSessionButton style={{ minHeight: 44 }} />
       </div>
       <ol className="steps" aria-label={`Step ${step} of ${totalSteps}`}>
         {Array.from({ length: totalSteps }, (_, i) => (
@@ -65,5 +66,35 @@ export function KioskSession({
       )}
       {children}
     </main>
+  );
+}
+
+/** Ends the patient session on the server (clears the cookie), then returns to the welcome screen. */
+export function EndSessionButton({
+  label = "End session",
+  className = "btn secondary",
+  style,
+}: {
+  label?: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      className={className}
+      style={style}
+      disabled={busy}
+      onClick={() => {
+        setBusy(true);
+        endSession()
+          .catch(() => {})
+          .finally(() => router.replace("/?ended=user"));
+      }}
+    >
+      {label}
+    </button>
   );
 }
