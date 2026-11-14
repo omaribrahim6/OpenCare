@@ -351,20 +351,6 @@ body:has(.portal-screen) { background: #f1f4f3; }
   background: #f8fbf9;
 }
 
-.portal-card-entry,
-.portal-demo-entry { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
-.portal-demo-entry { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-.portal-demo-entry [role="alert"] { grid-column: 1 / -1; }
-.portal-entry-icon {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: #e5f0ea;
-  color: #205541;
-}
-
 .portal-form { display: grid; gap: 16px; }
 .portal-form .btn { margin: 0; }
 .portal-screen .portal-panel :is(select, input) { margin-top: 0; background: #fff; }
@@ -375,5 +361,4 @@ body:has(.portal-screen) { background: #f1f4f3; }
 
 @media (max-width: 520px) {
   .station.portal-screen { min-height: 0; margin: 16px auto; }
-  .portal-demo-entry { grid-template-columns: 1fr; }
 }
