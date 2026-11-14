@@ -37,7 +37,7 @@ export type AttemptStatus = (typeof ATTEMPT_STATUSES)[number];
 
 export type ReceiptStatus = "receipt_pending" | "receipt_confirmed";
 
-/** Grants approved above this amount need a second caseworker's approval (SPEC §2): $500. */
+/** @deprecated No longer enforced: one caseworker approval is enough at any amount. */
 export const SECOND_APPROVAL_ABOVE_CENTS: Cents = 50_000;
 
 /** Longest hardship note a patient can attach to a request. */

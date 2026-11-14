@@ -295,7 +295,7 @@ export async function getDecisionBrief(
   );
   if (rows[0] && rows[0].inputs_hash === inputsHash) {
     const b = rows[0].brief;
-    return typeof b === "string" ? (JSON.parse(b) as DecisionBrief) : b;
+    return oneApproval(typeof b === "string" ? (JSON.parse(b) as DecisionBrief) : b);
   }
   let draft = briefFallback(input);
   if (engine) {
@@ -311,7 +311,7 @@ export async function getDecisionBrief(
       // Keep the template brief.
     }
   }
-  const brief: DecisionBrief = { ...draft, grantId, computedAt: new Date().toISOString() };
+  const brief: DecisionBrief = oneApproval({ ...draft, grantId, computedAt: new Date().toISOString() });
   await db.query(
     `insert into decision_briefs (grant_id, inputs_hash, brief, source, checked, computed_at)
      values ($1, $2, $3, $4, $5, now())
@@ -321,6 +321,11 @@ export async function getDecisionBrief(
     [grantId, inputsHash, JSON.stringify(brief), brief.source, brief.checked],
   );
   return brief;
+}
+
+/** One caseworker approval is enough at any amount, whatever the engine or an older cache says. */
+function oneApproval(brief: DecisionBrief): DecisionBrief {
+  return { ...brief, needsSecondApproval: false };
 }
 
 /** Everything the reviewer's case screen shows for one rev 6 request (SPEC §4 screen 7). */
@@ -352,7 +357,7 @@ export async function getCaseDetail(
   );
   return {
     bill: await getBill(db, grant.visit.id),
-    brief: parse(briefs[0]?.brief),
+    brief: briefs[0]?.brief == null ? null : oneApproval(parse(briefs[0].brief)!),
     profile,
     assessment: parse(rows[0]?.assessment),
     rank: null,

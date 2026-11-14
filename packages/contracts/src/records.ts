@@ -82,7 +82,7 @@ export interface Receipt {
   receiptStatus: ReceiptStatus;
 }
 
-/** One caseworker's approval. Grants above SECOND_APPROVAL_ABOVE_CENTS need two. */
+/** One caseworker's approval. One is enough at any amount. */
 export interface GrantApproval {
   reviewerLabel: string;
   approvedCents: Cents;
@@ -105,7 +105,7 @@ export interface Grant {
   /** Optional note from the patient. Untrusted: show as plain text, never scored. */
   hardshipNote: string | null;
   approvals: GrantApproval[];
-  /** True while a large grant has one approval and waits for a second caseworker. */
+  /** @deprecated Always false: one approval is enough at any amount. */
   awaitingSecondApproval: boolean;
   createdAt: string;
   decidedAt: string | null;
