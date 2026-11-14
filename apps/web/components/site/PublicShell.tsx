@@ -6,7 +6,7 @@ import { Icon, type IconName } from "../Icon";
 
 const STATIONS: { href: string; icon: IconName; label: string }[] = [
   { href: "/kiosk", icon: "tap", label: "Patient kiosk" },
-  { href: "/review", icon: "queue", label: "Caseworker desk" },
+  { href: "/review", icon: "queue", label: "Fund admin" },
   { href: "/provider", icon: "store", label: "Provider terminal" },
 ];
 
