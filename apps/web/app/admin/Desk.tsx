@@ -8,7 +8,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ApiRequestError, currentDevice, decideGrant, getBriefedQueue, LIVE } from "@/lib/api";
 import { cleanName, initials, usd, usdCompact, usdParts } from "@/lib/format";
 import type { Grant, QueueItem, ReviewQueue } from "@/lib/types";
-import { CATEGORY_LABEL, SECOND_APPROVAL_ABOVE_CENTS } from "@/lib/types";
+import { CATEGORY_LABEL } from "@/lib/types";
 import { AdminGate } from "./AdminGate";
 import { CaseDrawer } from "./CaseDrawer";
 import { FundWorkspace } from "./FundWorkspace";
@@ -566,7 +566,6 @@ function NextUp({
     g.awaitingSecondApproval && firstApproval
       ? firstApproval
       : Math.floor((item.brief?.suggestedCents ?? item.remainingCents ?? g.requestedCents) / 100) * 100;
-  const needsSecond = cents > SECOND_APPROVAL_ABOVE_CENTS && !g.awaitingSecondApproval;
   const why = item.brief?.reasons[0] ?? item.insight?.summary ?? item.rationale;
   const flags = [
     ...(item.suspiciousContent ? ["Suspicious text in the request"] : []),
@@ -681,9 +680,7 @@ function NextUp({
         onConfirm={() => decide("approve")}
       >
         <p style={{ color: "#5c5f5e" }}>
-          {needsSecond
-            ? `This records your approval. Nothing is paid until a second caseworker approves the same amount.`
-            : g.visit
+          {g.visit
               ? `This pays ${usd(cents)} from the community care fund to ${g.provider.name} now, toward ${name}'s bill. It can't be undone.`
               : `This reserves ${usd(cents)} for ${name}, payable only to ${g.provider.name}. The amount and recipient can't be changed afterward.`}{" "}
           To approve a different amount, use Details.
