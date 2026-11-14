@@ -45,7 +45,9 @@ function overviewUsd(cents: number) {
 
 function Amount({ cents }: { cents: number | undefined }) {
   if (cents == null) return <span className="v-amount">—</span>;
-  // Headline amounts show every cent; the smaller keys use compact figures.
+  if (Math.abs(cents) >= 100_000_000) {
+    return <span className="v-amount" title={usd(cents)}>{overviewUsd(cents)}</span>;
+  }
   const [dollars, fraction] = usdParts(cents);
   return <span className="v-amount">{dollars}<span>{fraction}</span></span>;
 }
