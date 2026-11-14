@@ -135,4 +135,9 @@ export async function recordReceiptEvent(db: Db, grantRef: string, signature: st
     "insert into fund_events (type, amount_cents, grant_ref, solana_signature) values ('receipt', 0, $1, $2)",
     [grantRef, signature],
   );
+  // The payout row carries its receipt too, so the public ledger shows it as confirmed.
+  await db.query(
+    "update fund_events set solana_signature = $2 where type = 'payout' and grant_ref = $1 and solana_signature is null",
+    [grantRef, signature],
+  );
 }

@@ -98,10 +98,17 @@ export async function getFundSummary(db: Db): Promise<FundSummary> {
     solana_signature: string | null;
     time: Date;
   }>(
-    `select type, grant_ref, amount_cents, solana_signature, time
-       from fund_events
-      where type in ('donation', 'payout', 'receipt')
-      order by time desc limit 20`,
+    // A payout's devnet receipt is written as its own 'receipt' event; show it on the payout row
+    // instead, so payouts never look pending once their receipt is confirmed.
+    `select e.type, e.grant_ref, e.amount_cents,
+            coalesce(e.solana_signature,
+                     (select r.solana_signature from fund_events r
+                       where r.type = 'receipt' and r.grant_ref = e.grant_ref and e.type = 'payout'
+                       order by r.time desc limit 1)) as solana_signature,
+            e.time
+       from fund_events e
+      where e.type in ('donation', 'payout')
+      order by e.time desc limit 20`,
   );
 
   // The continuous aggregate only exists on Tiger Cloud (002_timescale.sql).
@@ -109,7 +116,7 @@ export async function getFundSummary(db: Db): Promise<FundSummary> {
   try {
     const { rows } = await db.query<{ day: Date; approved_cents: number | null; paid_cents: number | null }>(
       `select day, approved_cents, paid_cents from fund_daily
-        where day > now() - interval '14 days' order by day`,
+        where day > now() - interval '120 days' order by day`,
     );
     daily = rows.map((r) => ({
       day: iso(r.day).slice(0, 10),
