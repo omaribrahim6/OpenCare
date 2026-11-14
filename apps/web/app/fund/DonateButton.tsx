@@ -11,7 +11,7 @@ type Phase = "closed" | "form" | "sending" | "done" | "error";
 
 const CARD_PRESETS = [10, 25, 50];
 const SOL_PRESETS = [0.1, 0.5, 1];
-const MIN_CENTS = 100; // CreateDonationRequest: between $1 and $10,000
+const MIN_CENTS = 100; // CreateDonationRequest: whole dollars, $1 to $10,000
 const MAX_CENTS = 1_000_000;
 
 /**
@@ -35,8 +35,9 @@ export function DonateButton() {
 
   useEffect(() => setHasPhantom(getPhantom() !== null), [phase]);
 
-  const cents = Math.round(Number(amount) * 100);
-  const cardValid = Number.isFinite(cents) && cents >= MIN_CENTS && cents <= MAX_CENTS;
+  // Nessie stores whole dollars only, so card donations are whole dollars.
+  const cents = Number(amount) * 100;
+  const cardValid = /^\d+$/.test(amount.trim()) && cents >= MIN_CENTS && cents <= MAX_CENTS;
   const sol = Number(solAmount);
   const solValid = Number.isFinite(sol) && sol > 0 && sol <= 10;
   const treasuryReady = isValidAddress(TREASURY_ADDRESS);
@@ -173,10 +174,10 @@ export function DonateButton() {
             ))}
           </div>
           <div>
-            <label htmlFor="donate-amount">Amount (USD)</label>
+            <label htmlFor="donate-amount">Amount (whole US dollars)</label>
             <input
               id="donate-amount"
-              inputMode="decimal"
+              inputMode="numeric"
               value={amount}
               onChange={(e) => {
                 setAmount(e.target.value);
@@ -187,7 +188,7 @@ export function DonateButton() {
               disabled={busy}
             />
             <small id="donate-help" className="muted">
-              Between $1 and $10,000. Prototype: no real card is charged; this makes a deposit in Capital One&apos;s
+              Whole dollars, $1 to $10,000. Prototype: no real card is charged; this makes a deposit in Capital One&apos;s
               Nessie sandbox.
             </small>
           </div>
