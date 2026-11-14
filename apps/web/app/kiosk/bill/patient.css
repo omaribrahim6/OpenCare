@@ -380,3 +380,22 @@
 }
 
 .patient-desk .patient-status { padding: 0; border-radius: 0; background: transparent; }
+
+.patient-desk {
+  --d-teal: #075deb;
+  --d-teal-deep: #074ebb;
+  --d-teal-ink: #143468;
+  --d-canvas: #fcfdff;
+  --d-line: #dfe7f1;
+  --d-tile: #f4f7fb;
+  --d-text: #111c2b;
+  --d-text-2: #46566a;
+  --d-muted: #5e6e82;
+  background: #fcfdff;
+}
+.patient-desk .d-main, .patient-desk .d-head { background: #fcfdff; }
+.patient-desk .d-nav [aria-current="page"] {
+  color: #104fb6;
+  border-color: #dceaff;
+  background: #eaf3ff;
+}
