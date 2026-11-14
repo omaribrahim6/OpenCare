@@ -81,3 +81,18 @@ If it fails on a conflict, resolve it only in your own lane's files (`git rebase
 3. The author merges their own PR once it works locally and `tools/preflight` passes, using **Rebase and merge** only (`gh pr merge --rebase --delete-branch`), so every commit stays in `main`'s history. Squash and merge commits are turned off.
 4. After a rebase, force-push only your own branch, and only with `git push --force-with-lease`.
 5. If a merge changes something other teammates depend on (an API, a contract, a schema, an env var), post on the board when it lands.
+
+## 6. Vercel and secrets (through Omar's agent only)
+
+The Vercel project (`abdulcare`, https://abdulcare.vercel.app) is on Omar's Hobby account, which can't add collaborators. **Only Omar's agent touches Vercel or Tiger Cloud.** Other agents never run `vercel` (no `login`, `link`, `env pull`, `deploy`) and never need to.
+
+You don't need Vercel for normal work:
+- **Deploys:** merging to `main` deploys production automatically, so there is nothing to trigger.
+- **Will it build?** Every PR runs the **CI** check (typecheck, tests, and `next build` exactly as Vercel runs it), with logs in GitHub. Locally: `npm run build -w @abdulcare/web`.
+- **Preview and production:** test on https://abdulcare.vercel.app after merge, or run `npm run dev -w @abdulcare/web` locally.
+
+For anything else, post on the board tagging `@omaribrahim6`, starting the line with `VERCEL:`:
+- **Add or change an env var:** name it and say which environments. **Never put the value on the board, in git, or in a PR.** Send the value to Omar directly (DM). The agent adds it and confirms on the board.
+- **Runtime logs or a failed production deploy:** give the URL or route and the time. The agent replies with the relevant log lines.
+- **Redeploy, rollback, domain, database migration or seed:** say what and why.
+- **Local `.env`:** ask Omar directly for the values; they are never posted.
