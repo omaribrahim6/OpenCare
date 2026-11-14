@@ -1,0 +1,57 @@
+import Link from "next/link";
+import { KioskSession } from "@/components/KioskSession";
+import { StatusBadge } from "@/components/StatusBadge";
+import { formatCents, getGrant } from "@/lib/mock";
+import type { GrantStatus } from "@/lib/types";
+
+const NEXT_STEP: Record<GrantStatus, string> = {
+  draft: "Finish your request to send it for review.",
+  pending_review: "A person at the fund will review your request. You can check back here any time by tapping your card.",
+  approved: "Take your card to the provider. They'll tap it and confirm, and the fund pays them directly.",
+  rejected: "This request wasn't approved. Ask staff about other options.",
+  canceled: "This request was canceled before payment.",
+  payment_pending: "The fund is paying your provider now.",
+  paid: "Your provider has been paid. Nothing else to do.",
+};
+
+// Screen 5: Request status.
+export default async function RequestStatus({ searchParams }: { searchParams: Promise<{ new?: string }> }) {
+  const { new: isNew } = await searchParams;
+  const grant = await getGrant();
+  if (!grant) {
+    return (
+      <KioskSession step={4}>
+        <h1>No requests yet</h1>
+        <Link className="btn block" href="/kiosk/bills">
+          Start a request
+        </Link>
+      </KioskSession>
+    );
+  }
+
+  return (
+    <KioskSession step={4}>
+      {isNew && (
+        <p className="card" role="status">
+          <strong>Request sent.</strong> We&apos;ve saved it for review.
+        </p>
+      )}
+      <h1>Your request</h1>
+      <div className="card">
+        <StatusBadge status={grant.status} />
+        <p className="big" style={{ marginTop: 12 }}>
+          {formatCents(grant.approvedCents ?? grant.requestedCents)}
+        </p>
+        <p>
+          To <strong>{grant.provider.name}</strong>
+          <br />
+          <span className="muted">From {grant.programName}</span>
+        </p>
+        <p style={{ marginBottom: 0 }}>{NEXT_STEP[grant.status]}</p>
+      </div>
+      <Link className="btn secondary block" href="/?ended=user">
+        Done, end session
+      </Link>
+    </KioskSession>
+  );
+}
