@@ -1599,3 +1599,43 @@
   .lc-steps li { grid-template-columns: 1fr auto; }
   .lc-steps li .num:last-child { display: none; }
 }
+
+.d-fund-workspace.violet {
+  min-height: 0;
+  background: transparent;
+}
+
+.d-fund-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.d-fund-tabs button {
+  padding: 8px 12px;
+  border: 1px solid #ddd9e8;
+  border-radius: 8px;
+  background: white;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.d-fund-tabs button[aria-pressed="true"] {
+  border-color: var(--v-violet);
+  background: #f3efff;
+}
+
+.d-ledger-search {
+  display: block;
+  max-width: 360px;
+  margin: 0 0 16px;
+}
+
+.d-ledger-search input {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 4px;
+}

@@ -18,7 +18,7 @@ export default async function KioskPage({
     <main className="page station station-welcome">
       <header className="station-bar">
         <Logo href={null} />
-        <span>Patient kiosk</span>
+        <Link href="/review" className="btn secondary">Admin</Link>
       </header>
       <div className="station-intro">
         <h1>Tap your CareCard</h1>

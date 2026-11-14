@@ -10,7 +10,7 @@ const SCREENS = [
   ["/review", "Fund admin: review queue"],
   ["/t/unknown", "Card tap: unknown card"],
   ["/t/unpaired", "Card tap on an unpaired phone"],
-  ["/", "Public: community fund"],
+  ["/review?view=ledger", "Admin: public audit ledger"],
 ] as const;
 
 export default function DemoIndex() {

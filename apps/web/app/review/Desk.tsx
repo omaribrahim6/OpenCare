@@ -10,6 +10,7 @@ import { cleanName, initials, usd, usdCompact, usdParts } from "@/lib/format";
 import type { Grant, NeedFactor, QueueItem, ReviewQueue } from "@/lib/types";
 import { CATEGORY_LABEL } from "@/lib/types";
 import { CaseDrawer } from "./CaseDrawer";
+import { FundWorkspace } from "./FundWorkspace";
 import { Decided } from "./Decided";
 
 type Load =
@@ -25,8 +26,8 @@ const topFactors = (factors: NeedFactor[], n = 3) =>
   [...factors].filter((f) => f.maxPoints > 0).sort((a, b) => b.points - a.points).slice(0, n);
 
 /** Caseworker desk (SPEC §4 screen 5): the need-ranked queue, why each request ranks there, and the decision. */
-export function Desk() {
-  const [view, setView] = useState<DeskView>("queue");
+export function Desk({ initialView }: { initialView: DeskView }) {
+  const [view, setView] = useState<DeskView>(initialView);
   const [device, setDevice] = useState<Device | null>(null);
   const [load, setLoad] = useState<Load>({ phase: "loading" });
   const [refreshing, setRefreshing] = useState(false);
@@ -135,9 +136,6 @@ export function Desk() {
       >
         <Icon name="refresh" />
       </button>
-      <Link className="d-icon-btn" href="/" aria-label="Open the public fund page" title="Public fund page">
-        <Icon name="globe" />
-      </Link>
     </>
   );
 
@@ -145,7 +143,7 @@ export function Desk() {
     <DeskShell
       view={view}
       onView={setView}
-      title={view === "queue" ? "Review queue" : "Decided"}
+      title={view === "queue" ? "Review queue" : view === "decided" ? "Decided" : "Community fund"}
       device={device}
       pending={queue ? items.length : null}
       actions={actions}
@@ -159,6 +157,8 @@ export function Desk() {
       )}
     </DeskShell>
   );
+
+  if (view === "ledger") return shell(<FundWorkspace key="ledger" initialTab="ledger" />);
 
   if (load.phase === "not_reviewer") {
     return shell(
@@ -191,7 +191,9 @@ export function Desk() {
     );
   }
 
-  if (view === "decided") return shell(<Decided tick={decidedTick} />);
+  if (view === "fund" && load.phase === "done") return shell(<FundWorkspace key="fund" initialTab="overview" onLedger={() => setView("ledger")} />);
+
+  if (view === "decided" && load.phase === "done") return shell(<Decided tick={decidedTick} />);
 
   const loading = load.phase === "loading";
   const tiles = [
