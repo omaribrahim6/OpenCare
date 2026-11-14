@@ -1,4 +1,4 @@
-/* Caseworker desk (/review). Sidebar, header, overview tiles, bar chart, split panel, table
+/* Admin (/admin). Sidebar, header, overview tiles, bar chart, split panel, table
    and the review drawer. Sizes follow the clinic-dashboard reference: 247px sidebar, 72px header,
    144px stat tiles, 58px table rows. */
 
@@ -1373,3 +1373,102 @@
 
 /* Triage insight under the bill in the queue row */
 .d-insight { display: block; margin-top: 2px; font-size: 11.5px; color: #6b6878; text-transform: none; }
+
+/* ------------------------------------------------------------ Admin sign-in (staff PIN) */
+
+.d-login {
+  --d-teal: #6d56d3;
+  --d-teal-deep: #553eb6;
+  --d-line: #e6e3ee;
+  --d-tile: #f7f6fa;
+  --d-text: #1a1a1a;
+  --d-muted: #6b6e6d;
+  --t: 0.15s ease;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: #f1f2f4;
+  color: var(--d-text);
+  font-size: 14px;
+  letter-spacing: -0.006em;
+}
+.d-login-card {
+  width: 100%;
+  max-width: 400px;
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+  text-align: center;
+  padding: 32px 28px 28px;
+  background: #fff;
+  border: 1px solid var(--d-line);
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 32px -12px rgba(48, 32, 104, 0.12);
+}
+.d-login-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+.d-login-brand svg {
+  width: 26px;
+  height: 26px;
+}
+.d-login-lock {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-top: 8px;
+  border-radius: 12px;
+  background: #f0ebfc;
+  color: var(--d-teal-deep);
+}
+.d-login h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+.d-login-card > p {
+  margin: -6px 0 4px;
+  color: var(--d-muted);
+}
+.d-login-field {
+  width: 100%;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  font-weight: 500;
+}
+.d-login-field input {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid #dcdcd9;
+  border-radius: 10px;
+  font-size: 18px;
+  letter-spacing: 0.2em;
+}
+.d-login-field input:focus {
+  outline: none;
+  border-color: var(--d-teal);
+  box-shadow: 0 0 0 3px #e5def9;
+}
+.d-login-field input[aria-invalid="true"] {
+  border-color: #c2412f;
+}
+.d-login-error {
+  width: 100%;
+  margin: -4px 0 0;
+  text-align: left;
+  color: #b5382b;
+}
+.d-login .d-btn {
+  width: 100%;
+  height: 46px;
+}
