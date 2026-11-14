@@ -680,7 +680,7 @@ function NextUp({
         onCancel={() => setConfirm(null)}
         onConfirm={() => decide("approve")}
       >
-        <p style={{ color: "#5c5f5e" }}>
+        <p style={{ color: "#4b5567" }}>
           {needsSecond
             ? `This records your approval. Nothing is paid until a second caseworker approves the same amount.`
             : g.visit
@@ -698,7 +698,7 @@ function NextUp({
         onCancel={() => setConfirm(null)}
         onConfirm={() => decide("reject")}
       >
-        <p style={{ color: "#5c5f5e" }}>{name} will see that the request wasn&apos;t approved. No money is reserved.</p>
+        <p style={{ color: "#4b5567" }}>{name} will see that the request wasn&apos;t approved. No money is reserved.</p>
       </ConfirmDialog>
     </section>
   );

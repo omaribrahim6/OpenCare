@@ -17,10 +17,10 @@ type FundTab = "overview" | "ledger" | "about";
 
 const EVENT: Record<string, { label: string; icon: IconName; bg: string; fg: string; sign: string }> = {
   donation: { label: "Donation", icon: "heart", bg: "var(--mint-soft)", fg: "#2a7a5f", sign: "+" },
-  reservation: { label: "Reserved for a grant", icon: "lock", bg: "var(--lilac-soft)", fg: "#5a51a8", sign: "" },
+  reservation: { label: "Reserved for a grant", icon: "lock", bg: "#eaf2ff", fg: "#0549bd", sign: "" },
   release: { label: "Reservation released", icon: "refresh", bg: "#f0f1f0", fg: "#5d625f", sign: "" },
   payout: { label: "Paid to hospital", icon: "store", bg: "var(--rose-soft)", fg: "#a5513f", sign: "−" },
-  pending: { label: "Approved, paying", icon: "clock", bg: "var(--lilac-soft)", fg: "#5a51a8", sign: "−" },
+  pending: { label: "Approved, paying", icon: "clock", bg: "#eaf2ff", fg: "#0549bd", sign: "−" },
   declined: { label: "Request declined", icon: "xCircle", bg: "#f0f1f0", fg: "#5d625f", sign: "" },
   receipt: { label: "Receipt", icon: "receipt", bg: "var(--sky-soft)", fg: "#3b6c9a", sign: "" },
 };

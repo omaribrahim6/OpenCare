@@ -345,7 +345,7 @@ export function CaseDrawer({
         onCancel={() => setConfirm(null)}
         onConfirm={() => decide({ decision: "approve", approvedCents: cents })}
       >
-        <p style={{ color: "#5c5f5e" }}>
+        <p style={{ color: "#4b5567" }}>
           {needsSecond
             ? `This records your approval for ${name}. Nothing is reserved until a second caseworker approves the same amount.`
             : g.visit
@@ -362,7 +362,7 @@ export function CaseDrawer({
         onCancel={() => setConfirm(null)}
         onConfirm={() => decide({ decision: "reject" })}
       >
-        <p style={{ color: "#5c5f5e" }}>{name} will see that the request wasn&apos;t approved. No money is reserved.</p>
+        <p style={{ color: "#4b5567" }}>{name} will see that the request wasn&apos;t approved. No money is reserved.</p>
       </ConfirmDialog>
     </>
   );
