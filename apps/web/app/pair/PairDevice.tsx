@@ -15,8 +15,8 @@ const ROLES: { role: DeviceRole; label: string; home: string; help: string }[] =
 /** Staff screen: pair this browser as a kiosk, provider terminal or caseworker device (PIN-protected). */
 export function PairDevice() {
   const [device, setDevice] = useState<Device | null | undefined>(undefined);
-  const [role, setRole] = useState<DeviceRole>("kiosk");
-  const [label, setLabel] = useState("Front desk kiosk");
+  const [role, setRole] = useState<DeviceRole>("reviewer");
+  const [label, setLabel] = useState("Caseworker laptop");
   const [pin, setPin] = useState("");
   const [providers, setProviders] = useState<Provider[] | null>(null);
   const [providerId, setProviderId] = useState("");
@@ -71,14 +71,14 @@ export function PairDevice() {
   }
 
   return (
-    <main className="page station station-pair">
-      <header className="station-bar"><Logo /><Link href="/review">Admin</Link></header>
-      <h1>Set up staff access</h1>
+    <main className="page station portal-screen">
+      <header className="station-bar"><Logo /><Link href="/review" className="btn secondary">Back to Admin</Link></header>
+      <div className="portal-intro"><h1>Staff access</h1><p>Choose what this browser will be used for, then enter your staff PIN.</p></div>
 
       {device === undefined ? (
         <p role="status">Checking this device…</p>
       ) : device ? (
-        <div className="card" role="status">
+        <div className="portal-panel" role="status">
           <p style={{ marginTop: 0 }}>
             This browser is paired as <strong>{ROLES.find((r) => r.role === device.role)?.label ?? device.role}</strong>
             : {device.label}
@@ -91,10 +91,10 @@ export function PairDevice() {
           </p>
         </div>
       ) : (
-        <p className="muted">Use your staff PIN to authorize this browser for one role. Choose Caseworker to open the admin queue and fund stats.</p>
+        null
       )}
 
-      <form className="card stack" onSubmit={submit} aria-labelledby="pair-title">
+      <form className="portal-panel portal-form" onSubmit={submit} aria-labelledby="pair-title">
         <h2 id="pair-title" className="sr-only">Pair this browser</h2>
         <fieldset style={{ border: 0, padding: 0, margin: 0 }} disabled={busy}>
           <legend style={{ fontWeight: 600, marginBottom: 6 }}>Role</legend>
@@ -165,7 +165,7 @@ export function PairDevice() {
         )}
 
         <button className="btn block" type="submit" disabled={!valid || busy}>
-          {busy ? "Pairing…" : "Pair this device"}
+          {busy ? "Pairing…" : "Authorize browser"}
         </button>
       </form>
     </main>

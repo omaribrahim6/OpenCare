@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { Device, PatientSummary } from "@abdulcare/contracts";
-import { Icon } from "@/components/Icon";
 import { Logo } from "@/components/Logo";
 import { ApiRequestError, LIVE, createVisit, currentDevice, getVisitTemplates, listPatients } from "@/lib/api";
 import { stepLabel, usd } from "@/lib/format";
@@ -24,8 +23,7 @@ function readTapped(): PatientSummary | null {
 
 /**
  * Hospital intake (SPEC §4 screen 8, simulated hospital staff): pick the patient (CareCard tap or the
- * demo list), pick the visit, log it. The server runs insurance and every hospital policy and
- * returns the bill, which this screen shows step by step.
+ * demo list), pick the visit, and create a bill.
  */
 export function IntakeTerminal() {
   const [device, setDevice] = useState<Device | null | undefined>(undefined);
@@ -33,6 +31,8 @@ export function IntakeTerminal() {
   const [patientId, setPatientId] = useState("");
   const [tapped, setTapped] = useState<PatientSummary | null>(null);
   const [templates, setTemplates] = useState<VisitTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [templateId, setTemplateId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,21 +48,28 @@ export function IntakeTerminal() {
       setTapped(t);
       setPatientId(t.id);
     }
-    listPatients()
-      .then((r) => {
-        setPatients(r.patients);
-        setPatientId((id) => id || r.patients[0]?.id || "");
-      })
-      .catch(() => setPatients([]));
-    getVisitTemplates()
-      .then((r) => {
-        setTemplates(r.templates);
-        setTemplateId((id) => id || r.templates[0]?.id || "");
-      })
-      .catch(() => setError("Visit templates didn't load."));
   }, []);
 
-  const wrongDevice = LIVE && device !== undefined && (!device || device.role !== "provider");
+  const authorized = !LIVE || device?.role === "reviewer" || device?.role === "hospital" || device?.role === "provider";
+
+  async function loadChoices() {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const [patientList, visitList] = await Promise.all([listPatients(), getVisitTemplates()]);
+      setPatients(patientList.patients);
+      setTemplates(visitList.templates);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (authorized) void loadChoices();
+  }, [authorized]);
+
   const template = templates.find((t) => t.id === templateId);
   const patient = tapped?.id === patientId ? tapped : patients.find((p) => p.id === patientId) ?? null;
 
@@ -90,95 +97,80 @@ export function IntakeTerminal() {
       sessionStorage.removeItem(INTAKE_PATIENT_KEY);
     } catch {}
     setTapped(null);
+    setPatientId("");
+    setTemplateId("");
   }
 
   return (
-    <main className="page station">
+    <main className="page station portal-screen">
       <header className="station-bar">
         <Logo href={null} />
-        <span>Hospital intake</span>
+        <Link className="btn secondary" href="/review">Back to Admin</Link>
       </header>
-
-      {wrongDevice ? (
-        <div className="card" role="alert">
-          <p style={{ marginTop: 0 }}>This browser isn&apos;t paired as a hospital device.</p>
-          <Link className="btn" href="/pair">
-            Set up this device
-          </Link>
-        </div>
-      ) : bill ? (
+      {bill ? (
         <IntakeResult bill={bill} onNext={reset} />
       ) : (
-        <form className="stack" onSubmit={submit}>
-          <h1 style={{ marginBottom: 0 }}>Log a visit</h1>
-          <p className="muted" style={{ marginTop: 0 }}>
-            Simulated hospital staff. Tap the patient&apos;s CareCard on this device, or pick a demo patient.
-          </p>
-
-          <div className="card">
-            <label htmlFor="patient">Patient</label>
-            {tapped && tapped.id === patientId && (
-              <p className="badge info" style={{ marginBottom: 8 }}>
-                <Icon name="tap" /> Selected by CareCard tap
-              </p>
-            )}
-            <select id="patient" value={patientId} onChange={(e) => setPatientId(e.target.value)} disabled={busy}>
-              {tapped && !patients.some((p) => p.id === tapped.id) && <option value={tapped.id}>{tapped.displayName}</option>}
-              {patients.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.displayName}
-                </option>
-              ))}
-            </select>
-            {!LIVE && (
-              <p className="muted" style={{ fontSize: "0.85rem", marginBottom: 0 }}>
-                Demo: <Link href="/t/hospital">simulate a CareCard tap</Link>
-              </p>
-            )}
+        <>
+          <div className="portal-intro">
+            <h1>Create a hospital bill</h1>
+            <p>Choose a patient and a visit template. The bill will appear under the patient’s visits.</p>
           </div>
-
-          <fieldset className="card" style={{ margin: 0 }} disabled={busy}>
-            <legend style={{ fontWeight: 600 }}>Visit</legend>
-            <div className="stack" style={{ gap: 8 }}>
-              {templates.map((t) => (
-                <label key={t.id} className="row" style={{ fontWeight: 400, gap: 10, margin: 0, alignItems: "flex-start" }}>
-                  <input
-                    type="radio"
-                    name="template"
-                    checked={templateId === t.id}
-                    onChange={() => {
-                      setTemplateId(t.id);
-                      key.current = null;
-                    }}
-                    style={{ width: 22, minHeight: 22, marginTop: 3 }}
-                  />
-                  <span>
-                    <strong>
-                      {t.label}, {usd(t.totalCents)}
-                    </strong>
-                    <br />
-                    <small className="muted">{t.lineItems.map((li) => li.description).join(" · ")}</small>
-                  </span>
-                </label>
-              ))}
+          {LIVE && device === undefined ? (
+            <p className="portal-panel" role="status">Checking staff access…</p>
+          ) : !authorized ? (
+            <div className="portal-panel">
+              <p>Hospital staff or caseworkers can create a bill.</p>
+              <Link className="btn" href="/pair">Set up staff access</Link>
             </div>
-          </fieldset>
-
-          {error && (
-            <p role="alert" className="badge bad">
-              {error}
-            </p>
+          ) : loading ? (
+            <p className="portal-panel" role="status">Loading patients and visit templates…</p>
+          ) : loadError ? (
+            <div className="portal-panel" role="alert">
+              <p>Patients or visit templates couldn’t load.</p>
+              <button type="button" className="btn secondary" onClick={loadChoices}>Try again</button>
+            </div>
+          ) : (
+            <form className="portal-form" onSubmit={submit}>
+              <div className="portal-panel">
+                <label htmlFor="patient">Patient</label>
+                <select id="patient" value={patientId} onChange={(e) => {
+                  setPatientId(e.target.value);
+                  key.current = null;
+                }} disabled={busy}>
+                  <option value="">Choose a patient</option>
+                  {tapped && !patients.some((p) => p.id === tapped.id) && <option value={tapped.id}>{tapped.displayName}</option>}
+                  {patients.map((p) => <option key={p.id} value={p.id}>{p.displayName}</option>)}
+                </select>
+                {tapped?.id === patientId && <p className="muted">Selected by CareCard.</p>}
+                {!patients.length && !tapped && <p className="muted">No patients are available for this device.</p>}
+              </div>
+              <div className="portal-panel">
+                <label htmlFor="visit-template">Visit template</label>
+                {templates.length ? (
+                  <select id="visit-template" value={templateId} onChange={(e) => {
+                    setTemplateId(e.target.value);
+                    key.current = null;
+                  }} disabled={busy}>
+                    <option value="">Choose a visit</option>
+                    {templates.map((t) => <option key={t.id} value={t.id}>{t.label} · {usd(t.totalCents)}</option>)}
+                  </select>
+                ) : <p className="muted">No visit templates are available for this device.</p>}
+                {template && (
+                  <dl className="portal-charges">
+                    {template.lineItems.map((item, index) => (
+                      <div key={index}><dt>{item.description}</dt><dd>{usd(item.cents)}</dd></div>
+                    ))}
+                  </dl>
+                )}
+              </div>
+              {error && <p role="alert" className="badge bad">{error}</p>}
+              <button className="btn" type="submit" disabled={busy || !template || !patient}>
+                {busy ? "Creating bill…" : "Create bill"}
+              </button>
+            </form>
           )}
-
-          <button className="btn block" type="submit" disabled={busy || !templateId || !patientId}>
-            {busy ? "Logging visit and applying insurance and hospital assistance…" : `Log visit${template ? `, ${usd(template.totalCents)}` : ""}${patient ? ` for ${patient.displayName}` : ""}`}
-          </button>
-        </form>
+        </>
       )}
-
-      <footer className="station-foot">
-        <Icon name="lock" /> Hospital-attested record. Insurance and hospital decisions are simulated.
-      </footer>
     </main>
   );
 }
@@ -222,7 +214,7 @@ function IntakeResult({ bill, onNext }: { bill: Bill; onNext: () => void }) {
           ))}
         </ul>
       </section>
-      <p className="muted">The patient can now tap their CareCard on the kiosk to see this bill and ask the fund for help.</p>
+      <p className="muted">The patient can open this bill from My visits after tapping their CareCard.</p>
       <button className="btn secondary block" onClick={onNext}>
         Next patient
       </button>
