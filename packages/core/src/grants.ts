@@ -250,6 +250,14 @@ export async function decideGrant(
       [grantId, reviewerDeviceId, cents],
     );
     if (cents > SECOND_APPROVAL_ABOVE_CENTS && prior.length === 0) {
+      // The first of two approvals reserves nothing yet, but it must still fit the budget, so no
+      // caseworker signs off on an amount the fund can't cover. The second approval checks again.
+      const { rows: fund } = await tx.query<{ available: number }>(
+        "select total_cents - reserved_cents - paid_cents as available from fund where id = 'community'",
+      );
+      if (Number(fund[0]?.available ?? 0) < cents) {
+        throw new CoreError("insufficient_funds", "The fund doesn't have enough available");
+      }
       return; // Recorded; waits for a second caseworker.
     }
 
