@@ -31,12 +31,13 @@ import type {
   NeedInput,
   PatientProfile,
 } from "@abdulcare/contracts";
-import { assessNeed, detectSuspicious } from "@abdulcare/ai";
+import { assessNeed, createNeedEngine, detectSuspicious, ModelUnavailableError, type ModelClient } from "@abdulcare/ai";
 import {
   adjudicate,
   applicationTextFallback,
   createPgDb,
   evaluatePolicyFallback,
+  getReviewQueue,
   newId,
   payoutReference,
   setDonationReceipt,
@@ -156,6 +157,40 @@ const HOSPITALS: { id: string; name: string; county: string; policies: PolicyDef
     ],
   },
 ];
+
+/** Public facts about each payee (fictional): checked against every payout on the ledger. */
+const HOSPITAL_PROFILES: Record<string, { address: string; ein: string; npi: string; website: string; phone: string; nonprofit: boolean; beds: number | null; description: string }> = {
+  prv_demo_hospital: {
+    address: "100 Valley General Way, Northampton, MA 01060 (fictional)", ein: "90-4718203", npi: "1902847561",
+    website: "valleygeneral.example.org", phone: "(413) 555-0100", nonprofit: true, beds: 212,
+    description: "Community hospital with a level 3 trauma center",
+  },
+  prv_demo_pharmacy: {
+    address: "42 Main St, Amherst, MA 01002 (fictional)", ein: "90-5530912", npi: "1730295846",
+    website: "pvpharmacy.example.org", phone: "(413) 555-0111", nonprofit: false, beds: null,
+    description: "Independent community pharmacy",
+  },
+  prv_hist_riverside: {
+    address: "759 Chestnut St, Springfield, MA 01103 (fictional)", ein: "90-2281945", npi: "1548302967",
+    website: "crmc.example.org", phone: "(413) 555-0120", nonprofit: true, beds: 716,
+    description: "Regional academic medical center, level 1 trauma",
+  },
+  prv_hist_berkshire: {
+    address: "725 North St, Pittsfield, MA 01201 (fictional)", ein: "90-6610374", npi: "1669473028",
+    website: "berkshireridge.example.com", phone: "(413) 555-0130", nonprofit: false, beds: 298,
+    description: "For-profit trauma center owned by a hospital chain",
+  },
+  prv_hist_metro: {
+    address: "55 Fruit St, Boston, MA 02114 (fictional)", ein: "90-3359820", npi: "1801938476",
+    website: "metroregional.example.org", phone: "(617) 555-0140", nonprofit: true, beds: 999,
+    description: "Regional burn and trauma referral center",
+  },
+  prv_hist_childrens: {
+    address: "55 Lake Ave N, Worcester, MA 01655 (fictional)", ein: "90-7724416", npi: "1427736185",
+    website: "pioneerchildrens.example.org", phone: "(508) 555-0150", nonprofit: true, beds: 160,
+    description: "Children's hospital with a level 3 NICU",
+  },
+};
 
 // ---------------------------------------------------------------------------
 // What happened: injuries and a few other emergencies, with itemized charges (whole dollars)
@@ -535,7 +570,25 @@ interface Person {
   profile: PatientProfile;
   plan: InsurancePlan | null;
   depositIncomeCents: number | null;
+  employment: string;
 }
+
+const WORK = [
+  "Construction worker, unable to work since the injury",
+  "Home health aide, hours cut while recovering",
+  "Line cook with no paid sick leave",
+  "Gig delivery driver, no income while recovering",
+  "Warehouse associate on unpaid medical leave",
+  "Self-employed landscaper",
+  "Retail cashier, part time",
+  "School bus driver",
+  "Unemployed, looking for work",
+  "Community college student working part time",
+  "Certified nursing assistant",
+  "Farmworker, seasonal",
+];
+const WORK_RETIRED = ["Retired, fixed income from Social Security", "Retired teacher on a small pension"];
+const WORK_WEALTHY = ["Software engineering director", "Orthopedic surgeon", "Owner of a regional car dealership", "Partner at a law firm", "Hedge fund analyst"];
 
 function makePerson(n: number, opts: { pediatric: boolean; outcome: Outcome; county: string }): Person {
   const first = pick(FIRST);
@@ -578,6 +631,12 @@ function makePerson(n: number, opts: { pediatric: boolean; outcome: Outcome; cou
       outOfPocketMetCents: 0,
     };
   }
+  const employment =
+    opts.outcome === "wealthy" ? pick(WORK_WEALTHY)
+    : opts.outcome === "mismatch" ? `Reported: ${pick(["part-time cashier", "unemployed", "seasonal farmworker"])}`
+    : opts.pediatric ? `Parent: ${pick(WORK).charAt(0).toLowerCase()}${pick(WORK).slice(1)}`
+    : ageBand === "65+" ? pick(WORK_RETIRED)
+    : pick(WORK);
   const [town, zip] = pick(TOWNS[opts.county]);
   return {
     id: `pat_hist_${String(n).padStart(3, "0")}`,
@@ -593,6 +652,7 @@ function makePerson(n: number, opts: { pediatric: boolean; outcome: Outcome; cou
     profile: { householdSize: size, monthlyIncomeCents: monthly, insurance },
     plan,
     depositIncomeCents,
+    employment,
   };
 }
 
@@ -722,16 +782,112 @@ const donationMemo = (id: string) => `ac_don_${createHash("sha256").update(id).d
 // ---------------------------------------------------------------------------
 // Seed
 
-const FUNDERS: [number, string, number][] = [
-  [182, "Commonwealth Uncompensated Care Pool (fictional state program)", 400_000_000],
-  [180, "Valley General Hospital, community benefit (fictional)", 85_000_000],
-  [175, "Connecticut River Medical Center, community benefit (fictional)", 120_000_000],
-  [150, "Federal disproportionate-share allocation (fictional)", 250_000_000],
-  [121, "Berkshire Ridge Trauma Center, community benefit (fictional)", 60_000_000],
-  [91, "Commonwealth Uncompensated Care Pool, Q3 (fictional state program)", 300_000_000],
-  [62, "Metro Boston Regional, community benefit (fictional)", 95_000_000],
-  [33, "Pioneer Children's Hospital Foundation (fictional)", 40_000_000],
-  [11, "Federal disproportionate-share allocation, Q4 (fictional)", 150_000_000],
+interface DonorDef {
+  id: string;
+  name: string;
+  kind: "state_program" | "federal_program" | "hospital" | "foundation" | "corporate" | "community" | "individual";
+  publicName?: boolean;
+  ein?: string;
+  address?: string;
+  website?: string;
+  contact?: string;
+  description: string;
+  /** [days ago, dollars, purpose] */
+  gifts: [number, number, string | null][];
+}
+
+/** Who funds the community care fund over the past year. All fictional. */
+const DONORS: DonorDef[] = [
+  {
+    id: "dnr_hist_ucpool", name: "Commonwealth Uncompensated Care Pool", kind: "state_program", ein: "90-1000417",
+    address: "1 Ashburton Pl, Boston, MA 02108 (fictional)", website: "ucpool.example.gov", contact: "grants@ucpool.example.gov",
+    description: "State pool that reimburses care for low-income uninsured and underinsured residents.",
+    gifts: [[361, 212_418_337.42, "Quarterly allocation: uncompensated hospital care"], [270, 187_902_114.09, "Quarterly allocation"], [180, 203_377_560.71, "Quarterly allocation"], [90, 196_045_228.18, "Quarterly allocation"]],
+  },
+  {
+    id: "dnr_hist_dsh", name: "Federal Disproportionate Share Hospital allocation", kind: "federal_program", ein: "90-1000982",
+    address: "200 Independence Ave SW, Washington, DC 20201 (fictional)", website: "dsh.example.gov", contact: "dsh-allocations@example.gov",
+    description: "Federal payments for hospitals serving many low-income patients, passed through the fund.",
+    gifts: [[330, 248_116_903.55, "Annual DSH pass-through, first half"], [150, 251_884_412.37, "Annual DSH pass-through, second half"]],
+  },
+  {
+    id: "dnr_hist_valley", name: "Valley General Hospital", kind: "hospital", ein: "90-4718203",
+    address: "100 Valley General Way, Northampton, MA 01060 (fictional)", website: "valleygeneral.example.org", contact: "community.benefit@valleygeneral.example.org",
+    description: "Nonprofit hospital routing part of its required community benefit through the fund.",
+    gifts: [[350, 44_718_250.13, "Community benefit contribution"], [170, 46_203_881.9, "Community benefit contribution"]],
+  },
+  {
+    id: "dnr_hist_crmc", name: "Connecticut River Medical Center", kind: "hospital", ein: "90-2281945",
+    address: "759 Chestnut St, Springfield, MA 01103 (fictional)", website: "crmc.example.org", contact: "finance@crmc.example.org",
+    description: "Nonprofit academic medical center; community benefit contribution.",
+    gifts: [[340, 38_902_457.66, "Community benefit contribution"], [200, 41_330_118.04, null], [60, 39_874_602.29, null]],
+  },
+  {
+    id: "dnr_hist_berkshire", name: "Berkshire Ridge Trauma Center", kind: "hospital", ein: "90-6610374",
+    address: "725 North St, Pittsfield, MA 01201 (fictional)", website: "berkshireridge.example.com", contact: "giving@berkshireridge.example.com",
+    description: "For-profit trauma center contributing under a state settlement agreement.",
+    gifts: [[300, 29_874_331.58, "Settlement agreement payment"], [120, 30_125_668.42, "Settlement agreement payment"]],
+  },
+  {
+    id: "dnr_hist_metro", name: "Metro Boston Regional Burn & Trauma", kind: "hospital", ein: "90-3359820",
+    address: "55 Fruit St, Boston, MA 02114 (fictional)", website: "metroregional.example.org", contact: "benefit@metroregional.example.org",
+    description: "Nonprofit regional burn center; community benefit contribution.",
+    gifts: [[320, 51_067_993.81, "Burn and trauma care"], [140, 48_559_120.37, "Burn and trauma care"], [30, 50_210_774.05, null]],
+  },
+  {
+    id: "dnr_hist_childrens_fdn", name: "Pioneer Children's Hospital Foundation", kind: "foundation", ein: "90-7724499",
+    address: "55 Lake Ave N, Worcester, MA 01655 (fictional)", website: "pchfoundation.example.org", contact: "grants@pchfoundation.example.org",
+    description: "Private foundation supporting care for children and newborns.",
+    gifts: [[280, 14_850_000.27, "Restricted: pediatric and neonatal care"], [100, 15_212_437.64, "Restricted: pediatric and neonatal care"], [20, 14_995_103.11, null]],
+  },
+  {
+    id: "dnr_hist_pvcf", name: "Pioneer Valley Community Foundation", kind: "foundation", ein: "90-8812230",
+    address: "1500 Main St, Springfield, MA 01115 (fictional)", website: "pvcf.example.org", contact: "programs@pvcf.example.org",
+    description: "Regional community foundation.",
+    gifts: [[250, 5_012_384.5, "Uninsured workers' injuries"], [75, 4_987_615.5, null]],
+  },
+  {
+    id: "dnr_hist_harbor", name: "Harbor Lane Insurance Group", kind: "corporate", ein: "90-3046611",
+    address: "1 Harbor Ln, Quincy, MA 02169 (fictional)", website: "harborlane.example.com", contact: "foundation@harborlane.example.com",
+    description: "Insurer's charitable arm; gift covers balances its own members can't pay.",
+    gifts: [[210, 12_004_871.33, "Underinsured members' balances"]],
+  },
+  {
+    id: "dnr_hist_union", name: "Holyoke Building Trades Relief Fund", kind: "community", ein: "90-5590184",
+    address: "28 Race St, Holyoke, MA 01040 (fictional)", website: "htrelief.example.org", contact: "relief@htrelief.example.org",
+    description: "Union relief fund for workers injured on the job.",
+    gifts: [[160, 125_340.17, "Construction workers' injuries"], [40, 98_610.48, null]],
+  },
+  {
+    id: "dnr_hist_rotary", name: "Northampton Rotary Club", kind: "community", ein: "90-2207713",
+    address: "PO Box 64, Northampton, MA 01061 (fictional)", website: "nohorotary.example.org", contact: "treasurer@nohorotary.example.org",
+    description: "Service club; proceeds from the annual charity run.",
+    gifts: [[230, 62_418.55, "Charity 5K proceeds"]],
+  },
+  {
+    id: "dnr_hist_students", name: "Five College Students for Care", kind: "community",
+    address: "Amherst, MA (fictional)", website: "studentsforcare.example.org", contact: "hello@studentsforcare.example.org",
+    description: "Student group fundraising across five campuses.",
+    gifts: [[190, 18_733.41, null], [45, 29_102.86, "Finals week fundraiser"]],
+  },
+  ...[
+    ["dnr_hist_p01", "Dana K.", "Amherst, MA", [[300, 2_500, null], [120, 2_500, null]]],
+    ["dnr_hist_p02", "Luis M.", "Holyoke, MA", [[260, 150.75, "In memory of my father"]]],
+    ["dnr_hist_p03", "The Okafor family", "Springfield, MA", [[205, 10_000, "Thank you for helping our son"]]],
+    ["dnr_hist_p04", "Priya S.", "Northampton, MA", [[188, 75.25, null], [96, 75.25, null], [6, 75.25, null]]],
+    ["dnr_hist_p05", "Greg T.", "Pittsfield, MA", [[155, 50_000, "For burn patients"]]],
+    ["dnr_hist_p06", "Mei L.", "Worcester, MA", [[133, 333.33, null]]],
+    ["dnr_hist_p07", "R. Castillo", "Chicopee, MA", [[87, 1_200.5, null]]],
+    ["dnr_hist_p08", "Hannah W.", "Greenfield, MA", [[52, 41.9, null]]],
+  ].map(([id, name, place, gifts]) => ({
+    id: id as string, name: name as string, kind: "individual" as const, address: place as string,
+    description: "Individual donor who chose to be named.", gifts: gifts as [number, number, string | null][],
+  })),
+  {
+    id: "dnr_hist_anon_major", name: "Private donor", kind: "individual", publicName: false,
+    description: "A major individual gift; the donor asked not to be named.",
+    gifts: [[222, 1_000_000, "Unrestricted"], [64, 750_000, "Unrestricted"]],
+  },
 ];
 
 interface Ctx {
@@ -777,8 +933,22 @@ async function ensureHospitals(ctx: Ctx): Promise<Map<string, { name: string; me
         );
       }
     }
+    const prof = HOSPITAL_PROFILES[h.id];
+    if (prof) {
+      await db.query(
+        `update providers set address = $2, ein = $3, npi = $4, website = $5, phone = $6, nonprofit = $7, beds = $8, description = $9
+          where id = $1`,
+        [h.id, prof.address, prof.ein, prof.npi, prof.website, prof.phone, prof.nonprofit, prof.beds, prof.description],
+      );
+    }
     out.set(h.id, { name: h.name, merchant, wallet: rows[0]?.solana_wallet ?? wallet });
   }
+  const pharmacy = HOSPITAL_PROFILES.prv_demo_pharmacy;
+  await db.query(
+    `update providers set address = $2, ein = $3, npi = $4, website = $5, phone = $6, nonprofit = $7, beds = $8, description = $9
+      where id = $1`,
+    ["prv_demo_pharmacy", pharmacy.address, pharmacy.ein, pharmacy.npi, pharmacy.website, pharmacy.phone, pharmacy.nonprofit, pharmacy.beds, pharmacy.description],
+  );
   return out;
 }
 
@@ -793,43 +963,63 @@ async function ensureReviewers(db: Db): Promise<{ id: string; label: string }[]>
     await db.query(
       `insert into devices (id, role, label, secret_hash, created_at) values ($1, 'reviewer', $2, $3, $4)
        on conflict (id) do nothing`,
-      [r.id, r.label, createHash("sha256").update(randomBytes(32)).digest("hex"), daysAgo(185)],
+      [r.id, r.label, createHash("sha256").update(randomBytes(32)).digest("hex"), daysAgo(370)],
     );
   }
   return reviewers;
 }
 
 async function seedDonations(ctx: Ctx): Promise<void> {
-  const { db, nessie, fundAccountId, sol } = ctx;
-  const gifts: { at: Date; label: string | null; cents: number }[] = FUNDERS.map(([d, label, usd]) => ({
-    at: daysAgo(d, 14),
-    label,
-    cents: usd * 100,
-  }));
-  for (let i = 0; i < 46; i++) {
-    gifts.push({ at: daysAgo(between(1, 178), int(12, 23)), label: null, cents: dollars(pick([25, 50, 100, 250, 500, 1_000, 2_500, 5_000, 10_000, 25_000])) });
+  const { db, nessie, fundAccountId } = ctx;
+  for (const d of DONORS) {
+    await db.query(
+      `insert into donors (id, name, kind, public_name, ein, address, website, contact, description, fictional, created_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, $10)
+       on conflict (id) do update set name = excluded.name, kind = excluded.kind, public_name = excluded.public_name,
+         ein = excluded.ein, address = excluded.address, website = excluded.website, contact = excluded.contact,
+         description = excluded.description`,
+      [d.id, d.name, d.kind, d.publicName ?? true, d.ein ?? null, d.address ?? null, d.website ?? null, d.contact ?? null, d.description, daysAgo(365)],
+    );
+  }
+  const gifts: { at: Date; donorId: string | null; label: string | null; cents: number; purpose: string | null }[] = [];
+  for (const d of DONORS) {
+    for (const [day, usd, purpose] of d.gifts) {
+      gifts.push({ at: daysAgo(day, int(13, 16)), donorId: d.id, label: d.publicName === false ? null : d.name, cents: Math.round(usd * 100), purpose });
+    }
+  }
+  // Anonymous card donations through the public form, with real-world odd amounts.
+  for (let i = 0; i < 48; i++) {
+    const base = pick([20, 25, 36, 50, 75, 100, 180, 250, 500, 1_000, 2_500]);
+    gifts.push({
+      at: daysAgo(between(1, 360), int(12, 23)),
+      donorId: null,
+      label: null,
+      cents: rand() < 0.6 ? Math.round(base * 100 + int(1, 99)) : base * 100,
+      purpose: rand() < 0.15 ? pick(["For whoever needs it most", "Get well soon", "In honor of the ER nurses"]) : null,
+    });
   }
   gifts.sort((a, b) => a.at.getTime() - b.at.getTime());
 
-  console.log(`Donations: ${gifts.length} Nessie deposits into the fund account`);
+  console.log(`Donations: ${gifts.length} Nessie deposits into the fund account from ${DONORS.length} named donors and anonymous givers`);
   await pool(gifts, 3, async (g, i) => {
     const id = `don_hist_${String(i).padStart(3, "0")}`;
     const deposit = await retry("nessie deposit", () =>
+      // Nessie's sandbox only stores whole dollars; Tiger Data keeps the exact amount.
       nessie.createDeposit(fundAccountId, {
-        amountCents: g.cents,
+        amountCents: g.cents - (g.cents % 100),
         description: `AbdulCare donation ${id}`,
         date: nessieDate(g.at),
       }),
     );
     await db.transaction(async (tx) => {
       await tx.query(
-        `insert into donations (id, rail, amount_cents, nessie_deposit_id, solana_signature, donor_label, created_at)
-         values ($1, 'nessie', $2, $3, $4, $5, $6)`,
-        [id, g.cents, deposit._id, null, g.label, g.at],
+        `insert into donations (id, rail, amount_cents, nessie_deposit_id, solana_signature, donor_label, donor_id, purpose, created_at)
+         values ($1, 'nessie', $2, $3, null, $4, $5, $6, $7)`,
+        [id, g.cents, deposit._id, g.label, g.donorId, g.purpose, g.at],
       );
       await tx.query(
-        "insert into fund_events (time, type, amount_cents, grant_ref, solana_signature) values ($1, 'donation', $2, $3, $4)",
-        [g.at, g.cents, id, null],
+        "insert into fund_events (time, type, amount_cents, grant_ref, solana_signature) values ($1, 'donation', $2, $3, null)",
+        [g.at, g.cents, id],
       );
     });
     process.stdout.write(".");
@@ -845,40 +1035,65 @@ interface PlannedCase {
   visitDay: number;
   scale: number;
   duplicateOf?: number;
+  /** True for the open backlog: requested, not decided yet. */
+  pending?: boolean;
+  hardshipNote?: string | null;
+}
+
+const NOTES = [
+  "I missed six weeks of work and can't cover rent and this bill.",
+  "We're a single-income household and the deductible took all our savings.",
+  "My hours were cut after the injury. Anything helps.",
+  "I'm still in physical therapy and can't go back to my job yet.",
+  "We already set up a payment plan for another bill and can't add this one.",
+  "Our car was totaled in the same crash, so we have no way to get to work.",
+  "I care for my mother at home and can only work part time.",
+  "The hospital said I might qualify for help. I didn't know where else to ask.",
+];
+
+function shuffle<T>(xs: T[]): T[] {
+  for (let i = xs.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [xs[i], xs[j]] = [xs[j], xs[i]];
+  }
+  return xs;
+}
+
+function planOne(n: number, outcome: Outcome, visitDay: number, pending: boolean): PlannedCase {
+  const scenario = pick(SCENARIOS);
+  const hospitalId = scenario.hospitals ? pick(scenario.hospitals) : pick(HOSPITALS.filter((h) => h.id !== "prv_hist_childrens")).id;
+  const county = rand() < 0.6 ? HOSPITALS.find((h) => h.id === hospitalId)!.county : pick(COUNTIES);
+  return {
+    person: makePerson(n, { pediatric: !!scenario.pediatric, outcome, county }),
+    scenario,
+    hospitalId,
+    outcome,
+    visitDay,
+    scale: between(0.85, 1.25),
+    pending,
+    hardshipNote: outcome !== "wealthy" && rand() < 0.4 ? pick(NOTES) : null,
+  };
 }
 
 function planCases(): PlannedCase[] {
-  const cases: PlannedCase[] = [];
-  const outcomes: Outcome[] = [
-    ...Array<Outcome>(112).fill("paid"),
-    ...Array<Outcome>(9).fill("wealthy"),
-    ...Array<Outcome>(5).fill("mismatch"),
-    ...Array<Outcome>(2).fill("tampered"),
-  ];
-  // Shuffle outcomes deterministically.
-  for (let i = outcomes.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [outcomes[i], outcomes[j]] = [outcomes[j], outcomes[i]];
-  }
-  outcomes.forEach((outcome, n) => {
-    const scenario = pick(SCENARIOS);
-    const hospitalId = scenario.hospitals ? pick(scenario.hospitals) : pick(HOSPITALS.filter((h) => h.id !== "prv_hist_childrens")).id;
-    const county = rand() < 0.6 ? HOSPITALS.find((h) => h.id === hospitalId)!.county : pick(COUNTIES);
-    cases.push({
-      person: makePerson(n + 1, { pediatric: !!scenario.pediatric, outcome, county }),
-      scenario,
-      hospitalId,
-      outcome,
-      // Requests take up to ~8 days to decide and pay, so every visit is at least 10 days old.
-      visitDay: between(10, 175),
-      scale: between(0.85, 1.25),
-    });
-  });
-  // Two duplicate claims: the same visit submitted again by the same patient.
-  for (const k of [7, 41]) {
+  // A year of decided requests. Requests take up to ~8 days to decide and pay, so every decided
+  // visit is at least 10 days old.
+  const decided = shuffle<Outcome>([
+    ...Array<Outcome>(300).fill("paid"),
+    ...Array<Outcome>(20).fill("wealthy"),
+    ...Array<Outcome>(12).fill("mismatch"),
+    ...Array<Outcome>(5).fill("tampered"),
+  ]);
+  const cases = decided.map((outcome, i) => planOne(i + 1, outcome, between(10, 362), false));
+  // Duplicate claims: the same visit submitted again by the same patient, after it was paid.
+  const paidIdx = cases.map((c, i) => (c.outcome === "paid" && c.visitDay > 40 ? i : -1)).filter((i) => i >= 0);
+  for (const k of paidIdx.slice(3, 11)) {
     const original = cases[k];
-    cases.push({ ...original, outcome: "duplicate", visitDay: Math.max(10, original.visitDay - between(6, 20)), duplicateOf: k });
+    cases.push({ ...original, outcome: "duplicate", visitDay: Math.max(10, original.visitDay - between(6, 25)), duplicateOf: k, hardshipNote: null });
   }
+  // The open backlog: recent requests waiting in the reviewer queue.
+  const backlog = shuffle<Outcome>([...Array<Outcome>(25).fill("paid"), "wealthy", "wealthy", "mismatch", "mismatch", "tampered"]);
+  backlog.forEach((outcome, i) => cases.push(planOne(500 + i, outcome, between(1.5, 24), true)));
   return cases.sort((a, b) => b.visitDay - a.visitDay);
 }
 
@@ -928,6 +1143,7 @@ async function seedCases(ctx: Ctx, hospitals: Map<string, { name: string; mercha
   const payouts: { grantId: string; ref: string; cents: number; paidAt: Date; hospitalId: string }[] = [];
   const declines: { grantId: string; ref: string }[] = [];
   let skipped = 0;
+  let backlog = 0;
 
   console.log(`Cases: ${planned.length} visits through insurance, hospital policies and the fund`);
   for (const c of planned) {
@@ -937,10 +1153,10 @@ async function seedCases(ctx: Ctx, hospitals: Map<string, { name: string; mercha
 
     if (!isDuplicateRetry) {
       await db.query(
-        `insert into patients (id, display_name, household_size, monthly_income_cents, insurance_status, region, age_band, created_at)
-         values ($1, $2, $3, $4, $5, $6, $7, $8)
+        `insert into patients (id, display_name, household_size, monthly_income_cents, insurance_status, region, age_band, employment, created_at)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          on conflict (id) do nothing`,
-        [p.id, `${p.legalName} (fictional)`, p.profile.householdSize, p.profile.monthlyIncomeCents, p.profile.insurance, p.region, p.ageBand, daysAgo(c.visitDay + 30)],
+        [p.id, `${p.legalName} (fictional)`, p.profile.householdSize, p.profile.monthlyIncomeCents, p.profile.insurance, p.region, p.ageBand, p.employment, daysAgo(c.visitDay + 30)],
       );
       await db.query(
         `insert into patient_identities (patient_id, legal_name, date_of_birth, ssn, address, phone, member_id, fictional)
@@ -960,7 +1176,8 @@ async function seedCases(ctx: Ctx, hospitals: Map<string, { name: string; mercha
     const visitAt = daysAgo(c.visitDay, int(1, 23));
     const lineItems: LineItem[] = c.scenario.items.map(([description, usd]) => ({
       description,
-      cents: dollars(usd * c.scale * between(0.92, 1.08)),
+      // Real bills aren't round: keep the cents.
+      cents: Math.round(usd * c.scale * between(0.92, 1.08) * 100),
     }));
     let description = c.scenario.description;
     if (c.outcome === "tampered") {
@@ -1020,17 +1237,15 @@ async function seedCases(ctx: Ctx, hospitals: Map<string, { name: string; mercha
           await post("hospital_assistance", a.reduction, "policy", a.policy.name, a.policy.id, true, appId, `${a.policy.name} (hospital decision, simulated)`, new Date(visitAt.getTime() + 7_200_000));
         }
       }
-      // Nessie pays whole dollars: the patient covers any leftover cents.
-      const cents = remaining % 100;
-      if (cents > 0 && c.outcome === "paid") {
-        await post("patient_payment", cents, "patient", "Patient", null, false, null, "Patient paid the remaining cents", new Date(visitAt.getTime() + 2 * DAY));
-      }
     });
 
     // The request, the need score and the decision.
-    const requestedAt = new Date(visitAt.getTime() + between(0.5, 4) * DAY);
-    const decidedAt = new Date(requestedAt.getTime() + between(0.2, 3.5) * DAY);
-    const approved = remaining - (remaining % 100);
+    const requestedAt = c.pending
+      ? new Date(Math.min(visitAt.getTime() + between(0.3, 1.5) * DAY, NOW - 3_600_000))
+      : new Date(visitAt.getTime() + between(0.5, 4) * DAY);
+    const decidedAt = c.pending ? new Date(NOW) : new Date(requestedAt.getTime() + between(0.2, 3.5) * DAY);
+    // The fund pays the exact remaining balance, cents included (Nessie's sandbox records whole dollars).
+    const approved = remaining;
     const grantId = newId("gra");
     const ref = payoutReference(grantId);
     const declined = c.outcome !== "paid";
@@ -1047,21 +1262,39 @@ async function seedCases(ctx: Ctx, hospitals: Map<string, { name: string; mercha
       insurance: p.profile.insurance,
       billCents: remaining,
       category: c.scenario.category,
-      daysWaiting: Math.floor((decidedAt.getTime() - requestedAt.getTime()) / DAY),
+      daysWaiting: Math.max(0, Math.floor((decidedAt.getTime() - requestedAt.getTime()) / DAY)),
       priorPaidCount90d: prior[0]?.n ?? 0,
       priorPaidCents90d: Number(prior[0]?.cents ?? 0),
     };
     const assessment = assessNeed(input);
     const pct = assessment.incomePctOfPoverty ?? 0;
 
+    if (c.pending) {
+      await db.transaction(async (tx) => {
+        await tx.query(
+          `insert into grants (id, patient_id, visit_id, provider_id, requested_cents, status, hardship_note, created_at, updated_at, public_ref)
+           values ($1, $2, $3, $4, $5, 'pending_review', $6, $7, $7, $8)`,
+          [grantId, p.id, visitId, c.hospitalId, remaining, c.hardshipNote ?? null, requestedAt, ref],
+        );
+        await tx.query(
+          `insert into need_assessments (grant_id, score, formula_version, inputs, assessment, suspicious, computed_at)
+           values ($1, $2, $3, $4, $5, $6, now())`,
+          [grantId, Math.round(assessment.score), assessment.formulaVersion, JSON.stringify(input), JSON.stringify(assessment), JSON.stringify(suspicious)],
+        );
+      });
+      backlog++;
+      process.stdout.write("p");
+      continue;
+    }
+
     await db.transaction(async (tx) => {
       await tx.query(
         `insert into grants (id, patient_id, visit_id, provider_id, requested_cents, approved_cents, status, reviewer_device_id,
-                             decision_note, created_at, decided_at, paid_at, updated_at, public_ref)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $11, $13)`,
+                             decision_note, created_at, decided_at, paid_at, updated_at, public_ref, hardship_note)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $11, $13, $14)`,
         [grantId, p.id, visitId, c.hospitalId, remaining, declined ? null : approved, declined ? "rejected" : "paid", reviewers[1].id,
           declined ? DECLINE_NOTE[c.outcome as Exclude<Outcome, "paid">](c, pct) : `Approved the full remaining balance after review (need score ${Math.round(assessment.score)}).`,
-          requestedAt, decidedAt, declined ? null : new Date(decidedAt.getTime() + int(2, 9) * 60_000), ref],
+          requestedAt, decidedAt, declined ? null : new Date(decidedAt.getTime() + int(2, 9) * 60_000), ref, c.hardshipNote ?? null],
       );
       await tx.query(
         `insert into need_assessments (grant_id, score, formula_version, inputs, assessment, suspicious, computed_at)
@@ -1087,7 +1320,7 @@ async function seedCases(ctx: Ctx, hospitals: Map<string, { name: string; mercha
     else payouts.push({ grantId, ref, cents: approved, paidAt: new Date(decidedAt.getTime() + 5 * 60_000), hospitalId: c.hospitalId });
     process.stdout.write(declined ? "d" : ".");
   }
-  console.log(`\n  ${payouts.length} paid, ${declines.length} declined, ${skipped} fully covered before the fund`);
+  console.log(`\n  ${payouts.length} paid, ${declines.length} declined, ${backlog} waiting in the queue, ${skipped} fully covered before the fund`);
 
   console.log(`Payouts: ${payouts.length} Nessie purchases to the hospitals`);
   await pool(payouts, 3, async (pay) => {
@@ -1096,7 +1329,7 @@ async function seedCases(ctx: Ctx, hospitals: Map<string, { name: string; mercha
     const purchase = await retry("nessie purchase", () =>
       nessie.createPurchase(fundAccountId, {
         merchantId: hospital.merchant,
-        amountCents: pay.cents,
+        amountCents: pay.cents - (pay.cents % 100),
         description: payoutDescription(key),
         date: nessieDate(pay.paidAt),
       }),
@@ -1149,6 +1382,7 @@ async function resetHistory(db: Db): Promise<void> {
     await tx.query("delete from visits where patient_id like 'pat_hist_%'");
     await tx.query("delete from patients where id like 'pat_hist_%'");
     await tx.query("delete from donations where id like 'don_hist_%'");
+    await tx.query("delete from donors where id like 'dnr_hist_%'");
   });
   await recomputeFund(db);
 }
@@ -1260,6 +1494,17 @@ async function main() {
   }
   await backfillReceipts(ctx);
   await recomputeFund(db);
+
+  // Warm the reviewer queue: fresh need scores and template briefs, with no model call. The live
+  // app only asks Gemini for the top few briefs when the queue changes.
+  const offline: ModelClient = {
+    model: "offline",
+    generateJson: async () => {
+      throw new ModelUnavailableError("The history seed never calls a model");
+    },
+  };
+  const queue = await getReviewQueue(db, createNeedEngine({ client: offline }));
+  console.log(`Queue: ${queue.items.length} pending requests, top: ${queue.items.slice(0, 3).map((i) => `${i.assessment.score} (${i.insight?.urgency})`).join(", ")}`);
 
   const { rows: f } = await db.query("select total_cents, reserved_cents, paid_cents from fund where id = 'community'");
   const { rows: pend } = await db.query(
