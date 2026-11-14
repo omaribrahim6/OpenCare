@@ -78,12 +78,12 @@ let deps: PaymentsDeps;
 async function approvedGrant(cents = 4_500): Promise<string> {
   await db.query("update providers set nessie_merchant_id = 'm_pharmacy' where id = 'prv_1'");
   await db.query(
-    "insert into documents (id, patient_id, source, nessie_id, status) values ('doc_1', 'pat_1', 'nessie_bill', 'bill_45', 'confirmed')",
+    `insert into documents (id, patient_id, source, nessie_id, merchant, amount_cents, category)
+     values ('doc_1', 'pat_1', 'nessie_bill', 'bill_45', 'Test Pharmacy', 4500, 'pharmacy')`,
   );
   await db.query(
-    `insert into grants (id, patient_id, document_id, provider_id, program_id, program_name,
-                         requested_cents, approved_cents, status)
-     values ('grt_1', 'pat_1', 'doc_1', 'prv_1', 'fund', 'Community fund', $1, $1, 'approved')`,
+    `insert into grants (id, patient_id, document_id, provider_id, requested_cents, approved_cents, status)
+     values ('grt_1', 'pat_1', 'doc_1', 'prv_1', $1, $1, 'approved')`,
     [cents],
   );
   await db.query("update fund set reserved_cents = reserved_cents + $1 where id = 'community'", [cents]);
@@ -231,6 +231,8 @@ describe("card donations", () => {
     assert.equal(first.duplicate, false);
     assert.equal(retry.duplicate, true);
     assert.equal(retry.depositId, first.depositId);
+    assert.equal(retry.donation.id, first.donation.id);
+    assert.equal(first.donation.rail, "nessie");
     assert.equal(fake.deposits.length, 1);
     const after = await db.query<{ total_cents: number }>("select total_cents from fund where id = 'community'");
     assert.equal(Number(after.rows[0].total_cents) - Number(before.rows[0].total_cents), 2_500);
