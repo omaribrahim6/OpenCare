@@ -3,7 +3,9 @@
 import { Fragment, useState } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatCents } from "@/lib/mock";
-import type { GrantStatus, NeedFactor, QueueItem } from "@/lib/types";
+import type { GrantDecisionRequest } from "@abdulcare/contracts";
+import { decideGrant } from "@/lib/api";
+import type { Grant, NeedFactor, QueueItem } from "@/lib/types";
 import { CATEGORY_LABEL, INSURANCE_LABEL, SECOND_APPROVAL_ABOVE_CENTS, SUSPICIOUS_FIELD_LABEL } from "@/lib/types";
 
 
@@ -31,7 +33,9 @@ export function ReviewQueue({
   availableCents: number;
 }) {
   const [openId, setOpenId] = useState<string | null>(items[0]?.grant.id ?? null);
-  const [decisions, setDecisions] = useState<Record<string, GrantStatus>>({});
+  // Grants as returned by the decision route, so the list reflects what the server recorded.
+  const [decided, setDecided] = useState<Record<string, Grant>>({});
+  const grantOf = (it: QueueItem) => decided[it.grant.id] ?? it.grant;
   const open = items.find((i) => i.grant.id === openId) ?? null;
 
   // Budget reach (P1): the first request that no longer fits if everything above it were approved in full.
@@ -42,7 +46,8 @@ export function ReviewQueue({
     <div className="queue">
       <ol className="stack queue-list" aria-label="Pending requests in recommended order">
         {items.map((it) => {
-          const status = decisions[it.grant.id] ?? "pending_review";
+          const g = grantOf(it);
+          const status = g.status;
           const selected = it.grant.id === openId;
           const differs = order === "gemini" ? disagreement(it) : null;
           return (
@@ -89,6 +94,9 @@ export function ReviewQueue({
                     <span className="row" style={{ gap: 6 }}>
                       {differs && <span className="badge warn">{differs}</span>}
                       {it.suspiciousContent && <span className="badge bad">Suspicious content</span>}
+                      {g.awaitingSecondApproval && status === "pending_review" && (
+                        <span className="badge info">1 of 2 approvals</span>
+                      )}
                       {status !== "pending_review" && <StatusBadge status={status} />}
                     </span>
                   </span>
@@ -104,8 +112,8 @@ export function ReviewQueue({
           key={open.grant.id}
           item={open}
           order={order}
-          status={decisions[open.grant.id] ?? "pending_review"}
-          onDecide={(s) => setDecisions((d) => ({ ...d, [open.grant.id]: s }))}
+          grant={grantOf(open)}
+          onDecided={(g) => setDecided((d) => ({ ...d, [g.id]: g }))}
         />
       )}
     </div>
@@ -115,16 +123,23 @@ export function ReviewQueue({
 function Detail({
   item,
   order,
-  status,
-  onDecide,
+  grant,
+  onDecided,
 }: {
   item: QueueItem;
   order: "gemini" | "formula";
-  status: GrantStatus;
-  onDecide: (s: GrantStatus) => void;
+  grant: Grant;
+  onDecided: (g: Grant) => void;
 }) {
   // Nessie settles whole dollars only, so approvals are whole dollars (rounded down from the request).
-  const [amount, setAmount] = useState(String(Math.floor(item.grant.requestedCents / 100)));
+  // A request waiting for a second approval must be approved for the same amount as the first.
+  const firstApproval = grant.approvals[0]?.approvedCents;
+  const [amount, setAmount] = useState(
+    String(Math.floor((grant.awaitingSecondApproval && firstApproval ? firstApproval : grant.requestedCents) / 100)),
+  );
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const status = grant.status;
   const a = item.assessment;
   const decided = status !== "pending_review";
   const dollars = Number(amount);
@@ -132,6 +147,18 @@ function Detail({
   const amountCents = dollars * 100;
   const needsSecond = amountValid && amountCents > SECOND_APPROVAL_ABOVE_CENTS;
   const differs = order === "gemini" ? disagreement(item) : null;
+
+  async function decide(req: GrantDecisionRequest) {
+    setBusy(true);
+    setError(null);
+    try {
+      onDecided((await decideGrant(grant.id, req)).grant);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "The decision wasn't saved. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <section className="card queue-detail" aria-labelledby="detail-title">
@@ -288,18 +315,35 @@ function Detail({
         </p>
       )}
       <div className="row" style={{ marginTop: 16 }}>
-        <button className="btn" disabled={decided || !amountValid} onClick={() => onDecide("approved")}>
-          {amountValid ? `Approve ${formatCents(amountCents)}` : "Approve"}
+        <button
+          className="btn"
+          disabled={decided || busy || !amountValid}
+          onClick={() => decide({ decision: "approve", approvedCents: amountCents })}
+        >
+          {busy ? "Saving…" : amountValid ? `Approve ${formatCents(amountCents)}` : "Approve"}
         </button>
-        <button className="btn danger" disabled={decided} onClick={() => onDecide("rejected")}>
+        <button className="btn danger" disabled={decided || busy} onClick={() => decide({ decision: "reject" })}>
           Reject
         </button>
       </div>
+      {error && (
+        <p role="alert" className="badge bad" style={{ marginTop: 12 }}>
+          {error}
+        </p>
+      )}
+      {grant.awaitingSecondApproval && !decided && (
+        <p role="status" style={{ marginTop: 12 }}>
+          One approval recorded{firstApproval ? ` for ${formatCents(firstApproval)}` : ""}. A second caseworker device
+          must approve the same amount before it can be paid.
+        </p>
+      )}
       {decided && (
         <p role="status" style={{ marginTop: 12 }}>
-          {status === "approved" && needsSecond
-            ? "Approval recorded (mock). Waiting for a second caseworker before payment."
-            : "Decision recorded (mock). The amount and recipient are now fixed."}
+          {status === "approved"
+            ? `Approved for ${formatCents(grant.approvedCents)}. The amount and recipient are now fixed.`
+            : status === "rejected"
+              ? "Rejected."
+              : "Decision recorded."}
         </p>
       )}
     </section>
