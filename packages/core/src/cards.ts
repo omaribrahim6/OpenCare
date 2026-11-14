@@ -5,6 +5,8 @@
 import type { Device, PatientSummary, TapResult } from "@abdulcare/contracts";
 import type { Db } from "./db";
 import { listGrants } from "./grants";
+import { getInsurancePlan } from "./insurance";
+
 import { CoreError, hmac, newSecret, requireEnv, sha256 } from "./util";
 
 export const SESSION_COOKIE = "abdulcare_session";
@@ -55,6 +57,10 @@ export async function resolveTap(
 
   const sessionSecret = await startSession(db, device.id, patient.id);
   if (device.role === "kiosk") return { result: { kind: "session", patient }, sessionSecret };
+  // Rev 6: a hospital terminal tap selects the patient for intake (POST /api/visits uses it).
+  if (device.role === "hospital") {
+    return { result: { kind: "intake", patient, plan: await getInsurancePlan(db, patient.id) }, sessionSecret };
+  }
 
   const redeemableGrants = await listGrants(db, {
     status: "approved",
