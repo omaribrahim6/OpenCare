@@ -339,7 +339,6 @@
   .ln-btn { transition: none; }
 }
 
-.ln-hero { border-color: #dce6f2; }
 .ln-hero h1 { letter-spacing: -.056em; }
 .ln-lede { text-wrap: pretty; }
 .ln-donors .ln-donor-list li { border-bottom-color: #e5edf6; }
@@ -348,3 +347,43 @@
 .ln-brand .logo-mark { width: 33px; height: 33px; flex: 0 0 33px; }
 .ln-brand .logo-mark rect { fill: #075deb; }
 .ln-brand .logo-mark path { fill: #fff; }
+
+/* Keep the hero and the donor ranking on one continuous page surface. */
+.landing { --ln-bg: #fcfdff; }
+.ln-top {
+  border-bottom: 1px solid var(--ln-line);
+  padding-bottom: 17px;
+}
+.ln-grid { column-gap: clamp(24px, 3.5vw, 52px); row-gap: 0; }
+.ln-card {
+  padding-block: clamp(24px, 3.2vw, 44px);
+  padding-inline: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.ln-hero { padding-top: clamp(18px, 2vw, 29px); }
+.ln-donors {
+  padding-top: clamp(18px, 2vw, 29px);
+  padding-inline-start: clamp(21px, 2.6vw, 36px);
+  border-inline-start: 1px solid var(--ln-line);
+}
+.ln-fund, .ln-claims, .ln-foot { border-top: 1px solid var(--ln-line); }
+.ln-stats > div {
+  padding-block: 6px;
+  padding-inline: 12px 6px;
+  border-inline-start: 1px solid var(--ln-line);
+  border-radius: 0;
+  background: transparent;
+}
+.ln-stats > div:first-child { padding-inline-start: 0; border-inline-start: 0; }
+.ln-btn-primary { box-shadow: none; }
+.ln-claim-row:hover { border-radius: 8px; }
+@media (max-width: 1040px) {
+  .ln-donors { padding-inline-start: 0; border-inline-start: 0; border-top: 1px solid var(--ln-line); }
+}
+@media (max-width: 720px) {
+  .ln-top { padding-bottom: 13px; }
+  .ln-stats > div:nth-child(3) { padding-inline-start: 0; border-inline-start: 0; }
+}
