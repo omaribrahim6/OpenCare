@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiRequestError, donateByCard, recordSolDonation } from "@/lib/api";
 import { formatCents } from "@/lib/mock";
 import { getPhantom, isValidAddress, looksLikeSignature, sendDevnetSol, TREASURY_ADDRESS } from "@/lib/solana";
-import type { DonationResponse } from "@/lib/types";
+import type { DonationResponse, FundSummary } from "@/lib/types";
 
 type Method = "card" | "sol";
 type Phase = "closed" | "form" | "sending" | "done" | "error";
@@ -21,7 +21,7 @@ const MAX_CENTS = 1_000_000;
  * - Devnet SOL: the donor's Phantom wallet sends to the treasury, then POST /api/fund/donations/solana
  *   { signature }. Donors without Phantom can send from any devnet wallet and paste the signature.
  */
-export function DonateButton() {
+export function DonateButton({ onDonated }: { onDonated?: (fund: FundSummary) => void }) {
   const [phase, setPhase] = useState<Phase>("closed");
   const [method, setMethod] = useState<Method>("card");
   const [amount, setAmount] = useState("25");
@@ -54,7 +54,9 @@ export function DonateButton() {
   async function submitCard() {
     // New key for a new attempt; the same key on a retry after an error.
     cardKey.current ??= crypto.randomUUID();
-    setResult(await donateByCard({ amountCents: cents, idempotencyKey: cardKey.current }));
+    const r = await donateByCard({ amountCents: cents, idempotencyKey: cardKey.current });
+    setResult(r);
+    onDonated?.(r.fund);
     cardKey.current = null;
   }
 
@@ -62,7 +64,9 @@ export function DonateButton() {
     // Keep the signature after the wallet sends, so a failed record call retries without paying again.
     if (fromPaste) solSignature.current = pasted.trim();
     else solSignature.current ??= await sendDevnetSol(sol);
-    setResult(await recordSolDonation({ signature: solSignature.current }));
+    const r = await recordSolDonation({ signature: solSignature.current });
+    setResult(r);
+    onDonated?.(r.fund);
     solSignature.current = null;
   }
 

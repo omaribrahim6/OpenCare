@@ -2,10 +2,12 @@ import Link from "next/link";
 
 // Index of every screen for the team and the pitch. Not part of the patient flow.
 const SCREENS = [
+  ["/pair", "Staff: set up this device (pairing)"],
   ["/", "1. Welcome / check-in"],
   ["/t/demo", "Card tap: known patient (paired kiosk)"],
   ["/t/unknown", "Card tap: unknown card"],
   ["/t/unpaired", "8. Card tap on an unpaired phone"],
+  ["/t/provider", "Card tap on a provider terminal (mock)"],
   ["/kiosk/bills", "2. Bills found"],
   ["/kiosk/explain", "3. Explanation / request"],
   ["/kiosk/status", "4. Request status"],
@@ -19,7 +21,7 @@ export default function DemoIndex() {
   return (
     <main className="page">
       <h1>All screens</h1>
-      <p className="muted">Shells with mock data.</p>
+      <p className="muted">Live mode uses the real API and needs a paired device; mock tokens (demo, provider, unpaired) only work in mock mode.</p>
       <ul className="stack" style={{ listStyle: "none", padding: 0 }}>
         {SCREENS.map(([href, label]) => (
           <li key={href}>
