@@ -61,12 +61,47 @@ export async function getInsurancePlan(db: Db, patientId: string): Promise<Insur
   };
 }
 
-/** Enrollment (and the demo seed) sets the plan; null removes it (uninsured). */
-export async function setInsurancePlan(db: Db, patientId: string, plan: InsurancePlan | null): Promise<void> {
-  if (!plan) {
+const MAX_PLAN_CENTS = 100_000_000; // $1,000,000
+
+/** Check a plan from the browser or the seed; returns a clean copy or throws bad_request. */
+export function validatePlan(plan: unknown): InsurancePlan {
+  const p = (plan ?? {}) as Record<string, unknown>;
+  const payerName = typeof p.payerName === "string" ? p.payerName.trim().slice(0, 80) : "";
+  if (!payerName) throw new CoreError("bad_request", "The plan needs a payer name");
+  const cents = (key: string) => {
+    const v = p[key];
+    if (typeof v !== "number" || !Number.isSafeInteger(v) || v < 0 || v > MAX_PLAN_CENTS) {
+      throw new CoreError("bad_request", `${key} must be whole cents between 0 and $1,000,000`);
+    }
+    return v;
+  };
+  const coinsurancePct = p.coinsurancePct;
+  if (typeof coinsurancePct !== "number" || !Number.isInteger(coinsurancePct) || coinsurancePct < 0 || coinsurancePct > 100) {
+    throw new CoreError("bad_request", "coinsurancePct must be a whole number from 0 to 100");
+  }
+  const clean: InsurancePlan = {
+    payerName,
+    deductibleCents: cents("deductibleCents"),
+    deductibleMetCents: cents("deductibleMetCents"),
+    coinsurancePct,
+    outOfPocketMaxCents: cents("outOfPocketMaxCents"),
+    outOfPocketMetCents: cents("outOfPocketMetCents"),
+  };
+  if (clean.deductibleMetCents > clean.deductibleCents) throw new CoreError("bad_request", "Deductible met can't exceed the deductible");
+  if (clean.outOfPocketMetCents > clean.outOfPocketMaxCents) {
+    throw new CoreError("bad_request", "Out-of-pocket met can't exceed the out-of-pocket maximum");
+  }
+  return clean;
+}
+
+/** Enrollment, the patient (kiosk) and the demo seed set the plan; null removes it (uninsured). */
+export async function setInsurancePlan(db: Db, patientId: string, input: InsurancePlan | null): Promise<void> {
+  if (!input) {
     await db.query("delete from insurance_plans where patient_id = $1", [patientId]);
     return;
   }
+  const plan = validatePlan(input);
+
   await db.query(
     `insert into insurance_plans (patient_id, payer_name, deductible_cents, deductible_met_cents,
                                   coinsurance_pct, oop_max_cents, oop_met_cents)

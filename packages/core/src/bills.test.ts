@@ -13,7 +13,8 @@ import { getCaseDetail, getReviewQueue } from "./need";
 import { setPatientProfile } from "./profiles";
 import { createTestDb, seedBasics } from "./test-helpers";
 import { CoreError } from "./util";
-import { getBill, listVisitTemplates, logVisit } from "./visits";
+import { applyVisitPolicies, getBill, listVisitTemplates, logVisit } from "./visits";
+
 
 const PLAN: InsurancePlan = {
   payerName: "Bluebird Health (fictional)",
@@ -95,9 +96,16 @@ describe("insurance", () => {
 });
 
 describe("visits and the bill", () => {
-  test("logging the demo visit posts charge, insurance and charity care once, in order", async () => {
+  test("intake posts charge and insurance; 'Apply for savings' posts charity care once", async () => {
     const input = { templateId: "tpl_er", patientId: "pat_1", device: hospital, idempotencyKey: "key-1" };
-    const bill = await logVisit(db, engines, input);
+    const logged = await logVisit(db, engines, input);
+    assert.deepEqual(logged.events.map((e) => e.type), ["charge", "insurance_adjustment"]);
+    assert.equal(logged.remainingCents, 216_000);
+    assert.deepEqual(logged.applications.map((a) => a.status), ["prepared", "prepared"]);
+    assert.equal(logged.applications[0].evaluation.reductionCents, 172_800); // the estimate
+    await rejectsWith(applyVisitPolicies(db, engines, { visitId: logged.visit.id, patientId: "pat_2" }), "forbidden");
+
+    const bill = await applyVisitPolicies(db, engines, { visitId: logged.visit.id, patientId: "pat_1" });
     assert.deepEqual(bill.events.map((e) => e.type), ["charge", "insurance_adjustment", "hospital_assistance"]);
     assert.deepEqual(bill.steps.map((s) => s.balanceCents), [480_000, 216_000, 43_200]);
     assert.equal(bill.remainingCents, 43_200);
@@ -109,13 +117,20 @@ describe("visits and the bill", () => {
 
     const again = await logVisit(db, engines, input);
     assert.equal(again.visit.id, bill.visit.id);
+    await applyVisitPolicies(db, engines, { visitId: bill.visit.id, patientId: "pat_1" });
     const { rows } = await db.query<{ n: number }>("select count(*)::int as n from bill_events");
     assert.equal(rows[0].n, 3);
     await rejectsWith(logVisit(db, engines, { ...input, patientId: "pat_2" }), "conflict");
   });
 
-  test("an uninsured patient gets no insurance step; self-pay applies", async () => {
-    const bill = await logVisit(db, engines, { templateId: "tpl_er", patientId: "pat_2", device: hospital, idempotencyKey: "k2" });
+  test("applyPolicies decides at intake; an uninsured patient gets no insurance step; self-pay applies", async () => {
+    const bill = await logVisit(db, engines, {
+      templateId: "tpl_er",
+      patientId: "pat_2",
+      device: hospital,
+      idempotencyKey: "k2",
+      applyPolicies: true,
+    });
     assert.deepEqual(bill.events.map((e) => e.type), ["charge", "hospital_assistance"]);
     assert.equal(bill.insurance, null);
     assert.equal(bill.remainingCents, 336_000); // 30% off $4,800
@@ -127,9 +142,33 @@ describe("visits and the bill", () => {
       "forbidden",
     );
     assert.deepEqual((await listVisitTemplates(db, "prv_1")).map((t) => t.id).sort(), ["tpl_bad", "tpl_er"]);
-    const bill = await logVisit(db, engines, { templateId: "tpl_bad", patientId: "pat_1", device: hospital, idempotencyKey: "k4" });
+    const bill = await logVisit(db, engines, {
+      templateId: "tpl_bad",
+      patientId: "pat_1",
+      device: hospital,
+      idempotencyKey: "k4",
+      applyPolicies: true,
+    });
     assert.equal(bill.suspiciousContent?.field, "description");
     assert.equal(bill.remainingCents, 4_000); // all deductible ($200); charity care takes 80%
+  });
+
+  test("a plan saved after intake posts insurance at the apply step; bad plans are refused", async () => {
+    await setInsurancePlan(db, "pat_1", null);
+    const logged = await logVisit(db, engines, { templateId: "tpl_er", patientId: "pat_1", device: hospital, idempotencyKey: "k6" });
+    assert.deepEqual(logged.events.map((e) => e.type), ["charge"]);
+    await assert.rejects(setInsurancePlan(db, "pat_1", { ...PLAN, coinsurancePct: 120 }), CoreError);
+    await assert.rejects(setInsurancePlan(db, "pat_1", { ...PLAN, deductibleMetCents: 999_999 }), CoreError);
+    await setInsurancePlan(db, "pat_1", PLAN);
+    const bill = await applyVisitPolicies(db, engines, { visitId: logged.visit.id, patientId: "pat_1" });
+    assert.deepEqual(bill.events.map((e) => e.type), ["charge", "insurance_adjustment", "hospital_assistance"]);
+    assert.equal(bill.remainingCents, 43_200);
+  });
+
+  test("a fund request applies prepared savings first", async () => {
+    const logged = await logVisit(db, engines, { templateId: "tpl_er", patientId: "pat_1", device: hospital, idempotencyKey: "k7" });
+    const grant = await requestHelp(db, { patientId: "pat_1", visitId: logged.visit.id });
+    assert.equal(grant.requestedCents, 43_200);
   });
 
   test("a hospital terminal tap selects the patient for intake", async () => {

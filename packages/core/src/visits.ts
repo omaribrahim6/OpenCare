@@ -117,6 +117,11 @@ export interface LogVisitInput {
   idempotencyKey: string;
   /** Monthly income from Nessie deposits, when the route could fetch it. */
   depositIncomeCents?: number | null;
+  /**
+   * True applies every policy at once (the simulated hospital decides at intake). False (default)
+   * records each application as "prepared"; the patient applies them with applyVisitPolicies.
+   */
+  applyPolicies?: boolean;
 }
 
 const POLICY_LABEL = (name: string) => `${name} (hospital decision, simulated)`;
@@ -192,7 +197,7 @@ export async function logVisit(
       evaluation: { ...evaluation, reductionCents: reduction },
       text: text.text,
       textSource: text.source,
-      status: reduction > 0 ? "approved_simulated" : "denied_simulated",
+      status: !input.applyPolicies ? "prepared" : reduction > 0 ? "approved_simulated" : "denied_simulated",
       reduction,
     });
     balance -= reduction;
@@ -280,10 +285,21 @@ export async function logVisit(
       await tx.query(
         `insert into policy_applications (id, visit_id, policy_id, evaluation, application_text, text_source,
                                           status, reduction_cents, decided_at)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, now())`,
-        [a.id, visitId, a.policy.id, JSON.stringify(a.evaluation), a.text, a.textSource, a.status, a.reduction],
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          a.id,
+          visitId,
+          a.policy.id,
+          JSON.stringify(a.evaluation),
+          a.text,
+          a.textSource,
+          a.status,
+          input.applyPolicies ? a.reduction : 0,
+          input.applyPolicies ? new Date() : null,
+        ],
       );
-      if (a.reduction > 0) {
+      if (input.applyPolicies && a.reduction > 0) {
+
         await post({
           type: "hospital_assistance",
           amount: a.reduction,
@@ -313,6 +329,113 @@ async function visitIdForKey(db: Db, key: string): Promise<{ id: string; patient
     [key],
   );
   return rows[0] ? { id: rows[0].id, patientId: rows[0].patient_id } : null;
+}
+
+// ---------------------------------------------------------------------------
+// "Apply for savings": the patient submits the prepared applications
+
+/**
+ * Submit a visit's prepared policy applications in apply order. Each simulated hospital decision
+ * is re-evaluated against the balance left at that moment and posts a confirmed reduction. If the
+ * patient saved an insurance plan after intake and nothing was applied yet, the insurance
+ * adjustment posts first. Idempotent: once nothing is prepared, it returns the bill unchanged.
+ */
+export async function applyVisitPolicies(
+  db: Db,
+  engines: { bills: BillEngine },
+  input: { visitId: string; patientId: string; depositIncomeCents?: number | null },
+): Promise<Bill> {
+  const bill = await getBill(db, input.visitId, { patientId: input.patientId });
+  const prepared = bill.applications.filter((a) => a.status === "prepared");
+  if (prepared.length === 0) return bill;
+
+  const { profile } = await getPatientWithProfile(db, input.patientId);
+  const plan = await getInsurancePlan(db, input.patientId);
+  const hasInsurance = bill.events.some((e) => e.type === "insurance_adjustment");
+  const anyApplied = bill.events.some((e) => e.type === "hospital_assistance" || e.type === "fund_grant");
+  const insurance = !hasInsurance && !anyApplied && plan ? adjudicate(plan, bill.chargesCents) : null;
+
+  // Everything is computed before the transaction (the AI text may take a moment).
+  let balance = bill.remainingCents - (insurance ? insurance.insurerPaysCents : 0);
+  const decisions: { app: PolicyApplication; evaluation: PolicyEvaluation; reduction: number; text: string; textSource: "gemini" | "template" }[] = [];
+  for (const app of prepared) {
+    const evaluation = engines.bills.evaluatePolicy({
+      policy: app.policy,
+      profile,
+      depositIncomeCents: input.depositIncomeCents ?? null,
+      balanceCents: balance,
+      chargesCents: bill.chargesCents,
+    });
+    const reduction = evaluation.eligible ? Math.min(balance, Math.max(0, Math.round(evaluation.reductionCents))) : 0;
+    let text = { text: app.applicationText, source: app.textSource as "gemini" | "template" };
+    if (app.evaluation.reductionCents !== reduction) {
+      // The balance changed since intake (for example, a plan saved later): refresh the text.
+      const textInput = {
+        policy: app.policy,
+        evaluation,
+        profile,
+        hospitalName: bill.visit.hospital.name,
+        visitDate: bill.visit.date,
+        category: bill.visit.category,
+        balanceCents: balance,
+      };
+      text = applicationTextFallback(textInput);
+      try {
+        text = await engines.bills.writeApplication(textInput);
+      } catch {
+        // Keep the template text.
+      }
+    }
+    decisions.push({ app, evaluation: { ...evaluation, reductionCents: reduction }, reduction, text: text.text, textSource: text.source });
+    balance -= reduction;
+  }
+
+  await db.transaction(async (tx) => {
+    // Lock the visit so two taps on "Apply" can't both post.
+    await tx.query("select id from visits where id = $1 for update", [input.visitId]);
+    const { rows: still } = await tx.query<{ id: string }>(
+      "select id from policy_applications where visit_id = $1 and status = 'prepared'",
+      [input.visitId],
+    );
+    const stillPrepared = new Set(still.map((r) => r.id));
+    if (decisions.some((d) => !stillPrepared.has(d.app.id))) return; // Another request applied them.
+    const { rows: seqRows } = await tx.query<{ seq: number }>(
+      "select coalesce(max(seq), 0)::int as seq from bill_events where visit_id = $1",
+      [input.visitId],
+    );
+    let seq = Number(seqRows[0]?.seq ?? 0);
+    const post = (type: BillEventType, amount: number, kind: BillEventSourceKind, sourceLabel: string, sourceId: string | null, reference: string | null, label: string) =>
+      tx.query(
+        `insert into bill_events (id, visit_id, type, amount_cents, source_kind, source_label, source_id,
+                                  status, simulated, reference, label, seq)
+         values ($1, $2, $3, $4, $5, $6, $7, 'confirmed', true, $8, $9, $10)`,
+        [newId("bev"), input.visitId, type, amount, kind, sourceLabel, sourceId, reference, label, ++seq],
+      );
+    if (plan && insurance && insurance.insurerPaysCents > 0) {
+      await post("insurance_adjustment", insurance.insurerPaysCents, "insurer", plan.payerName, null, null, `${plan.payerName} paid its share (simulated)`);
+    }
+    for (const d of decisions) {
+      await tx.query(
+        `update policy_applications
+            set status = $2, evaluation = $3, reduction_cents = $4, application_text = $5, text_source = $6, decided_at = now()
+          where id = $1 and status = 'prepared'`,
+        [d.app.id, d.reduction > 0 ? "approved_simulated" : "denied_simulated", JSON.stringify(d.evaluation), d.reduction, d.text, d.textSource],
+      );
+      if (d.reduction > 0) {
+        await post("hospital_assistance", d.reduction, "policy", d.app.policy.name, d.app.policy.id, d.app.id, POLICY_LABEL(d.app.policy.name));
+      }
+    }
+  });
+  return getBill(db, input.visitId, { patientId: input.patientId });
+}
+
+/** The patient's visits, newest first. */
+export async function listPatientVisitIds(db: Db, patientId: string): Promise<string[]> {
+  const { rows } = await db.query<{ id: string }>(
+    "select id from visits where patient_id = $1 order by created_at desc limit 50",
+    [patientId],
+  );
+  return rows.map((r) => r.id);
 }
 
 // ---------------------------------------------------------------------------
