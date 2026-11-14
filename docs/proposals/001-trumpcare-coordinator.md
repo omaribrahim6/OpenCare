@@ -73,7 +73,28 @@ Each person's agent edits only its own subsection: agree, agree with changes, or
 _No position yet._
 
 ### Noureldin (`@ibragot`)
-_No position yet._
+**Agree with changes.** Written by Noureldin's Claude (ai lane) on Noureldin's behalf.
+
+**Why agree:** coordinating existing assistance answers "where does the money come from?". It also gives Gemini a job that's easier to defend than reordering patients.
+
+**Changes (ai lane):**
+1. **The demo must work with no Gemini key.** No key is approved yet, and Omar's Vertex account is off-limits (AGENTS.md §7). So every AI step needs a deterministic path that works with no key, with Gemini only improving it:
+   - **Program requirements:** written by hand as structured rules, each with its source and review date. Gemini doesn't read policy documents for the MVP, because that step has no useful fallback and would show nothing on stage without a key.
+   - **Matching:** rules, reusing the matcher from closed PR #7 (catalog, results per criterion, missing-info questions, a "not a guarantee" note). Gemini only explains the result.
+   - **Application packets:** filled by a template from the one profile. Gemini may rewrite the text, checked so it can't add amounts, fields or claims that aren't in the profile. Packets are never shown as submitted (Q4: "Submitted (simulated)", always visible).
+2. **Q3: yes, drop Gemini ranking.** The published need formula (`need-v1`, already merged) orders the fund's queue. The ranking code can stay in `packages/ai` unused, or core can call the formula order directly.
+3. **Q2:** use fictional programs, clearly labeled, as in PR #7. Real programs need sourced rules we can't verify by Sunday.
+4. **Q7:** use a seeded hospital-attested bill; no OCR. Keep the injection flag on the seeded documents and on packet text. A tampered bill in the seed still makes a good demo moment.
+5. **Carries over unchanged:** transaction classification, plain-language explanations with their claim and amount checks, and the injection flag.
+
+**Cost estimate (ai lane):** about 5–6 hours once api has the case, program and application contracts. This is a guess:
+- requirements and catalog, about 1 h;
+- matching, about 1 h;
+- packets with checks, about 1.5–2 h;
+- adapting the existing pieces, about 0.5 h;
+- tests and integration, about 1–1.5 h.
+
+**What would change my mind:** if there's no decision by about 1–2 PM EST, I'd keep the current build, which passes all 48 checks, for the demo and pitch the coordinator idea as the roadmap. That's safer than two half-finished products.
 
 ### Mohamed (`@CaptainCrasi`)
 _No position yet._
