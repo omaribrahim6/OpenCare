@@ -59,6 +59,11 @@ export async function redeemGrant(
   deps: PaymentsDeps,
   input: { grantId: string; providerId: string; patientId: string },
 ): Promise<RedeemResult> {
+  // Nessie stores whole dollars only (it truncates cents), so check before claiming anything.
+  const target = await loadTarget(deps.db, input.grantId);
+  if (target.status === "approved" && target.approvedCents % 100 !== 0) {
+    throw new CoreError("bad_request", "Nessie pays whole dollars only; approve a whole-dollar amount");
+  }
   const { grant } = await claimForRedemption(deps.db, input);
   const payout = grant.status === "paid" ? "paid" : await settleNessie(deps, input.grantId);
   if (payout === "paid") await settleReceiptSafely(deps, input.grantId);
@@ -188,8 +193,8 @@ async function settleNessie(deps: PaymentsDeps, grantId: string): Promise<Payout
     await updateAttempt(db, attempt.id, { externalId: purchase._id });
     // Nessie has no webhooks: read the purchase back before calling it confirmed.
     try {
-      const readBack = await nessie.getPurchase(purchase._id);
-      if (!matchesPayout(readBack, target)) {
+      const readBack = await nessie.findPurchase(deps.fundAccountId, purchase._id);
+      if (!readBack || !matchesPayout(readBack, target)) {
         await updateAttempt(db, attempt.id, { error: "Read-back doesn't match the approved payout" });
         return "pending";
       }
@@ -219,26 +224,17 @@ async function reconcileNessieAttempt(
 ): Promise<"confirmed" | "pending" | "failed"> {
   const { db, nessie } = deps;
 
-  if (attempt.externalId) {
-    try {
-      const purchase = await nessie.getPurchase(attempt.externalId);
-      if (matchesPayout(purchase, target)) {
-        await updateAttempt(db, attempt.id, { status: "confirmed", error: null });
-        return "confirmed";
-      }
-      return "pending";
-    } catch (err) {
-      if (!(err instanceof NessieError && err.status === 404)) return "pending";
-    }
-  }
-
+  // Nessie can't fetch one purchase by ID, so search the fund's purchases by ID or by key.
   let purchases: NessiePurchase[];
   try {
     purchases = await nessie.listPurchases(deps.fundAccountId);
   } catch {
     return "pending";
   }
-  const match = purchases.find((p) => p.description?.includes(attempt.idempotencyKey));
+  const match = purchases.find(
+    (p) => (attempt.externalId && p._id === attempt.externalId) || p.description?.includes(attempt.idempotencyKey),
+  );
+  if (match && !matchesPayout(match, target)) return "pending";
   if (match) {
     await updateAttempt(db, attempt.id, { status: "confirmed", externalId: match._id, error: null });
     return "confirmed";
