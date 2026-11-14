@@ -176,8 +176,8 @@ Each agent works in one lane and edits only that lane's folders (see [AGENTS.md]
 | --- | --- | --- | --- | --- |
 | `api` | Omar (`@omaribrahim6`), integration owner | Core backend: MongoDB models, auth and roles, device pairing, card tokens, grant state machine, endpoints, shared contracts. Also takes frontend tasks the `web` owner hands off | `apps/api/` (except `src/ai/`, `src/payments/`), `packages/contracts/` | Card tap → reviewed document → pending grant → approved grant |
 | `payments` | Mohamed (`@CaptainCrasi`) | Nessie fund and provider accounts, payouts, patient bill/purchase import, Solana treasury and receipts, idempotency and reconciliation | `apps/api/src/payments/` | Exactly one Nessie payout and one confirmed Solana receipt per approved grant |
-| `web` | Noureldin or Musa (to confirm) | All screens in §4, mobile-first kiosk and provider views, accessibility, pitch visuals | `apps/web/` | The full journey in the browser against the shared contracts |
-| `ai` | Noureldin or Musa (to confirm) | Gemini extraction, validation, explanations, medical-transaction classification, assistance catalog and matching, prompt-injection defenses, application draft | `apps/api/src/ai/` | Bill image or Nessie item → validated fields + explanation + matched programs |
+| `web` | Musa (`@Zintrivious`) | All screens in §4, mobile-first kiosk and provider views, accessibility, pitch visuals | `apps/web/` | The full journey in the browser against the shared contracts |
+| `ai` | Noureldin (`@ibragot`) | Gemini extraction, validation, explanations, medical-transaction classification, assistance catalog and matching, prompt-injection defenses, application draft | `apps/api/src/ai/` | Bill image or Nessie item → validated fields + explanation + matched programs |
 
 **Physical build (§6)** is not a lane. Whoever is free in the first hours writes the tags and starts the 3D prints, after the base URL is set.
 
