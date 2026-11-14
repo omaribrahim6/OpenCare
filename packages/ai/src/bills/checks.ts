@@ -31,7 +31,9 @@ export const dollars = (cents: number) => cents / 100;
 const DECISION = /\b(eligib\w*|approv\w*|den(y|ied|ial)|reject\w*|guarantee\w*|deserv\w*|qualif\w*|entitled)\b/i;
 const MEDICAL = [
   /\bdiagnos\w*/i,
-  /\byou (have|may have|might have|suffer)\b/i,
+  /\byou (may have|might have|suffer)\b/i,
+  // "You have $432.00 left" or "you have the right to ask" is billing talk; "you have a fracture" is not.
+  /\byou have (?!\$|(been |now )?(left|to pay|paid|charged|billed|owe)\b|(a |an |the |some |any |\d+ )?(remaining |outstanding |final |unpaid )?(balance|bill|amount|charge|option|right|choice|question|payment|days?)s?\b)/i,
   /\b(symptom|condition|disease|infection|illness)s?\b/i,
   /\b(dosage|doses?|treatments?|treating|treat)\b/i,
 ];
@@ -59,8 +61,18 @@ export function checkText(text: string, opts: CheckOptions): string | null {
   if (opts.noDecisions && DECISION.test(text)) return "makes a decision or eligibility claim";
   for (const re of [...MEDICAL, ...COVERAGE]) if (re.test(text)) return `forbidden claim: ${re.source}`;
   for (const n of numbersIn(text)) if (!opts.allowed.has(n)) return `number ${n} is not in the case data`;
-  for (const s of opts.mustInclude ?? []) if (!text.includes(s)) return `missing "${s}"`;
+  for (const s of opts.mustInclude ?? []) if (!includesLoosely(text, s)) return `missing "${s}"`;
   return null;
+}
+
+/**
+ * Case-insensitive, and "$1,728.00" also matches "$1,728". Safe because the number check above
+ * already rejects any amount (such as $1,728.50) that is not in the case data.
+ */
+function includesLoosely(text: string, needle: string): boolean {
+  const t = text.toLowerCase();
+  const n = needle.toLowerCase();
+  return t.includes(n) || (/\.00$/.test(n) && t.includes(n.slice(0, -3)));
 }
 
 export function withDeadline<T>(p: Promise<T>, ms: number): Promise<T> {
