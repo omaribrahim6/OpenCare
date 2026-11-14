@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 import { useEffect, useState } from "react";
 import type { Device, DeviceRole, Provider } from "@abdulcare/contracts";
 import { ApiRequestError, currentDevice, listProviders, pairDevice } from "@/lib/api";
 
 const ROLES: { role: DeviceRole; label: string; home: string; help: string }[] = [
-  { role: "kiosk", label: "Kiosk", home: "/", help: "The clinic's check-in phone. Patients tap their CareCard here." },
+  { role: "kiosk", label: "Kiosk", home: "/kiosk", help: "The clinic's check-in phone. Patients tap their CareCard here." },
   { role: "provider", label: "Provider terminal", home: "/provider", help: "The pharmacy counter phone that collects approved grants." },
   { role: "reviewer", label: "Caseworker", home: "/review", help: "Reviews and approves requests." },
 ];
@@ -28,7 +29,7 @@ export function PairDevice() {
       .catch(() => setDevice(null));
   }, []);
 
-  // The provider list needs an already-paired device; fall back to typing the provider ID.
+  // Allow manual provider entry if the provider list is unavailable.
   useEffect(() => {
     if (role !== "provider" || providers !== null) return;
     listProviders()
@@ -70,8 +71,8 @@ export function PairDevice() {
   }
 
   return (
-    <main className="page">
-      <p className="muted">Staff only</p>
+    <main className="page station station-pair">
+      <header className="station-bar"><Logo /><Link href="/">Community fund</Link></header>
       <h1>Set up this device</h1>
 
       {device === undefined ? (
@@ -94,9 +95,7 @@ export function PairDevice() {
       )}
 
       <form className="card stack" onSubmit={submit} aria-labelledby="pair-title">
-        <h2 id="pair-title" style={{ margin: 0 }}>
-          Pair this browser
-        </h2>
+        <h2 id="pair-title" className="sr-only">Pair this browser</h2>
         <fieldset style={{ border: 0, padding: 0, margin: 0 }} disabled={busy}>
           <legend style={{ fontWeight: 600, marginBottom: 6 }}>Role</legend>
           <div className="stack" style={{ gap: 8 }}>

@@ -1,0 +1,32 @@
+.station-provider > .muted:first-child {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #cddfe0;
+  color: #354c50;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.station-provider > .rings {
+  margin: 28px auto 18px;
+}
+
+.station-provider > .card:has(.big) {
+  background: #dfedf4;
+  border-color: #f2f8fc;
+}
+
+.station-provider .untrusted {
+  overflow-wrap: anywhere;
+}
+
+.station-tap-result > .rings {
+  margin-bottom: 20px;
+}
+
+.station-provider > .btn,
+.station-tap-result > .btn {
+  margin-top: 16px;
+}
+
+.station-provider > .muted:first-child { border-color: #ddd7f0; }
+.station-provider > .card:has(.big) { background: #e9e1fc; border-color: #f4effe; }

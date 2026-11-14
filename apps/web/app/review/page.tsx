@@ -1,13 +1,10 @@
-import { CaseworkerQueue } from "./CaseworkerQueue";
+import type { Metadata } from "next";
+import { Desk } from "./Desk";
 
-// Screen 5: Caseworker queue in Gemini's rank order (SPEC rev 5 §4, §7 job 3).
-export default async function CaseworkerQueuePage({ searchParams }: { searchParams: Promise<{ order?: string }> }) {
+export const metadata: Metadata = { title: "Review queue" };
+
+// Caseworker desk. ?order=formula previews the formula-order fallback in mock mode.
+export default async function ReviewPage({ searchParams }: { searchParams: Promise<{ order?: string }> }) {
   const { order } = await searchParams;
-  return (
-    <main className="page wide">
-      <p className="muted">Caseworker</p>
-      <h1>Requests ranked by need</h1>
-      <CaseworkerQueue formulaPreview={order === "formula"} />
-    </main>
-  );
+  return <Desk formulaPreview={order === "formula"} />;
 }
