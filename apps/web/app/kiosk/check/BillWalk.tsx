@@ -126,7 +126,8 @@ function useCountTo(target: number, reduced: boolean) {
     const tick = (now: number) => {
       const p = Math.min(1, (now - start) / 700);
       const eased = 1 - Math.pow(1 - p, 3);
-      const value = Math.round(begin + (target - begin) * eased);
+      // Count in whole dollars so no cents flicker past, then land on the exact amount.
+      const value = p < 1 ? Math.round((begin + (target - begin) * eased) / 100) * 100 : target;
       setShown(value);
       from.current = value;
       if (p < 1) raf = requestAnimationFrame(tick);
