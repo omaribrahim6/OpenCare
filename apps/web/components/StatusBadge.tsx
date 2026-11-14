@@ -11,6 +11,10 @@ const MAP: Record<GrantStatus, { label: string; tone: string; icon: string }> = 
   paid: { label: "Paid", tone: "ok", icon: "✓" },
 };
 
+export const STATUS_LABEL = Object.fromEntries(
+  Object.entries(MAP).map(([k, v]) => [k, v.label]),
+) as Record<GrantStatus, string>;
+
 export function StatusBadge({ status }: { status: GrantStatus }) {
   const s = MAP[status];
   return (
