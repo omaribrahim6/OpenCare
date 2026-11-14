@@ -11,7 +11,7 @@ import type {
   BriefInput,
   Explanation,
 } from "@abdulcare/contracts";
-import { createGeminiClient, S, type ModelClient } from "../gemini";
+import { createGeminiClient, S, type ModelClient, type ThinkingLevel } from "../gemini";
 import { asRecord, parseModelJson, usd } from "../json";
 import { BASE_RULES, cleanUntrusted, fenceUntrusted } from "../sanitize";
 import { allowedNumbers, checkText, dollars, withDeadline } from "./checks";
@@ -26,7 +26,14 @@ export interface LiveDeps {
   timeouts?: { application?: number; brief?: number; explanation?: number };
 }
 
-const DEFAULT_TIMEOUTS = { application: 6_000, brief: 12_000, explanation: 10_000 };
+// The application letter is the longest rewrite; 6 s cut off a normal Gemini 3 reply in the live smoke test.
+const DEFAULT_TIMEOUTS = { application: 9_000, brief: 12_000, explanation: 10_000 };
+
+/** These calls only reword a template, so they skip Gemini 3's thinking step (the main source of latency). */
+const REWRITE_THINKING: ThinkingLevel = "minimal";
+
+/** Words the checks reject; naming them in the prompt keeps the model from tripping over them. */
+const AVOID_WORDS = `Do not use these words: eligible, eligibility, qualify, approve, approval, deny, denial, reject, guarantee, entitled, deserve, diagnosis, condition, treatment.`;
 
 /**
  * Why a Gemini step fell back, for server logs. Only the reason category: numbers and quoted text
@@ -54,7 +61,8 @@ const APPLICATION_SCHEMA = S.obj({ text: S.str("The rewritten application, plain
 const APPLICATION_PROMPT = `Rewrite this hospital financial-assistance application as a short, clear, polite letter from the patient to the hospital.
 Keep every fact exactly as given: the policy and hospital names, the visit date, the balance, the household details, each criterion and the requested reduction.
 Do not add any number, date, amount, fact or claim that is not in the draft. Do not say the request is or will be approved. Do not mention medical details.
-Use plain text, no markdown headings. Write amounts exactly as they appear in the draft.`;
+Use plain text, no markdown headings. Write amounts exactly as they appear in the draft.
+${AVOID_WORDS}`;
 
 export async function writeApplicationLive(input: ApplicationTextInput, deps: LiveDeps = {}): Promise<ApplicationText> {
   const template = applicationTemplate(input);
@@ -68,6 +76,7 @@ export async function writeApplicationLive(input: ApplicationTextInput, deps: Li
         parts: [{ text: `${APPLICATION_PROMPT}\n\nDraft:\n${template.text}` }],
         schema: APPLICATION_SCHEMA,
         temperature: 0.2,
+        thinkingLevel: REWRITE_THINKING,
       }),
       deps.timeouts?.application ?? DEFAULT_TIMEOUTS.application,
     );
@@ -93,7 +102,7 @@ export async function writeApplicationLive(input: ApplicationTextInput, deps: Li
 // Decision brief (reasons only; everything else is code)
 
 const BRIEF_SCHEMA = S.obj({
-  reasons: S.list({ type: "STRING" }, "2 or 3 short sentences explaining why this request sits where it does in the queue"),
+  reasons: S.list({ type: "STRING" }, "2 or 3 short sentences explaining why this request sits where it does in the queue", { min: 2, max: 3 }),
 });
 
 const BRIEF_PROMPT = `You help a community care fund's reviewer. Below is one anonymized pending request: its need-score factors, its position in the queue (ordered by a fixed published formula), and the bill's path.
@@ -102,7 +111,8 @@ Write 2 or 3 short sentences explaining why it sits where it does, for example:
 Rules:
 - Use only numbers that appear in the data, written the same way. Do not compute new numbers.
 - Do not recommend, approve, deny or judge eligibility; the reviewer decides. Do not mention names or medical details.
-- The order and the score are fixed; do not suggest changing them.`;
+- The order and the score are fixed; do not suggest changing them.
+- Return 2 or 3 reasons, one sentence each. ${AVOID_WORDS}`;
 
 function briefPromptData(input: BriefInput) {
   return {
@@ -134,12 +144,15 @@ export async function writeBriefLive(input: BriefInput, deps: LiveDeps = {}): Pr
         parts: [{ text: `${BRIEF_PROMPT}\n\nRequest:\n${JSON.stringify(data)}` }],
         schema: BRIEF_SCHEMA,
         temperature: 0,
+        thinkingLevel: REWRITE_THINKING,
       }),
       deps.timeouts?.brief ?? DEFAULT_TIMEOUTS.brief,
     );
     const reasons = asRecord(parseModelJson(raw)).reasons;
-    if (!Array.isArray(reasons) || reasons.length < 2 || reasons.length > 3) {
-      logFallback("brief", "wrong number of reasons");
+    // The live model sometimes adds a 4th sentence. Up to 5 are accepted, every one is checked,
+    // and only the first 3 are kept. Fewer than 2, or a runaway list, still falls back.
+    if (!Array.isArray(reasons) || reasons.length < 2 || reasons.length > 5) {
+      logFallback("brief", `wrong number of reasons (${Array.isArray(reasons) ? reasons.length : "none"})`);
       return template;
     }
     const allowed = allowedNumbers([
@@ -158,7 +171,7 @@ export async function writeBriefLive(input: BriefInput, deps: LiveDeps = {}): Pr
       logFallback("brief", problem);
       return template;
     }
-    return { ...template, reasons: clean, source: "gemini", model: modelName(client), checked: true };
+    return { ...template, reasons: clean.slice(0, 3), source: "gemini", model: modelName(client), checked: true };
   } catch (err) {
     logFallback("brief", errorReason(err));
     return template;
@@ -176,7 +189,8 @@ const EXPLANATION_SCHEMA = S.obj({
 const EXPLANATION_PROMPT = `Explain this hospital bill to the patient in plain, friendly language: what was charged, how insurance and hospital assistance lowered it, and what is left.
 Use only the data below. Write amounts exactly as given. Do not add charges, amounts or dates.
 Insurance and hospital decisions are simulated in this prototype; you may say so.
-Do not mention diagnoses, health conditions or treatment. Do not say the fund or anyone will pay or approve anything; the patient may ask the community care fund for help.`;
+Do not mention diagnoses, health conditions or treatment. Do not say the fund or anyone will pay or approve anything; the patient may ask the community care fund for help.
+${AVOID_WORDS}`;
 
 export async function explainBillLive(input: BillExplanationInput, deps: LiveDeps = {}): Promise<Explanation> {
   const template = explanationTemplate(input);
@@ -196,6 +210,7 @@ export async function explainBillLive(input: BillExplanationInput, deps: LiveDep
         parts: [{ text: `${EXPLANATION_PROMPT}\n\nBill: ${JSON.stringify(facts)}\n\nLine items:\n${fenceUntrusted("line_items", items)}` }],
         schema: EXPLANATION_SCHEMA,
         temperature: 0.2,
+        thinkingLevel: REWRITE_THINKING,
       }),
       deps.timeouts?.explanation ?? DEFAULT_TIMEOUTS.explanation,
     );

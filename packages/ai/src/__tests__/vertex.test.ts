@@ -107,6 +107,10 @@ test("Gemini 3 thinks at a low level by default; older models keep temperature 0
     assert.deepEqual(generationTuning("gemini-2.5-flash", undefined), { temperature: 0 });
     process.env.GEMINI_THINKING_LEVEL = "minimal";
     assert.deepEqual(generationTuning("gemini-3.1-pro-preview"), { thinkingConfig: { thinkingLevel: "minimal" } });
+    // A request's own level wins over the env; older models ignore it.
+    process.env.GEMINI_THINKING_LEVEL = "high";
+    assert.deepEqual(generationTuning("gemini-3-flash-preview", 0, "minimal"), { thinkingConfig: { thinkingLevel: "minimal" } });
+    assert.deepEqual(generationTuning("gemini-2.5-flash", 0.2, "minimal"), { temperature: 0.2 });
   } finally {
     process.env = saved;
   }
