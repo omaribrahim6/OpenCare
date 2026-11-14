@@ -203,3 +203,9 @@ blockquote {
   background: var(--bg); border-radius: 6px; overflow-wrap: anywhere;
 }
 .untrusted { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9rem; overflow-wrap: anywhere; }
+
+.budget-bar { display: flex; flex-wrap: wrap; gap: 24px 40px; align-items: flex-end; }
+.budget-line {
+  padding: 8px 12px; border-top: 3px dashed var(--warn);
+  color: var(--warn); font-weight: 700; font-size: 0.9rem;
+}
