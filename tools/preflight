@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# Run before EVERY push, `gh pr create`, and `gh pr merge`.
+# Fails if your branch would conflict with main or with another open PR, has badly formatted
+# commits, or contains secrets. Exit 0 means it's safe to interact with GitHub.
+set -u
+
+fail() { echo "preflight: FAIL: $*" >&2; exit 1; }
+warn() { echo "preflight: warning: $*" >&2; }
+ok() { echo "preflight: ok: $*"; }
+
+root="$(git rev-parse --show-toplevel 2>/dev/null)" || fail "not inside the repo"
+cd "$root" || exit 1
+git config core.hooksPath .githooks
+
+# 0. Branch and working tree
+branch="$(git symbolic-ref --short HEAD 2>/dev/null)" || fail "detached HEAD; switch to your lane branch"
+[ "$branch" != "main" ] || fail "you're on main. Never push to main; work on a lane branch: git switch -c <lane>/<slug>"
+case "$branch" in
+  web/*|api/*|ai/*|payments/*|contracts/*|repo/*|docs/*) ;;
+  *) warn "branch '$branch' doesn't follow <lane>/<slug> (e.g. web/check-in-screen)" ;;
+esac
+[ -z "$(git status --porcelain --untracked-files=no)" ] || fail "uncommitted changes; commit them with a structured message (or stash) first"
+
+git fetch -q origin --prune || fail "git fetch failed; check your network and gh auth"
+git rev-parse -q --verify origin/main >/dev/null || fail "origin/main not found"
+
+# Prints conflicted paths and returns 1 if merging $1 and HEAD would conflict.
+conflicts_with() {
+  local out
+  if out="$(git merge-tree --write-tree --name-only --no-messages "$1" HEAD 2>&1)"; then
+    return 0
+  fi
+  printf '%s\n' "$out" | tail -n +2 | sed '/^$/d' | sort -u | sed 's/^/    /'
+  return 1
+}
+
+# 1. Conflicts with main
+if ! files="$(conflicts_with origin/main)"; then
+  fail "your branch would conflict with main in:
+$files
+  Fix: git rebase origin/main. Resolve conflicts only in your own lane's files. If a conflict is in
+  another lane's or a shared file, run git rebase --abort and ask its owner on the board first."
+fi
+ok "no conflicts with main"
+
+behind="$(git rev-list --count HEAD..origin/main)"
+if [ "$behind" -gt 0 ]; then
+  warn "$behind commit(s) behind main. Rebase soon: git rebase origin/main, then git push --force-with-lease (your own branch only)"
+fi
+
+changed="$(git diff --name-only origin/main...HEAD)"
+if [ -z "$changed" ]; then
+  ok "no changes compared to main"
+  exit 0
+fi
+
+# 2. Conflicts with other open PRs that touch the same files
+overlaps="$(gh pr list --state open --limit 100 --json number,headRefName,author,files \
+  --jq '.[] | .number as $n | .headRefName as $h | .author.login as $a | .files[].path | "\($n)\t\($h)\t\($a)\t\(.)"' 2>/dev/null)" \
+  || { warn "couldn't list open PRs (gh offline?); skipping the PR overlap check"; overlaps=""; }
+pr_conflict=0
+if [ -n "$overlaps" ]; then
+  while IFS=$'\t' read -r num head author path; do
+    [ "$head" != "$branch" ] || continue
+    printf '%s\n' "$changed" | grep -qxF "$path" || continue
+    printf '%s\t%s\t%s\n' "$num" "$head" "$author"
+  done <<< "$overlaps" | sort -u > "${TMPDIR:-/tmp}/preflight-overlap.$$"
+  while IFS=$'\t' read -r num head author; do
+    [ -n "$num" ] || continue
+    if git rev-parse -q --verify "origin/$head" >/dev/null && ! files="$(conflicts_with "origin/$head")"; then
+      echo "preflight: conflict with open PR #$num ($head by @$author) in:" >&2
+      printf '%s\n' "$files" >&2
+      pr_conflict=1
+    else
+      warn "PR #$num ($head by @$author) edits some of the same files, but they merge cleanly. Mention it on the board if it's a contract or shared file."
+    fi
+  done < "${TMPDIR:-/tmp}/preflight-overlap.$$"
+  rm -f "${TMPDIR:-/tmp}/preflight-overlap.$$"
+fi
+[ "$pr_conflict" -eq 0 ] || fail "coordinate with that PR's author on the board (tag them) before pushing. Whoever merges second rebases."
+ok "no conflicts with other open PRs"
+
+# 3. Commit messages
+bad=""
+tmp="$(mktemp)"
+while IFS= read -r sha; do
+  git log -1 --format=%B "$sha" > "$tmp"
+  .githooks/commit-msg "$tmp" >/dev/null 2>&1 || bad="$bad
+    $(git log -1 --format='%h %s' "$sha")"
+done < <(git rev-list --no-merges origin/main..HEAD)
+rm -f "$tmp"
+[ -z "$bad" ] || fail "these commits don't follow Conventional Commits (type(scope): summary):$bad
+  Fix: reword them (git commit --amend for the latest one) before pushing."
+ok "commit messages follow Conventional Commits"
+
+# 4. Secrets and junk
+secret_files="$(printf '%s\n' "$changed" | grep -E '(^|/)\.env($|\.)|\.pem$|keypair.*\.json$|treasury.*\.json$|id_rsa' | grep -v '\.env\.example$')"
+[ -z "$secret_files" ] || fail "these look like secret files; remove them from the branch:
+$(printf '%s\n' "$secret_files" | sed 's/^/    /')"
+secret_lines="$(git diff origin/main...HEAD -U0 | grep -E '^\+' | grep -nE 'BEGIN [A-Z ]*PRIVATE KEY|AIza[0-9A-Za-z_-]{30,}|mongodb(\+srv)?://[^ :]+:[^ @]+@' | head -3)"
+[ -z "$secret_lines" ] || fail "your diff seems to contain a private key, Google API key, or database password. Move it to .env."
+junk="$(printf '%s\n' "$changed" | grep -E '(^|/)(node_modules|\.next|dist|build|__pycache__|\.venv)/' | head -3)"
+[ -z "$junk" ] || fail "generated or dependency files are committed (e.g. $junk). Remove them and check .gitignore."
+ok "no secrets or generated files"
+
+# 5. Summary: confirm these are all in your lane (see docs/SPEC.md section 11)
+echo "preflight: files changed on $branch, grouped by area:"
+printf '%s\n' "$changed" | awk -F/ '{ a = ($1 == "apps" || $1 == "packages") ? $1 "/" $2 : $1; n[a]++ } END { for (k in n) printf "    %-22s %d file(s)\n", k, n[k] }' | sort
+echo "preflight: PASS. Safe to push, open a PR, or merge."
