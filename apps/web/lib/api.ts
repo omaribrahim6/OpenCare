@@ -208,6 +208,12 @@ export async function applyForDemoSavings(visitId: string) {
   return mock6.applyForSavings(visitId);
 }
 
+/** Submit every prepared hospital policy application for a visit (simulated decisions). Safe to repeat. */
+export async function applyForSavings(visitId: string, demo = false) {
+  if (LIVE && !demo) return post<VisitResponse>(`/api/visits/${encodeURIComponent(visitId)}/apply`);
+  return applyForDemoSavings(visitId);
+}
+
 export async function requestHelp(req: RequestHelpRequest, demo = false) {
   if (LIVE && !demo) return post<GrantResponse>("/api/grants", req);
   requireDemoSession();

@@ -26,7 +26,8 @@ export function TapLanding({ token }: { token: string }) {
     started.current = true;
     tap(token)
       .then((result) => {
-        if (result.kind === "session") router.replace("/kiosk/bill");
+        // A kiosk tap walks the bill step by step (SPEC §4, screen 2).
+        if (result.kind === "session") router.replace("/kiosk/check");
         else setState({ phase: "done", result });
       })
       .catch(() => setState({ phase: "error" }));
