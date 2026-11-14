@@ -21,7 +21,7 @@ It has no runtime dependencies besides `@abdulcare/contracts`, and it calls Gemi
 | `evaluatePolicy` (`src/bills/policy.ts`) | Pure rules for charity care (sliding scale by % of the poverty guideline), the uninsured self-pay discount and the catastrophic cap (% of yearly income). Returns criteria, missing fields and a reduction no larger than the balance. The simulated hospital decision comes from the same rules (`simulatedDecision`). `applyPolicies` runs the policies in `applyOrder` on the balance each one leaves | Never |
 | `writeBrief` | Template: the path as given, 3 reasons from factor values, flags computed in code, `approve` for the full remaining balance in whole dollars, `needsSecondApproval` above $500. Gemini may reword only the reasons | Optional, 12 s |
 | `explainBill` | Template: a summary plus one exact line per step, with simulated and pending labels. Gemini may reword the summary and the questions; the step lines stay from code | Optional, 10 s |
-| `writeApplication` | Template: profile fields, criteria, missing info, the reduction, the policy source and a "submission and decision are simulated" footer. Gemini may rewrite it as a letter | Optional, 6 s each (intake writes one per policy in a row) |
+| `writeApplication` | Template: profile fields, criteria, missing info, the reduction, the policy source and a "submission and decision are simulated" footer. Gemini may rewrite it as a letter | Optional, 9 s each (intake writes one per policy in a row) |
 
 Checks on Gemini text (`src/bills/checks.ts`); any failure returns the template:
 - every number must already be in the case data;
@@ -116,5 +116,5 @@ The Vertex service account is Omar's key. AGENTS.md §7 approves it for every ag
 
 Other settings:
 - `GEMINI_MODEL` overrides the default model on either path. An empty value means the default.
-- Gemini 3 models run with a low thinking level (`GEMINI_THINKING_LEVEL`) and their default temperature, as Google advises. Set `GEMINI3_TEMPERATURE` to override. The ranking stays stable on reload because core caches each result by a hash of its inputs.
+- Gemini 3 models run with a low thinking level (`GEMINI_THINKING_LEVEL`) and their default temperature, as Google advises. The bill rewrites (brief, explanation, application) only reword a template, so they ask for the `minimal` level. Set `GEMINI3_TEMPERATURE` to override. The ranking stays stable on reload because core caches each result by a hash of its inputs.
 - Older models run at the caller's temperature, which is 0 for ranking.
