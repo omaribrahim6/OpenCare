@@ -27,7 +27,7 @@ function parsePlan(data: unknown): InsurancePlan {
   };
 }
 
-export function InsuranceProfile({ plan, onSave }: { plan: InsurancePlan | null; onSave: () => void }) {
+export function InsuranceProfile({ plan, onSave, demo }: { plan: InsurancePlan | null; onSave: () => void; demo: boolean }) {
   const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
   const example = JSON.stringify({
@@ -52,7 +52,7 @@ export function InsuranceProfile({ plan, onSave }: { plan: InsurancePlan | null;
           </dl>
         )}
       </section>
-      {!LIVE && (
+      {(demo || !LIVE) && (
         <section className="patient-panel">
           <h2>Upload a demo plan</h2>
           <p className="muted">Use a fictional JSON plan. New demo visits use this plan. Existing bills keep the plan used to calculate them.</p>

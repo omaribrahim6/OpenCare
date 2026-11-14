@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { Logo } from "@/components/Logo";
 import { TapRings } from "@/components/TapRings";
-import { LIVE } from "@/lib/api";
+import { DemoButton } from "./DemoButton";
 
 export const metadata: Metadata = { title: "Patient kiosk" };
 
@@ -28,11 +28,7 @@ export default async function KioskPage({
         <TapRings size={156} />
         <p>Hold your card near the top of this device and open the link that appears.</p>
         {ended && <p className="station-message" role="status">Your session has ended.</p>}
-        {!LIVE && (
-          <Link className="btn" href="/t/demo">
-            Try a demo card <Icon name="arrowRight" />
-          </Link>
-        )}
+        <DemoButton />
       </section>
       <footer className="station-foot">
         <Icon name="lock" /> Your session is private and ends automatically.

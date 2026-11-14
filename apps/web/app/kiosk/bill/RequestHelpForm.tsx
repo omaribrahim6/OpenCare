@@ -7,10 +7,12 @@ import { MAX_HARDSHIP_NOTE_CHARS } from "@/lib/types";
 
 /** Ask the community care fund for the remaining balance, with an optional note (never scored). */
 export function RequestHelpForm({
+  demo,
   visitId,
   remainingCents,
   onSent,
 }: {
+  demo: boolean;
   visitId: string;
   remainingCents: number;
   onSent: () => void;
@@ -29,7 +31,7 @@ export function RequestHelpForm({
         setError(null);
         try {
           // The note goes in the request body only, never the URL.
-          await requestHelp({ visitId, hardshipNote: note.trim() || undefined });
+          await requestHelp({ visitId, hardshipNote: note.trim() || undefined }, demo);
           onSent();
         } catch (err) {
           setError(

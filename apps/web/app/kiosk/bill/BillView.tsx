@@ -27,13 +27,18 @@ function visitStatus({ bill, grant }: VisitData) {
   return "No coverage yet";
 }
 
-export function BillView({ visitId, showInsurance }: { visitId?: string; showInsurance: boolean }) {
+function visitHref(demo: boolean, params: Record<string, string> = {}) {
+  const query = new URLSearchParams(demo ? { ...params, demo: "1" } : params).toString();
+  return query ? `/kiosk/bill?${query}` : "/kiosk/bill";
+}
+
+export function BillView({ visitId, showInsurance, demo }: { visitId?: string; showInsurance: boolean; demo: boolean }) {
   const [state, setState] = useState<State>({ phase: "loading" });
   const version = useRef(0);
   const load = useCallback(async (background = false) => {
     const request = ++version.current;
     try {
-      const { visits, plan } = await getPatientWorkspace();
+      const { visits, plan } = await getPatientWorkspace(demo);
       if (request !== version.current) return;
       setState({ phase: "ready", visits: visits.filter((visit): visit is VisitData => visit.bill !== null), plan });
     } catch (error) {
@@ -41,7 +46,7 @@ export function BillView({ visitId, showInsurance }: { visitId?: string; showIns
       if (isNoSession(error)) setState({ phase: "no_session" });
       else if (!background) setState({ phase: "error" });
     }
-  }, []);
+  }, [demo]);
   useEffect(() => {
     void load();
     return () => { version.current++; };
@@ -63,14 +68,15 @@ export function BillView({ visitId, showInsurance }: { visitId?: string; showIns
   const selected = state.visits.find(({ bill }) => bill.visit.id === visitId);
   return (
     <div className="patient-workspace">
+      {(demo || !LIVE) && <p className="patient-demo muted"><Icon name="info" size={15} /> Demo · fictional data and simulated requests</p>}
       <nav className="patient-nav" aria-label="Patient">
-        <Link href="/kiosk/bill" aria-current={!showInsurance ? "page" : undefined}><Icon name="bill" /> My visits</Link>
-        <Link href="/kiosk/bill?view=insurance" aria-current={showInsurance ? "page" : undefined}><Icon name="shield" /> Insurance</Link>
+        <Link href={visitHref(demo)} aria-current={!showInsurance ? "page" : undefined}><Icon name="bill" /> My visits</Link>
+        <Link href={visitHref(demo, { view: "insurance" })} aria-current={showInsurance ? "page" : undefined}><Icon name="shield" /> Insurance</Link>
       </nav>
       {showInsurance ? (
-        <InsuranceProfile plan={state.plan} onSave={() => void load(true)} />
+        <InsuranceProfile demo={demo} plan={state.plan} onSave={() => void load(true)} />
       ) : selected ? (
-        <VisitBill key={selected.bill.visit.id} data={selected} refresh={load} />
+        <VisitBill demo={demo} key={selected.bill.visit.id} data={selected} refresh={load} />
       ) : (
         <>
           <h1>My visits</h1>
@@ -81,7 +87,7 @@ export function BillView({ visitId, showInsurance }: { visitId?: string; showIns
               const { bill } = data;
               return (
                 <li key={bill.visit.id}>
-                  <Link className="patient-visit" href={`/kiosk/bill?visit=${encodeURIComponent(bill.visit.id)}`}>
+                  <Link className="patient-visit" href={visitHref(demo, { visit: bill.visit.id })}>
                     <span className="patient-visit-icon"><Icon name="hospital" size={22} /></span>
                     <span className="patient-visit-info">
                       <strong>{cleanName(bill.visit.hospital.name)}</strong>
@@ -95,7 +101,6 @@ export function BillView({ visitId, showInsurance }: { visitId?: string; showIns
               );
             })}
           </ul>
-          {!LIVE && <p className="patient-demo muted"><Icon name="info" size={15} /> Fictional demo visits and insurance</p>}
         </>
       )}
     </div>
@@ -150,7 +155,7 @@ function Coverage({ bill, grant }: VisitData) {
   );
 }
 
-function VisitBill({ data, refresh }: { data: VisitData; refresh: () => Promise<void> }) {
+function VisitBill({ data, refresh, demo }: { data: VisitData; refresh: () => Promise<void>; demo: boolean }) {
   const { bill, explanation, grant } = data;
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -158,13 +163,13 @@ function VisitBill({ data, refresh }: { data: VisitData; refresh: () => Promise<
   const eligible = bill.applications.filter((a) => a.status === "prepared" && a.evaluation.eligible && a.evaluation.reductionCents > 0);
   const approvals = bill.applications.filter((a) => a.status === "approved_simulated");
   const pendingPolicy = bill.applications.some((a) => a.status === "submitted_simulated");
-  const canApply = !LIVE && !grant && bill.remainingCents > 0 && eligible.length > 0;
+  const canApply = (demo || !LIVE) && !grant && bill.remainingCents > 0 && eligible.length > 0;
   const estimated = eligible.reduce((total, application) => total + application.evaluation.reductionCents, 0);
   const receipt = grant?.status === "paid" ? grant.receipt : null;
 
   return (
     <>
-      <Link href="/kiosk/bill" className="patient-back"><Icon name="arrowLeft" size={16} /> All visits</Link>
+      <Link href={visitHref(demo)} className="patient-back"><Icon name="arrowLeft" size={16} /> All visits</Link>
       <h1>{cleanName(bill.visit.hospital.name)}</h1>
       <p className="patient-visit-subtitle muted">{shortDate(bill.visit.date)} · {bill.visit.description}</p>
       <section className="patient-balance" aria-live="polite" aria-label="Visit balance">
@@ -225,7 +230,7 @@ function VisitBill({ data, refresh }: { data: VisitData; refresh: () => Promise<
         <section className="patient-panel patient-action">
           <h2>Get help with the rest</h2>
           <p className="muted">Ask the community care fund to cover {usd(bill.remainingCents)}. A reviewer will look at your request.</p>
-          <RequestHelpForm visitId={bill.visit.id} remainingCents={bill.remainingCents} onSent={() => void refresh()} />
+          <RequestHelpForm demo={demo} visitId={bill.visit.id} remainingCents={bill.remainingCents} onSent={() => void refresh()} />
         </section>
       )}
 
@@ -238,7 +243,7 @@ function VisitBill({ data, refresh }: { data: VisitData; refresh: () => Promise<
           {grant.status === "rejected" && <p>The fund declined this request. Ask the hospital about other payment options.</p>}
           {grant.status === "canceled" && <p>This request was cancelled.</p>}
           {receipt?.nessiePaymentId && <p className="muted">Payment reference {receipt.nessiePaymentId}</p>}
-          {receipt?.solanaSignature && (LIVE ? (
+          {receipt?.solanaSignature && (LIVE && !demo ? (
             <a href={receipt.explorerUrl ?? explorerTx(receipt.solanaSignature)} target="_blank" rel="noreferrer">View public receipt</a>
           ) : <p className="muted">Demo receipt recorded</p>)}
         </section>
