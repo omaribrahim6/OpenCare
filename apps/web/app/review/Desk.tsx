@@ -5,7 +5,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { Device } from "@abdulcare/contracts";
 import { DeskShell, type DeskView } from "@/components/desk/DeskShell";
 import { Icon } from "@/components/Icon";
-import { ApiRequestError, currentDevice, getBriefedQueue, getReviewQueue, LIVE } from "@/lib/api";
+import { ApiRequestError, currentDevice, getBriefedQueue, LIVE } from "@/lib/api";
 import { cleanName, initials, usd, usdCompact, usdParts } from "@/lib/format";
 import type { Grant, NeedFactor, QueueItem, ReviewQueue } from "@/lib/types";
 import { CATEGORY_LABEL } from "@/lib/types";
@@ -25,7 +25,7 @@ const topFactors = (factors: NeedFactor[], n = 3) =>
   [...factors].filter((f) => f.maxPoints > 0).sort((a, b) => b.points - a.points).slice(0, n);
 
 /** Caseworker desk (SPEC §4 screen 5): the need-ranked queue, why each request ranks there, and the decision. */
-export function Desk({ formulaPreview }: { formulaPreview: boolean }) {
+export function Desk() {
   const [view, setView] = useState<DeskView>("queue");
   const [device, setDevice] = useState<Device | null>(null);
   const [load, setLoad] = useState<Load>({ phase: "loading" });
@@ -48,8 +48,7 @@ export function Desk({ formulaPreview }: { formulaPreview: boolean }) {
     (quiet = false) => {
       if (quiet) setRefreshing(true);
       else setLoad((s) => (s.phase === "done" ? s : { phase: "loading" }));
-      // Revision 6: formula order with a decision brief per request (?order=formula keeps the old preview).
-      return (formulaPreview ? getReviewQueue(true) : getBriefedQueue())
+      return getBriefedQueue()
         .then((queue) => setLoad({ phase: "done", queue }))
         .catch((e) =>
           setLoad(
@@ -60,7 +59,7 @@ export function Desk({ formulaPreview }: { formulaPreview: boolean }) {
         )
         .finally(() => setRefreshing(false));
     },
-    [formulaPreview],
+    [],
   );
   useEffect(() => {
     fetchQueue();
@@ -104,8 +103,10 @@ export function Desk({ formulaPreview }: { formulaPreview: boolean }) {
 
   function onDecided(g: Grant) {
     setToast(
-      g.status === "paid" || g.status === "payment_pending"
+      g.status === "paid"
         ? `Approved and paid ${usd(g.approvedCents)} to ${g.provider.name}`
+        : g.status === "payment_pending"
+        ? `Approved ${usd(g.approvedCents)}. Payment is pending.`
         : g.status === "approved"
         ? `Approved ${usd(g.approvedCents)} for ${cleanName(g.patient.displayName)}`
         : g.status === "rejected"
@@ -205,19 +206,11 @@ export function Desk({ formulaPreview }: { formulaPreview: boolean }) {
       <section className="d-card" aria-labelledby="ov-title">
         <div className="d-card-head">
           <h2 id="ov-title">Queue overview</h2>
-          {queue &&
-            (queue.source === "gemini" ? (
-              <span className="d-pill teal" title={queue.model ?? undefined}>
-                <Icon name="sparkles" size={15} /> Ranked by Gemini
-              </span>
-            ) : (
-              <span className="d-pill amber" title="Gemini's ranking wasn't available or didn't pass its checks">
-                <Icon name="scale" size={15} /> Formula order
-              </span>
-            ))}
-          <button className="d-btn d-btn-teal" onClick={() => fetchQueue(true)} disabled={refreshing || loading}>
-            <Icon name="refresh" /> {refreshing ? "Ranking" : "Re-rank"}
-          </button>
+          {queue && (
+            <span className="d-pill teal">
+              <Icon name="scale" size={15} /> Need-based order
+            </span>
+          )}
         </div>
         <div className="d-tiles">
           {tiles.map((t) => (
@@ -240,7 +233,7 @@ export function Desk({ formulaPreview }: { formulaPreview: boolean }) {
       {loading ? (
         <div className="d-card" role="status" aria-live="polite" style={{ display: "flex", gap: 12, alignItems: "center", minHeight: 120 }}>
           <span className="spinner" style={{ color: "var(--d-teal)" }} />
-          Ranking the waiting requests. This can take a few seconds.
+          Loading review requests…
         </div>
       ) : items.length === 0 ? (
         <div className="d-card d-gate">
@@ -264,7 +257,7 @@ export function Desk({ formulaPreview }: { formulaPreview: boolean }) {
               selectedId={selected?.grant.id ?? null}
               onSelect={setSelectedId}
             />
-            {selected && <Selected item={selected} source={queue!.source} onReview={() => setDrawerId(selected.grant.id)} />}
+            {selected && <Selected item={selected} onReview={() => setDrawerId(selected.grant.id)} />}
           </div>
 
           <section className="d-card" aria-labelledby="rq-title">
@@ -339,11 +332,6 @@ export function Desk({ formulaPreview }: { formulaPreview: boolean }) {
                         >
                           <td className="num">
                             #{it.rank}
-                            {queue!.source === "gemini" && it.disagreesWithFormula && (
-                              <span className="d-diff" title={`The formula alone would rank this #${it.formulaRank}`}>
-                                formula #{it.formulaRank}
-                              </span>
-                            )}
                           </td>
                           <td>
                             <span className="d-who">
@@ -518,7 +506,7 @@ function BudgetChart({
   );
 }
 
-function Selected({ item, source, onReview }: { item: QueueItem; source: "gemini" | "formula"; onReview: () => void }) {
+function Selected({ item, onReview }: { item: QueueItem; onReview: () => void }) {
   const g = item.grant;
   const top = topFactors(item.assessment.factors);
   const colors = ["var(--d-teal)", "var(--d-sand)", "var(--d-mist)"];
@@ -541,11 +529,8 @@ function Selected({ item, source, onReview }: { item: QueueItem; source: "gemini
             <strong>{item.assessment.score} / 100</strong>
           </div>
           <div>
-            <small>{source === "gemini" ? "Gemini rank" : "Formula rank"}</small>
-            <strong>
-              #{item.rank}
-              {source === "gemini" && item.formulaRank !== item.rank ? ` (formula #${item.formulaRank})` : ""}
-            </strong>
+            <small>Queue rank</small>
+            <strong>#{item.rank}</strong>
           </div>
           <div>
             <small>Waiting</small>
