@@ -1,5 +1,6 @@
 // POST /api/visits: a hospital device logs a visit for the tapped (or picked) patient. Insurance
-// and every hospital policy run at once; the response is the bill (SPEC §9, rev 6). The same
+// is posted and each hospital policy application is prepared (applyPolicies: true decides them at
+// once); the response is the bill (SPEC §9, rev 6). The same
 // idempotencyKey never logs the visit twice.
 
 import type { CreateVisitRequest, VisitResponse } from "@abdulcare/contracts";
@@ -26,6 +27,7 @@ export const POST = route(async (req: Request) => {
       patientId,
       device,
       idempotencyKey: String(body.idempotencyKey ?? ""),
+      applyPolicies: body.applyPolicies === true,
       depositIncomeCents: await depositIncomeCents(patientId),
     },
   );

@@ -1,5 +1,6 @@
 // GET /api/patients/me/bill: the checked-in patient's latest visit, its explanation and their
-// fund request for it (SPEC §4 screens 2–4). Polling it moves a pending payout forward.
+// fund request for it (SPEC §4 screens 2–4); ?visitId= picks another of their visits. Polling it
+// moves a pending payout forward.
 
 import type { Grant, PatientBillResponse } from "@abdulcare/contracts";
 import { explainBill, getBill, getDb, latestVisitId, listGrants } from "@abdulcare/core";
@@ -10,10 +11,11 @@ import { ok, route } from "@/app/api/_lib/http";
 
 export const maxDuration = 30;
 
-export const GET = route(async () => {
+export const GET = route(async (req: Request) => {
   const { patient } = await requirePatientSession();
   const db = getDb();
-  const visitId = await latestVisitId(db, patient.id);
+  const requested = new URL(req.url).searchParams.get("visitId");
+  const visitId = requested || (await latestVisitId(db, patient.id));
   if (!visitId) return ok<PatientBillResponse>({ bill: null, explanation: null, grant: null });
 
   let grant: Grant | null = (await listGrants(db, { patientId: patient.id })).find((g) => g.visit?.id === visitId) ?? null;
