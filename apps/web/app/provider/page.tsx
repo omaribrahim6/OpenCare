@@ -6,7 +6,7 @@ import { DEMO_PATIENT, DEMO_PROVIDER, formatCents } from "@/lib/mock";
 
 type Phase = "waiting" | "grant" | "paying" | "receipt";
 
-// Screen 7: Provider terminal. Mock flow: tap → approved grant → explicit confirm → receipt.
+// Screen 6: Provider terminal. Mock flow: tap → approved grant → explicit confirm → receipt.
 export default function ProviderTerminal() {
   const [phase, setPhase] = useState<Phase>("waiting");
 

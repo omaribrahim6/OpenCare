@@ -16,7 +16,7 @@ const NEXT_STEP: Record<GrantStatus, string> = {
   paid: "Your provider has been paid. Nothing else to do.",
 };
 
-// Screen 5: Request status.
+// Screen 4: Request status.
 export default async function RequestStatus({ searchParams }: { searchParams: Promise<{ new?: string }> }) {
   const { new: isNew } = await searchParams;
   const grant = await getGrant();

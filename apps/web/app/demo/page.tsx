@@ -5,13 +5,14 @@ const SCREENS = [
   ["/", "1. Welcome / check-in"],
   ["/t/demo", "Card tap: known patient (paired kiosk)"],
   ["/t/unknown", "Card tap: unknown card"],
-  ["/t/unpaired", "9. Card tap on an unpaired phone"],
+  ["/t/unpaired", "8. Card tap on an unpaired phone"],
   ["/kiosk/bills", "2. Bills found"],
-  ["/kiosk/explain", "3–4. Explanation / request"],
-  ["/kiosk/status", "5. Request status"],
-  ["/review", "6. Reviewer queue (ranked by need)"],
-  ["/provider", "7. Provider terminal"],
-  ["/fund", "8. Fund dashboard"],
+  ["/kiosk/explain", "3. Explanation / request"],
+  ["/kiosk/status", "4. Request status"],
+  ["/review", "5. Caseworker queue (Gemini order)"],
+  ["/review?order=formula", "5b. Caseworker queue (formula fallback)"],
+  ["/provider", "6. Provider terminal"],
+  ["/fund", "7. Fund dashboard (donate)"],
 ] as const;
 
 export default function DemoIndex() {
