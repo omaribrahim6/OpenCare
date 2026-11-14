@@ -18,7 +18,7 @@ import type {
   GrantStatus,
   IdentityRevealResponse,
   InsurancePlan,
-  LedgerCase,
+  LedgerDetailResponse,
   LedgerResponse,
   PairDeviceRequest,
   PairDeviceResponse,
@@ -154,10 +154,11 @@ export const getLedger = (): Promise<LedgerResponse> =>
         totals: { donatedCents: s.totalCents, paidCents: s.paidCents, careCostCents: 0, cases: s.paidCount, declined: 0 },
       }));
 
-export const getLedgerCase = (ref: string) =>
+/** A ledger row in full: { case } for a decided request, { donation } for a donation. */
+export const getLedgerDetail = (ref: string) =>
   LIVE
-    ? get<{ case: LedgerCase }>(`/api/ledger/${encodeURIComponent(ref)}`)
-    : Promise.reject(new ApiRequestError(404, "not_found", "Case details need the live API"));
+    ? get<LedgerDetailResponse>(`/api/ledger/${encodeURIComponent(ref)}`)
+    : Promise.reject(new ApiRequestError(404, "not_found", "Ledger details need the live API"));
 
 /** Caseworker only (paired reviewer device). Every reveal is logged and counted publicly. */
 export const revealIdentity = (ref: string, reason: string) =>

@@ -137,6 +137,16 @@ export function FundWorkspace({ initialTab, onLedger }: { initialTab: FundTab; o
   );
 }
 
+const DONOR_KIND_LABEL: Record<string, string> = {
+  state_program: "State program",
+  federal_program: "Federal program",
+  hospital: "Hospital",
+  foundation: "Foundation",
+  corporate: "Company",
+  community: "Community group",
+  individual: "Individual",
+};
+
 function LedgerTable({ ledger, search }: { ledger: LedgerResponse | null; search: string }) {
   const term = search.trim().toLowerCase();
   const entries = (ledger?.entries ?? []).filter(
@@ -168,7 +178,7 @@ function LedgerResults({ ledger, entries }: { ledger: LedgerResponse | null; ent
       )}
       <div className="g-head lc-filter-row" style={{ marginBottom: 18, alignItems: "center" }}>
         <p className="g-sub" style={{ margin: 0 }}>
-          {rows.length.toLocaleString()} events · select a case to see its bill
+          {rows.length.toLocaleString()} events · select any row for the full record
         </p>
         <div className="tabs" role="tablist" aria-label="Filter">
           {(
@@ -207,8 +217,8 @@ function LedgerResults({ ledger, entries }: { ledger: LedgerResponse | null; ent
               return (
                 <tr
                   key={`${e.reference}-${i}`}
-                  className={isCase ? "lc-clickable" : undefined}
-                  onClick={isCase ? () => setOpen(e.reference) : undefined}
+                  className="lc-clickable"
+                  onClick={() => setOpen(e.reference)}
                 >
                   <td>
                     <span className="ev">
@@ -227,10 +237,12 @@ function LedgerResults({ ledger, entries }: { ledger: LedgerResponse | null; ent
                         </small>
                       </button>
                     ) : (
-                      <>
+                      <button type="button" className="lc-link" onClick={(ev) => { ev.stopPropagation(); setOpen(e.reference); }}>
                         <strong>{e.donorLabel ?? "Anonymous donor"}</strong>
-                        <small className="muted mono">{e.reference}</small>
-                      </>
+                        <small className="muted">
+                          {e.donorKind ? `${DONOR_KIND_LABEL[e.donorKind]} · ` : ""}{e.purpose ? `${e.purpose} · ` : ""}<span className="mono">{e.reference}</span>
+                        </small>
+                      </button>
                     )}
                   </td>
                   <td className="right num muted">{e.chargesCents != null ? usd(e.chargesCents) : "—"}</td>
