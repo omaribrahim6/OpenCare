@@ -12,6 +12,7 @@ import { BillStage } from "@/components/landing/BillStage";
 import { HeroCast } from "@/components/landing/HeroCast";
 import { DONOR_KIND_LABEL, DonorMark, logoIdForName } from "@/components/landing/DonorMark";
 import { LogoWordmark } from "@/components/Logo";
+import { SiteNav } from "@/components/SiteNav";
 import { cleanName, usd, usdCompact } from "@/lib/format";
 import { CATEGORY_LABEL } from "@/lib/types";
 import "./landing.css";
@@ -82,13 +83,7 @@ export default async function Landing() {
         <Link href="/" className="ln-brand" aria-label="OpenCare home">
           <LogoWordmark />
         </Link>
-        <nav className="ln-nav" aria-label="Main">
-          <Link href="/fund">Public ledger</Link>
-          <Link href="/user">My account</Link>
-          <Link href="/admin" className="ln-nav-staff">
-            Staff
-          </Link>
-        </nav>
+        <SiteNav current="home" />
       </header>
 
       <main>
