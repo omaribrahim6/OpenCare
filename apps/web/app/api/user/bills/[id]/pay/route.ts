@@ -5,11 +5,12 @@
 
 import type { PortalPayRequest, PortalPayResponse } from "@abdulcare/contracts";
 import { CoreError, getBill, getDb, payPatientBalance, requirePortalPatient } from "@abdulcare/core";
-import { linkVisitRails, payBalanceThroughNessie } from "@abdulcare/payments";
+import { linkVisitRails, payBalanceThroughNessie, type PaymentsDeps } from "@abdulcare/payments";
 import { after } from "next/server";
 import { payments } from "@/app/api/_lib/deps";
 import { ok, readJson, route, type IdParams } from "@/app/api/_lib/http";
 import { readPortalCookie } from "../../../portal-cookie";
+import { paymentReceipts, recordPaymentOnSolana } from "../../../receipts";
 
 export const maxDuration = 30;
 
@@ -35,6 +36,20 @@ export const POST = route(async (req: Request, { params }: IdParams) => {
     }
   }
   const result = await payPatientBalance(db, { patientId: patient.id, visitId: id, amountCents: body.amountCents, nessiePurchaseId });
+
+  // The public Solana record of this payment: wait a few seconds so the receipt can show it; if devnet
+  // is slower, finish after the response and the account page picks it up on its next load.
+  let deps: PaymentsDeps | null = null;
+  try {
+    deps = payments();
+  } catch {
+    deps = null;
+  }
+  if (deps && result.paidCents > 0) {
+    const { pending } = await recordPaymentOnSolana(deps, { visitId: id, amountCents: result.paidCents }, 12_000);
+    if (pending) after(() => pending);
+  }
+  const [receipt] = await paymentReceipts(db, patient.id, [result.bill]);
   // After the response, so the pay button never waits on it: close the bill on the patient's
   // Nessie account. Banking not configured or slow: the mirror catches up next time.
   after(async () => {
@@ -44,5 +59,5 @@ export const POST = route(async (req: Request, { params }: IdParams) => {
       console.error("[api] Nessie bill mirror deferred:", (err as Error).message);
     }
   });
-  return ok<PortalPayResponse>(result);
+  return ok<PortalPayResponse>({ ...result, receipt: receipt ?? null });
 });
