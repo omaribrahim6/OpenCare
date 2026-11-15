@@ -19,7 +19,8 @@ export function PlanOffer({ visitId, onStarted }: { visitId: string; onStarted?:
     getPlan(visitId)
       .then((r) => {
         setPlan(r.plan);
-        setOptions(r.suggestion.options);
+        // No bank account on file: a plan can't be set up, so offer nothing.
+        setOptions(r.available ? r.suggestion.options : []);
         setSuggested(r.suggestion.months);
       })
       .catch(() => setOptions([]));
