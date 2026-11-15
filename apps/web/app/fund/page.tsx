@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { SiteNav } from "@/components/SiteNav";
 import { FundWorkspace } from "../admin/FundWorkspace";
 
 export const metadata: Metadata = { title: "Public ledger" };
@@ -11,15 +11,7 @@ export default function PublicLedgerPage() {
     <main className="d-public">
       <header className="d-public-bar">
         <Logo compact />
-        <nav className="oc-nav" aria-label="Main">
-          <Link href="/fund" aria-current="page">
-            Public ledger
-          </Link>
-          <Link href="/user">My account</Link>
-          <Link href="/admin" className="oc-nav-staff">
-            Staff
-          </Link>
-        </nav>
+        <SiteNav current="ledger" />
       </header>
       <FundWorkspace initialTab="ledger" audience="public" />
     </main>

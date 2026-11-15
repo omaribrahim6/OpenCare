@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import type { Bill, Grant, GrantStatus, PortalOverviewResponse } from "@abdulcare/contracts";
 import { GoldCareCard } from "@/components/desk/GoldCareCard";
 import { Icon } from "@/components/Icon";
-import { LogoMark, LogoWordmark } from "@/components/Logo";
+import { LogoWordmark } from "@/components/Logo";
+import { SiteHeader, SiteNav } from "@/components/SiteNav";
 import { STATUS_LABEL } from "@/components/StatusBadge";
 import { cleanName, firstName, shortDate, stepLabel, usd } from "@/lib/format";
 import { PortalError, getOverview, signIn, signOut } from "./portal-api";
@@ -47,13 +48,18 @@ export function UserPortal({ cardToken }: { cardToken: string | null }) {
 
   if (state.kind === "loading") {
     return (
-      <main className="u-portal u-center" aria-busy="true">
-        <p className="u-muted">Loading your account…</p>
-      </main>
+      <>
+        <SiteHeader current="account" />
+        <main className="u-portal u-center" aria-busy="true">
+          <p className="u-muted">Loading your account…</p>
+        </main>
+      </>
     );
   }
   if (state.kind === "signed_out") {
     return (
+      <>
+      <SiteHeader current="account" />
       <SignIn
         cardToken={cardToken}
         onSignedIn={() => {
@@ -63,10 +69,13 @@ export function UserPortal({ cardToken }: { cardToken: string | null }) {
           void load();
         }}
       />
+      </>
     );
   }
   if (state.kind === "error") {
     return (
+      <>
+      <SiteHeader current="account" />
       <main className="u-portal u-center">
         <div className="d-card u-error">
           <p>{state.message}</p>
@@ -75,6 +84,7 @@ export function UserPortal({ cardToken }: { cardToken: string | null }) {
           </button>
         </div>
       </main>
+      </>
     );
   }
   return (
@@ -199,10 +209,10 @@ function Dashboard({ data, onSignOut }: { data: PortalOverviewResponse; onSignOu
   return (
     <div className="u-portal">
       <header className="u-bar">
-        <Link href="/" className="u-brand" aria-label="OpenCare home">
-          <LogoMark />
-          <span>My account</span>
+        <Link href="/" className="site-brand" aria-label="OpenCare home">
+          <LogoWordmark />
         </Link>
+        <SiteNav current="account" />
         <button className="d-btn u-signout" onClick={onSignOut}>
           <Icon name="logout" /> Sign out
         </button>
