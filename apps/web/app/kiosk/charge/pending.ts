@@ -5,14 +5,14 @@
 import type { KioskChargeResult } from "@/lib/api";
 import { CAR_ACCIDENT_PRESET, CAR_ACCIDENT_PRESET_ID, type ChargeLine, type ChargeMethod } from "./bill";
 
-/** How the patient settled the remaining balance. */
+/** The patient's request to the community care fund for the balance left after the discounts. */
 export type ChargeOutcome = {
-  kind: "paid" | "fund_request";
+  kind: "fund_request";
   no: string;
   at: string;
   method: ChargeMethod;
   discounts: ChargeLine[];
-  /** Paid by card, or asked of the community care fund. */
+  /** Asked of the community care fund (whole dollars). */
   cents: number;
   /** Null while it is still being sent to admin. */
   sent: KioskChargeResult | null;
@@ -42,7 +42,9 @@ export function loadPending(): PendingCharge | null {
   try {
     const raw = localStorage.getItem(KEY);
     const data = raw ? (JSON.parse(raw) as PendingCharge) : null;
-    return data && Array.isArray(data.items) && data.items.length > 0 ? { ...data, outcome: data.outcome ?? null } : null;
+    if (!data || !Array.isArray(data.items) || data.items.length === 0) return null;
+    // Results from older versions (a card payment) aren't shown; the bill is checked again.
+    return { ...data, outcome: data.outcome?.kind === "fund_request" ? data.outcome : null };
   } catch {
     return null;
   }

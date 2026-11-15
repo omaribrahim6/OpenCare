@@ -9,15 +9,15 @@ import { CHECK_MESSAGE_MS, CHECK_STEP_MS, CHECK_STEPS, discountsFor, money, tota
 import { clearPending, demoCharge, loadPending, savePending, type ChargeOutcome, type PendingCharge } from "../pending";
 import { Summary } from "../Summary";
 
-// /kiosk/charge/card: where a card scan lands (today the presenter's hold on the reader; later the
-// NFC scan). It walks the bill staff set up: insurance, then the hospital's financial assistance
-// policy, then the prompt-pay discount, with the balance counting down. Then the patient pays what
-// is left or asks the community care fund, and the result goes to admin. Payments are simulated.
+// /kiosk/charge/card: where a CareCard tap lands (today the presenter's hold on the reader; later
+// the NFC scan). AI walks the bill staff set up: the uninsured self-pay discount, the hospital's
+// financial assistance policy, then the prompt-pay discount, with the balance counting down. The
+// patient then sends what is left to the community care fund, and the request goes to admin.
 
-const ICONS: Record<(typeof CHECK_STEPS)[number]["id"], IconName> = { insurance: "shield", policy: "hospital", discounts: "receipt" };
+const ICONS: Record<(typeof CHECK_STEPS)[number]["id"], IconName> = { selfpay: "shield", policy: "hospital", discounts: "receipt" };
 const SETTLE_MS = 1800;
 
-type Phase = "checking" | "result" | "paying" | "asking" | "done";
+type Phase = "checking" | "result" | "asking" | "done";
 
 const receiptNumber = () => `KC-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 const sleep = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
@@ -54,9 +54,9 @@ function useCountTo(target: number) {
   return shown;
 }
 
-function sentNote(kind: ChargeOutcome["kind"], sent: KioskChargeResult | null): string {
+function sentNote(sent: KioskChargeResult | null): string {
   if (!sent) return "Sending to admin…";
-  if (sent.sent) return kind === "paid" ? "Receipt sent to admin." : "Sent to a reviewer at admin.";
+  if (sent.sent) return "Sent to a reviewer at admin.";
   switch (sent.reason) {
     case "mock": return "Demo mode: this stays on this phone.";
     case "not_kiosk": return "Not sent to admin: pair this phone as a kiosk with the staff PIN first.";
@@ -131,14 +131,15 @@ export function CardCheck({ method }: { method: ChargeMethod }) {
   const balance = useCountTo(charge ? original - takenOff : 0);
   const discounts = CHECK_STEPS.map((step) => ({ label: step.title, cents: off[step.id] })).filter((d) => d.cents > 0);
 
-  const settle = async (kind: ChargeOutcome["kind"]) => {
+  // The only choice: send what is left to the community care fund.
+  const askFund = async () => {
     if (!charge) return;
-    setPhase(kind === "paid" ? "paying" : "asking");
-    const outcome: ChargeOutcome = { kind, no: receiptNumber(), at: new Date().toISOString(), method, discounts, cents: remaining, sent: null };
+    setPhase("asking");
+    const outcome: ChargeOutcome = { kind: "fund_request", no: receiptNumber(), at: new Date().toISOString(), method, discounts, cents: remaining, sent: null };
     const settled = { ...charge, outcome };
     savePending(settled);
     const [sent] = await Promise.all([
-      sendKioskCharge({ items: charge.items, discounts, method, preset: charge.preset, outcome: kind }),
+      sendKioskCharge({ items: charge.items, discounts, method, preset: charge.preset, outcome: "fund_request" }),
       sleep(SETTLE_MS),
     ]);
     const done = { ...settled, outcome: { ...outcome, sent } };
@@ -164,44 +165,32 @@ export function CardCheck({ method }: { method: ChargeMethod }) {
 
   const outcome = charge.outcome;
   if (phase === "done" && outcome) {
-    const paid = outcome.kind === "paid";
     return (
       <main className="page station station-session kc kc-receipt">
         {bar}
-        {!LIVE && <p className="kc-demo"><Icon name="info" size={15} /> Demo · simulated payment</p>}
+        {!LIVE && <p className="kc-demo"><Icon name="info" size={15} /> Demo · simulated decisions</p>}
         <section aria-labelledby="kc-title">
-          <div className={`kc-paid${paid ? "" : " kc-asked"}`}>
-            <Icon name={paid ? "checkCircle" : "heart"} size={30} />
+          <div className="kc-paid kc-asked">
+            <Icon name="heart" size={30} />
             <div>
-              <h1 id="kc-title">{paid ? `Paid ${money(outcome.cents)}` : "Request sent to the community care fund"}</h1>
+              <h1 id="kc-title">Request sent to the community care fund</h1>
               <p className="muted">
                 {new Date(outcome.at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })} · {outcome.no}
               </p>
             </div>
           </div>
-          {!paid && (
-            <p className="kc-lead">
-              A reviewer will look at your request for <b>{money(outcome.cents)}</b>. If it&apos;s approved, the fund pays the
-              hospital directly. You don&apos;t need to do anything else.
-            </p>
-          )}
-          <Summary items={charge.items} discounts={outcome.discounts} finalLabel={paid ? "Paid" : "Requested from the fund"} />
+          <p className="kc-lead">
+            A reviewer will look at your request for <b>{money(outcome.cents)}</b>. If it&apos;s approved, the fund pays the
+            hospital directly. You don&apos;t need to do anything else.
+          </p>
+          <Summary items={charge.items} discounts={outcome.discounts} finalLabel="Requested from the fund" />
           <dl className="kc-meta">
-            {paid ? (
-              <>
-                <div><dt>Paid with</dt><dd>Contactless card</dd></div>
-                <div><dt>Payment</dt><dd>Simulated · no card data read</dd></div>
-              </>
-            ) : (
-              <>
-                <div><dt>Request</dt><dd>Reviewed by a person</dd></div>
-                <div><dt>Paid to</dt><dd>The hospital, if approved</dd></div>
-              </>
-            )}
+            <div><dt>Request</dt><dd>Reviewed by a person</dd></div>
+            <div><dt>Paid to</dt><dd>The hospital, if approved</dd></div>
           </dl>
           <p className={`kc-sent${outcome.sent?.sent ? " is-sent" : ""}`} role="status">
             <Icon name={outcome.sent?.sent ? "check" : "info"} size={15} />
-            {sentNote(outcome.kind, outcome.sent)}
+            {sentNote(outcome.sent)}
           </p>
           <button type="button" className="btn btn-lg kc-primary" onClick={newBill}>
             <Icon name="plus" size={18} /> New bill
@@ -212,17 +201,20 @@ export function CardCheck({ method }: { method: ChargeMethod }) {
   }
 
   const checked = phase !== "checking";
-  const busy = phase === "paying" || phase === "asking";
   return (
     <main className="page station station-session kc kc-card">
       {bar}
-      {!LIVE && <p className="kc-demo"><Icon name="info" size={15} /> Demo · simulated payment</p>}
+      {!LIVE && <p className="kc-demo"><Icon name="info" size={15} /> Demo · simulated decisions</p>}
       <section className="bw" aria-labelledby="kc-title">
+        <p className={`kc-ai-chip${checked ? " is-done" : ""}`} role="status">
+          <span className="kc-ai" aria-hidden="true"><Icon name="sparkles" size={15} /></span>
+          {checked ? "AI checked your bill" : "AI is checking your bill"}
+        </p>
         <h1 id="kc-title">{checked ? "Your bill, checked" : "Checking your bill"}</h1>
-        <p className="muted kc-sub">{checked ? "Here's what's left after every discount." : "CareCard read. Taking off every discount before you pay."}</p>
+        <p className="muted kc-sub">{checked ? "Here's what's left after every discount." : "CareCard read. AI is finding every discount for you."}</p>
 
         <div className="bw-balance">
-          <span>{checked ? "Left to pay" : "Balance"}</span>
+          <span>{checked ? "Left after discounts" : "Balance"}</span>
           <strong>{money(balance)}</strong>
           <div className="bw-meter" role="presentation">
             <i style={{ width: original ? `${Math.min(100, (takenOff / original) * 100)}%` : 0 }} />
@@ -249,9 +241,9 @@ export function CardCheck({ method }: { method: ChargeMethod }) {
             if (i === working) {
               return (
                 <li key={step.id} className="bw-step" data-tone="work">
-                  <span className="bw-icon bw-spin" />
-                  <span className="bw-text"><strong>{step.title}</strong><small>{step.working[message % step.working.length]}…</small></span>
-                  <span className="bw-amount kc-checking">Checking</span>
+                  <span className="bw-icon kc-ai kc-ai-lg" aria-hidden="true"><Icon name="sparkles" size={19} /></span>
+                  <span className="bw-text"><strong>{step.title}</strong><small>AI · {step.working[message % step.working.length]}…</small></span>
+                  <span className="bw-amount kc-checking">Calculating</span>
                 </li>
               );
             }
@@ -261,14 +253,11 @@ export function CardCheck({ method }: { method: ChargeMethod }) {
 
         {checked && (
           <div className="kc-choices" ref={choices}>
-            <button type="button" className="btn btn-lg kc-primary" disabled={busy} onClick={() => void settle("paid")}>
-              {phase === "paying" ? <><span className="kc-spin" /> Paying…</> : <><Icon name="card" size={18} /> Pay {money(remaining)}</>}
-            </button>
             <div className="bw-panel bw-ask kc-fund">
-              <h2>Can&apos;t pay {money(remaining)}?</h2>
+              <h2>Get help with the last {money(remaining)}</h2>
               <p>The community care fund can pay it directly to the hospital. A person reviews every request; no forms needed.</p>
-              <button type="button" className="btn secondary kc-fund-btn" disabled={busy} onClick={() => void settle("fund_request")}>
-                {phase === "asking" ? <><span className="kc-spin" /> Sending request…</> : <><Icon name="heart" size={17} /> Ask the community fund</>}
+              <button type="button" className="btn btn-lg kc-primary" disabled={phase === "asking"} onClick={() => void askFund()}>
+                {phase === "asking" ? <><span className="kc-spin" /> Sending request…</> : <><Icon name="heart" size={18} /> Send to the community fund</>}
               </button>
             </div>
           </div>
