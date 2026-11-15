@@ -157,7 +157,7 @@ const EVENTS: Record<string, { label: string; icon: IconName }> = {
   payout: { label: "Provider paid", icon: "store" },
   reservation: { label: "Grant reserved", icon: "lock" },
   release: { label: "Funds released", icon: "wallet" },
-  receipt: { label: "Devnet receipt", icon: "receipt" },
+  receipt: { label: "Solana receipt", icon: "receipt" },
 };
 
 export function VioletOverview({

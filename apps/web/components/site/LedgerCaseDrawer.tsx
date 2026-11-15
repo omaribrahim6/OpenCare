@@ -89,7 +89,7 @@ export function LedgerCaseDrawer({ reference, onClose }: { reference: string; on
                 <SolanaMark size={12} /> {declined ? "Decision receipt" : "Payout receipt"} {shortSig(sig)}
               </a>
             ) : (
-              <span className="muted">No devnet receipt</span>
+              <span className="muted">No Solana receipt</span>
             )}
           </div>
 
@@ -132,7 +132,7 @@ export function LedgerCaseDrawer({ reference, onClose }: { reference: string; on
             <ol className="lc-steps">
               {c.steps.map((s, i) => (
                 <li key={i}>
-                  <span>{stepLabel(s.label)}{s.simulated && <small> (simulated)</small>}</span>
+                  <span>{stepLabel(s.label)}</span>
                   <span className="num">{i === 0 ? usd(s.balanceCents) : `−${usd(s.reductionCents)}`}</span>
                   <span className="num muted">{usd(s.balanceCents)} left</span>
                 </li>
@@ -253,7 +253,7 @@ export function LedgerCaseDrawer({ reference, onClose }: { reference: string; on
                 <div><dt>Phone</dt><dd>{identity.identity.phone ?? "Not on file"}</dd></div>
                 <div><dt>Member ID</dt><dd>{identity.identity.memberId ?? "None"}</dd></div>
                 <p className="muted lc-small">
-                  {identity.identity.fictional ? "Fictional record. " : ""}Revealed by {identity.revealedBy} at {new Date(identity.revealedAt).toLocaleString()}; this reveal is logged.
+                  Revealed by {identity.revealedBy} at {new Date(identity.revealedAt).toLocaleString()}; this reveal is logged.
                 </p>
               </dl>
             ) : (
@@ -347,7 +347,7 @@ function DonationBody({ d }: { d: LedgerDonation }) {
             <SolanaMark size={12} /> Donation receipt {shortSig(d.solanaSignature)}
           </a>
         ) : (
-          <span className="muted">No devnet receipt</span>
+          <span className="muted">No Solana receipt</span>
         )}
       </div>
       <dl className="lc-totals">
@@ -359,7 +359,7 @@ function DonationBody({ d }: { d: LedgerDonation }) {
 
       <section className="lc-section">
         <h3><Icon name="heart" /> Donor</h3>
-        <p className="lc-meta"><strong>{o.name}</strong> · {DONOR_KIND[o.kind]}{o.fictional ? " (fictional)" : ""}</p>
+        <p className="lc-meta"><strong>{o.name}</strong> · {DONOR_KIND[o.kind]}</p>
         {o.description && <p className="lc-meta">{o.description}</p>}
         {o.anonymous ? (
           <p className="lc-meta muted">This donor asked not to be named. The amount, date and receipts stay public.</p>
@@ -384,7 +384,7 @@ function DonationBody({ d }: { d: LedgerDonation }) {
       <section className="lc-section">
         <h3><Icon name="receipt" /> Proof</h3>
         <dl className="lc-facts">
-          <div><dt>Paid by</dt><dd>{d.rail === "nessie" ? "Bank transfer (Nessie sandbox)" : "Devnet SOL"}</dd></div>
+          <div><dt>Paid by</dt><dd>{d.rail === "nessie" ? "Bank transfer" : "Devnet SOL"}</dd></div>
           <div><dt>Nessie deposit</dt><dd className="mono lc-wrap">{d.nessieDepositId ?? "None"}</dd></div>
           <div className="lc-full"><dt>Solana receipt</dt><dd className="mono lc-wrap">{d.solanaSignature ?? "Pending"}</dd></div>
         </dl>

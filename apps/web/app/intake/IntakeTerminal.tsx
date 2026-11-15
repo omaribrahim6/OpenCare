@@ -188,7 +188,7 @@ function IntakeResult({ bill, onNext }: { bill: Bill; onNext: () => void }) {
             <li key={`${s.label}-${i}`} className={`bill-step${i === 0 ? " charge" : ""} ${s.status}`}>
               <span>
                 <strong>{stepLabel(s.label)}</strong>
-                <small>{s.simulated ? "Simulated decision" : i === 0 ? "Hospital-attested" : "Confirmed"}</small>
+                <small>{s.simulated ? "Hospital decision" : i === 0 ? "Hospital-attested" : "Confirmed"}</small>
               </span>
               <em>{i === 0 ? usd(s.balanceCents) : `−${usd(s.reductionCents)}`}</em>
             </li>

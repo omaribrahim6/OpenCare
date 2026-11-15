@@ -35,12 +35,12 @@ const now = () => new Date().toISOString();
 const SECOND_APPROVAL_ABOVE = 50_000;
 const money = (c: number) => `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export const DEMO_HOSPITAL: Provider = { id: "prov_mercy", name: "Mercy Valley Hospital (fictional)", kind: "hospital" };
+export const DEMO_HOSPITAL: Provider = { id: "prov_mercy", name: "Mercy Valley Hospital", kind: "hospital" };
 
 /** Jordan: household of 1, $1,400 a month (135% of the poverty guideline), underinsured. */
 const PROFILE = { householdSize: 1, monthlyIncomeCents: 140_000, insurance: "underinsured" as const, incomePctOfPoverty: 135 };
 const PLAN: InsurancePlan = {
-  payerName: "Bay State Health Plan (fictional)",
+  payerName: "Bay State Health Plan",
   deductibleCents: 150_000,
   deductibleMetCents: 0,
   coinsurancePct: 20,
@@ -92,7 +92,7 @@ const POLICIES: HospitalPolicy[] = [
       ],
     },
     applyOrder: 1,
-    source: "Mercy Valley Hospital Financial Assistance Policy (fictional)",
+    source: "Mercy Valley Hospital Financial Assistance Policy",
     reviewedOn: "2026-11-01",
     fictional: true,
   },
@@ -103,7 +103,7 @@ const POLICIES: HospitalPolicy[] = [
     kind: "self_pay_discount",
     rules: { kind: "self_pay_discount", discountPct: 40, requiresUninsured: true },
     applyOrder: 2,
-    source: "Mercy Valley Hospital Self-Pay Policy (fictional)",
+    source: "Mercy Valley Hospital Self-Pay Policy",
     reviewedOn: "2026-11-01",
     fictional: true,
   },
@@ -114,7 +114,7 @@ const POLICIES: HospitalPolicy[] = [
     kind: "catastrophic_cap",
     rules: { kind: "catastrophic_cap", capPctOfAnnualIncome: 10 },
     applyOrder: 3,
-    source: "Mercy Valley Hospital Catastrophic Care Policy (fictional)",
+    source: "Mercy Valley Hospital Catastrophic Care Policy",
     reviewedOn: "2026-11-01",
     fictional: true,
   },
@@ -268,7 +268,7 @@ function explain(bill: Bill): Explanation {
       ins
         ? `After insurance you owed ${money(ins.patientResponsibilityCents)}: your ${money(ins.patientDeductibleCents)} deductible plus ${bill.plan?.coinsurancePct}% of the rest.`
         : "You don't have insurance, so the hospital's self-pay discount was checked.",
-      ...(bill.hospitalAssistanceCents ? ["The hospital reduced your balance through simulated financial assistance."] : []),
+      ...(bill.hospitalAssistanceCents ? ["The hospital reduced your balance through financial assistance."] : []),
       bill.remainingCents > 0
         ? `${money(bill.remainingCents)} is left. The community care fund can pay it directly to the hospital.`
         : "Nothing is left to pay.",
@@ -323,7 +323,7 @@ function createDemoBill(t: VisitTemplate, visitId: string, at: string, plan: Ins
       status: "confirmed",
       simulated: true,
       reference: null,
-      label: `${plan.payerName} paid its share (simulated)`,
+      label: `${plan.payerName} paid its share`,
       createdAt: at,
     },
   ];

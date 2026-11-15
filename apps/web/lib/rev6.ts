@@ -17,9 +17,9 @@ export type {
 
 export const POLICY_STATUS_LABEL: Record<PolicyApplicationStatus, string> = {
   prepared: "Application prepared",
-  submitted_simulated: "Submitted (simulated)",
-  approved_simulated: "Approved by the hospital (simulated)",
-  denied_simulated: "Not approved (simulated)",
+  submitted_simulated: "Submitted to the hospital",
+  approved_simulated: "Approved by the hospital",
+  denied_simulated: "Not approved",
 };
 
 export const POLICY_KIND_LABEL: Record<PolicyKind, string> = {

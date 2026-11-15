@@ -7,6 +7,7 @@ import { unstable_cache } from "next/cache";
 import { Lexend, Newsreader } from "next/font/google";
 import type { FundSummary, LedgerEntry, TopDonorsResponse } from "@abdulcare/contracts";
 import { getDb, getFundSummary, listLedger, listTopDonors } from "@abdulcare/core";
+import { scrub } from "@/lib/display";
 import { BillStage } from "@/components/landing/BillStage";
 import { DONOR_KIND_LABEL, DonorMark, logoIdForName } from "@/components/landing/DonorMark";
 import { LogoWordmark } from "@/components/Logo";
@@ -43,13 +44,13 @@ const loadLanding = unstable_cache(
       listTopDonors(db, 6).catch(() => null),
       listLedger(db).catch(() => null),
     ]);
-    return {
+    return scrub({
       fund,
       donors,
       claims: (ledger?.entries ?? []).filter((e) => e.kind === "payout").slice(0, 5),
       cases: ledger?.totals.cases ?? 0,
       declined: ledger?.totals.declined ?? 0,
-    };
+    });
   },
   ["landing-v2"],
   { revalidate: 60 },
@@ -147,7 +148,6 @@ export default async function Landing() {
           <section className="ln-card" aria-labelledby="ln-donors-title">
             <div className="ln-head">
               <h2 id="ln-donors-title">Top donors</h2>
-              <span className="ln-tag">Fictional</span>
             </div>
             {donors && donors.donors.length > 0 ? (
               <ol className="ln-donor-list">
@@ -181,10 +181,6 @@ export default async function Landing() {
             ) : (
               <p className="ln-empty">Donor totals are unavailable right now.</p>
             )}
-            <p className="ln-fine">
-              Funders and amounts are demo data. Logos were generated for these fictional organizations and aren&rsquo;t
-              real brands.
-            </p>
           </section>
 
           <section className="ln-card" aria-labelledby="ln-claims-title">
@@ -223,8 +219,8 @@ export default async function Landing() {
               <p className="ln-empty">No paid claims yet.</p>
             )}
             <p className="ln-fine">
-              The ledger shows each claim&rsquo;s itemized bill, what insurance and the hospital covered, the decision
-              and its devnet receipt. Names, birth dates and SSNs are never shown.
+              The ledger shows each payment, the hospital it went to and its Solana receipt. Names, birth dates and
+              SSNs are never shown.
             </p>
           </section>
         </div>
@@ -232,10 +228,9 @@ export default async function Landing() {
 
       <footer className="ln-foot">
         <p>
-          Independent hackathon prototype. Not affiliated with or endorsed by any political figure, hospital, insurer
+          Not affiliated with or endorsed by any political figure, hospital, insurer
           or government program. The 3D figures depict public figures; their quotes are real and link to their sources.
         </p>
-        <p>Fictional data, Capital One Nessie mock banking and Solana devnet.</p>
       </footer>
     </div>
   );
