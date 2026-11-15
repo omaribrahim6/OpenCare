@@ -21,6 +21,7 @@ import {
 } from "@abdulcare/core";
 import { dollarsToCents } from "./money";
 import { NessieClient, NessieError, type NessiePurchase } from "./nessie";
+import { nessieFingerprint, reserveForPayout } from "./rails";
 import {
   broadcast,
   buildReceipt,
@@ -41,13 +42,30 @@ export interface PaymentsDeps {
   solana: SolanaConfig | null;
   /** How long a Nessie attempt with no matching purchase stays `pending` before it counts as failed. */
   nessieGraceMs?: number;
+  /**
+   * The fund's reserved Nessie account (linked rails). When set, an approval is transferred here
+   * first and the hospital is paid from it, so "available" and "reserved" are real accounts.
+   */
+  reservedAccountId?: string;
   log?: (message: string) => void;
 }
 
 export function paymentsFromEnv(db: Db): PaymentsDeps {
   const fundAccountId = process.env.NESSIE_FUND_ACCOUNT_ID;
   if (!fundAccountId) throw new Error("NESSIE_FUND_ACCOUNT_ID is not set (run npm run nessie:seed -w @abdulcare/payments)");
-  return { db, nessie: NessieClient.fromEnv(), fundAccountId, solana: solanaFromEnv() };
+  return {
+    db,
+    nessie: NessieClient.fromEnv(),
+    fundAccountId,
+    reservedAccountId: process.env.NESSIE_RESERVED_ACCOUNT_ID || undefined,
+    solana: solanaFromEnv(),
+    log: (message) => console.error(`[payments] ${message}`),
+  };
+}
+
+/** Where payouts are paid from: the reserved account when set up, else the fund account. */
+function payoutAccount(deps: PaymentsDeps): string {
+  return deps.reservedAccountId || deps.fundAccountId;
 }
 
 const DEFAULT_GRACE_MS = 2 * 60_000;
@@ -186,9 +204,12 @@ async function settleNessie(deps: PaymentsDeps, grantId: string): Promise<Payout
       throw err;
     }
 
+    // Linked rails: move the approval into the reserved account first (no-op when not set up).
+    await reserveForPayout(deps, grantId, target.approvedCents);
+
     let purchase: NessiePurchase;
     try {
-      purchase = await nessie.createPurchase(deps.fundAccountId, {
+      purchase = await nessie.createPurchase(payoutAccount(deps), {
         merchantId: target.merchantId,
         amountCents: nessiePayoutCents(target.approvedCents),
         description: payoutDescription(attempt.idempotencyKey),
@@ -207,7 +228,7 @@ async function settleNessie(deps: PaymentsDeps, grantId: string): Promise<Payout
     await updateAttempt(db, attempt.id, { externalId: purchase._id });
     // Nessie has no webhooks: read the purchase back before calling it confirmed.
     try {
-      const readBack = await nessie.findPurchase(deps.fundAccountId, purchase._id);
+      const readBack = await nessie.findPurchase(payoutAccount(deps), purchase._id);
       if (!readBack || !matchesPayout(readBack, target)) {
         await updateAttempt(db, attempt.id, { error: "Read-back doesn't match the approved payout" });
         return "pending";
@@ -241,7 +262,9 @@ async function reconcileNessieAttempt(
   // Nessie can't fetch one purchase by ID, so search the fund's purchases by ID or by key.
   let purchases: NessiePurchase[];
   try {
-    purchases = await nessie.listPurchases(deps.fundAccountId);
+    // Older payouts were paid from the fund account itself; search both.
+    const accounts = [...new Set([payoutAccount(deps), deps.fundAccountId])];
+    purchases = (await Promise.all(accounts.map((a) => nessie.listPurchases(a)))).flat();
   } catch {
     return "pending";
   }
@@ -302,7 +325,13 @@ async function settleReceipt(deps: PaymentsDeps, grantId: string): Promise<void>
   const recipient = target.solanaWallet ?? sol.defaultRecipient;
   if (!recipient) throw new Error("No receipt recipient: set the provider's wallet or PROVIDER_SOLANA_WALLET");
 
-  const receipt = await buildReceipt(sol, { recipient, memo: payoutReference(grantId) });
+  // Linked rails: the memo carries a fingerprint of the Nessie purchase that paid the hospital, so
+  // anyone holding the Nessie ID can match the public receipt to the bank record.
+  const paid = await getLiveAttempt(db, grantId, "nessie");
+  const memo = paid?.externalId
+    ? `${payoutReference(grantId)}:nx${nessieFingerprint(paid.externalId).slice(0, 16)}`
+    : payoutReference(grantId);
+  const receipt = await buildReceipt(sol, { recipient, memo });
   let attempt: PaymentAttempt;
   try {
     attempt = await createAttempt(db, {
