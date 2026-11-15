@@ -221,11 +221,15 @@ describe("redemption", () => {
     assert.equal(fake.purchaseCount(), 1);
   });
 
-  test("a grant with cents is refused before it is claimed", async () => {
-    await approvedGrant(4_550);
-    await assert.rejects(redeemGrant(deps, REDEEM), (err: unknown) => err instanceof CoreError && err.code === "bad_request");
-    assert.equal((await getGrant(db, "grt_1")).status, "approved");
-    assert.equal(fake.purchaseCount(), 0);
+  test("a grant with cents pays: Nessie moves the whole dollars, our records keep the cents", async () => {
+    await approvedGrant(4_450);
+    const result = await redeemGrant(deps, REDEEM);
+    assert.equal(result.payout, "paid");
+    assert.equal(result.grant.approvedCents, 4_450);
+    assert.equal(fake.purchaseCount(), 1);
+    assert.equal(fake.purchases[0].amount, 44);
+    const { rows } = await db.query<{ paid_cents: number }>("select paid_cents from fund where id = 'community'");
+    assert.equal(Number(rows[0].paid_cents), 4_450);
   });
 
   test("the wrong provider can't redeem", async () => {
