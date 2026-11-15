@@ -8,6 +8,7 @@ import type {
   CreateDonationRequest,
   CreateGrantRequest,
   CurrentDeviceResponse,
+  DemoSessionResponse,
   CreateVisitRequest,
   DocumentResponse,
   DonationResponse,
@@ -81,18 +82,19 @@ export const currentDevice = () =>
 
 /**
  * On a phone paired as a kiosk, start a real session for the demo patient without a card
- * (POST /api/session/demo), so the kiosk flow writes to the real system. Returns false on any
- * other device, in mock mode, or if the route isn't there, so the caller can use the local demo.
+ * (POST /api/session/demo), so the kiosk flow writes to the real system. Resolves to the visit to
+ * walk, or null on any other device, in mock mode, or if the route isn't there, so the caller can
+ * use the local demo.
  */
-export async function startKioskDemoSession(): Promise<boolean> {
-  if (!LIVE) return false;
+export async function startKioskDemoSession(): Promise<{ visitId: string | null } | null> {
+  if (!LIVE) return null;
   try {
     const { device } = await currentDevice();
-    if (device?.role !== "kiosk") return false;
-    await post<unknown>("/api/session/demo");
-    return true;
+    if (device?.role !== "kiosk") return null;
+    const res = await post<Partial<DemoSessionResponse>>("/api/session/demo");
+    return { visitId: typeof res?.visitId === "string" ? res.visitId : null };
   } catch {
-    return false;
+    return null;
   }
 }
 
