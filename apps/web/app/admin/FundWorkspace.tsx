@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon, SolanaMark, type IconName } from "@/components/Icon";
 import { FundOverview } from "./FundOverview";
+import { PublicLedger, publicCaseId } from "../fund/PublicLedger";
 import { DonatePanel } from "@/components/site/DonatePanel";
 import { LedgerCaseDrawer } from "@/components/site/LedgerCaseDrawer";
 import { getFundSummary, getLedger } from "@/lib/api";
@@ -32,8 +33,11 @@ export function FundWorkspace({
   queue,
   onViewQueue,
   onOpenRequest,
+  audience = "admin",
 }: {
   initialTab: FundTab;
+  /** "public" (/fund) shows only what is safe to publish: case IDs, provider, amount, month, receipt. */
+  audience?: "admin" | "public";
   onLedger?: () => void;
   queue?: QueueItem[];
   onViewQueue?: () => void;
@@ -61,6 +65,27 @@ export function FundWorkspace({
       const text = String(value ?? "");
       return '"' + text.replaceAll('"', '""') + '"';
     };
+    if (audience === "public") {
+      // Public export: the same fields the public table shows, nothing about the patient or the care.
+      const moved = ledger.entries.filter((e) => e.kind === "payout" || e.kind === "pending" || e.kind === "donation");
+      const pub = moved.map((e) => [
+        e.kind === "donation" ? "Donation" : "Provider payment",
+        e.kind === "donation" ? "" : publicCaseId(e.reference),
+        e.kind === "donation" ? (e.donorLabel ?? "Community contribution") : (e.hospital ?? ""),
+        (e.kind === "donation" ? 1 : -1) * e.amountCents / 100,
+        new Date(e.at).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+        e.solanaSignature,
+      ].map(field).join(","));
+      const url = URL.createObjectURL(new Blob([
+        ["Event,Public case ID,Provider or donor,Amount (USD),Reporting period,Solana signature", ...pub].join("\r\n"),
+      ], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "opencare-public-ledger.csv";
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      return;
+    }
     const rows = ledger.entries.map((e) => [
       EVENT[e.kind]?.label ?? e.kind,
       e.at,
@@ -124,7 +149,7 @@ export function FundWorkspace({
 
       {tab === "overview" && <FundOverview summary={s} queue={queue} onLedger={() => onLedger?.()} onViewQueue={onViewQueue} onOpenRequest={onOpenRequest} />}
       {tab === "ledger" && (
-        <LedgerResults ledger={ledger} />
+        audience === "public" ? <PublicLedger ledger={ledger} /> : <LedgerResults ledger={ledger} />
       )}
       {tab === "about" && <About />}
 
