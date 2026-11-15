@@ -67,6 +67,10 @@ export function TapLanding({ token }: { token: string }) {
           This is an OpenCare CareCard. To use it, tap it on the kiosk phone at a participating clinic or pharmacy. No
           information is shown on this device.
         </p>
+        <p className="muted">Is this your card? Open your account on this phone with your birth date.</p>
+        <Link className="btn btn-primary" href={`/user?card=${encodeURIComponent(token)}`}>
+          Open my account
+        </Link>
       </main>
     );
   }
