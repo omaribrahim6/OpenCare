@@ -56,6 +56,8 @@ export function startScene(opts: SceneOptions): { stop: () => void; kick: () => 
     return { stop: () => {}, kick: () => {} };
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  // Browser zoom changes devicePixelRatio; the scale at load is the unzoomed one.
+  const baseDpr = window.devicePixelRatio;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.08;
@@ -113,6 +115,8 @@ export function startScene(opts: SceneOptions): { stop: () => void; kick: () => 
     offset: new THREE.Vector3(),
     lean: 0,
     dropPerUnit: 0,
+    /** Character scale per pixel of disc radius, from the last layout that wasn't zoomed. */
+    perR: 0,
   };
 
   // Model axes: +X forward, +Y up, Z lateral. With the model turned to face the
@@ -275,9 +279,15 @@ export function startScene(opts: SceneOptions): { stop: () => void; kick: () => 
       st.grip.set(0, 0, 0);
       st.dropPerUnit = hangAt(1).drop;
     }
-    // Size the character so its toes stop just above the headline.
-    let s = (cy - R - st.floor) / (st.dropPerUnit + WRIST_DROP);
-    s = THREE.MathUtils.clamp(s, R / CIRCLE_R_MAX, R / CIRCLE_R_MIN);
+    // Size the character so its toes stop just above the headline. While zoomed (pinch or
+    // browser zoom), keep that size relative to the disc instead of refitting to the gap, so the
+    // character and the disc scale together.
+    const zoomed = Math.abs((window.visualViewport?.scale ?? 1) - 1) > 0.01 || window.devicePixelRatio !== baseDpr;
+    if (!st.perR || !zoomed) {
+      const fit = (cy - R - st.floor) / (st.dropPerUnit + WRIST_DROP);
+      st.perR = THREE.MathUtils.clamp(fit, R / CIRCLE_R_MAX, R / CIRCLE_R_MIN) / R;
+    }
+    const s = st.perR * R;
     st.s = s;
     st.grip.set(cx + GRIP_X * R, cy - R - WRIST_DROP * s, 0.06 * s);
     const placed = hangAt(s);
@@ -298,11 +308,16 @@ export function startScene(opts: SceneOptions): { stop: () => void; kick: () => 
     camera.top = h / 2;
     camera.bottom = -h / 2;
     camera.updateProjectionMatrix();
+    // Measure against the canvas's own box, not the window: under pinch zoom (WebKit, the
+    // kiosk app) client coordinates follow the zoomed view while the fixed canvas doesn't, so
+    // window-relative numbers put the character off the disc. Canvas-relative ones stay put.
+    const c = canvas.getBoundingClientRect();
+    const k = c.width ? w / c.width : 1;
     const r = scanner.getBoundingClientRect();
-    st.cx = r.left + r.width / 2 - w / 2;
-    st.cy = h / 2 - (r.top + r.height / 2);
-    st.R = r.width / 2;
-    st.floor = h / 2 - floor.getBoundingClientRect().top + FEET_GAP;
+    st.cx = (r.left - c.left + r.width / 2) * k - w / 2;
+    st.cy = h / 2 - (r.top - c.top + r.height / 2) * k;
+    st.R = (r.width / 2) * k;
+    st.floor = h / 2 - (floor.getBoundingClientRect().top - c.top) * k + FEET_GAP;
     st.h = h;
     glow.position.set(st.cx, st.cy - st.R * 1.1, st.R * 3);
     placeModel();
@@ -387,9 +402,15 @@ export function startScene(opts: SceneOptions): { stop: () => void; kick: () => 
     kick();
   };
 
+  // Zooming resizes the disc and the headline (their sizes use vw/svh) and can leave the canvas
+  // as it is, so watch all three, plus the visual viewport for pinch zoom.
   const resize = new ResizeObserver(relayout);
   resize.observe(canvas);
+  resize.observe(scanner);
+  resize.observe(floor);
   window.addEventListener("scroll", relayout, { passive: true });
+  window.visualViewport?.addEventListener("resize", relayout);
+  window.visualViewport?.addEventListener("scroll", relayout);
   document.addEventListener("visibilitychange", kick);
   void document.fonts?.ready.then(relayout);
 
@@ -448,6 +469,8 @@ export function startScene(opts: SceneOptions): { stop: () => void; kick: () => 
       stopped = true;
       if (raf) cancelAnimationFrame(raf);
       resize.disconnect();
+      window.visualViewport?.removeEventListener("resize", relayout);
+      window.visualViewport?.removeEventListener("scroll", relayout);
       window.removeEventListener("scroll", relayout);
       document.removeEventListener("visibilitychange", kick);
       gltfScene?.traverse((o) => {
