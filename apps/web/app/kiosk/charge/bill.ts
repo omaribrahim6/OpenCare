@@ -4,24 +4,24 @@
 export type ChargeLine = { label: string; cents: number };
 export type ChargeMethod = "nfc" | "hold";
 
-/** Priced like a real US hospital bill. Totals exactly $456,832.16. */
+/** A car accident bill, at a tenth of what a US hospital charges. Totals $45,683.23. */
 export const CAR_ACCIDENT_PRESET: ChargeLine[] = [
-  { label: "Trauma team activation", cents: 1_845_000 },
-  { label: "ALS ambulance", cents: 387_540 },
-  { label: "ER level 5 critical care", cents: 1_296_000 },
-  { label: "CT head + C-spine", cents: 984_275 },
-  { label: "MRI brain w/ contrast", cents: 761_520 },
-  { label: "Cranioplasty (skull reconstruction)", cents: 19_840_000 },
-  { label: "OR time, 6 h", cents: 4_230_000 },
-  { label: "Anesthesia", cents: 1_678_050 },
-  { label: "Neurosurgeon fee", cents: 3_850_000 },
-  { label: "ICU bed, 4 nights", cents: 5_280_000 },
-  { label: "Med-surg bed, 6 nights", cents: 2_790_000 },
-  { label: "Bandages and wound dressings", cents: 428_690 },
-  { label: "Painkillers (IV morphine, oxycodone)", cents: 391_265 },
-  { label: "Labs and blood panels", cents: 641_830 },
-  { label: "Physical therapy", cents: 425_000 },
-  { label: "Supplies and pharmacy misc", cents: 854_046 },
+  { label: "Trauma team activation", cents: 184_500 },
+  { label: "ALS ambulance", cents: 38_754 },
+  { label: "ER level 5 critical care", cents: 129_600 },
+  { label: "CT head + C-spine", cents: 98_428 },
+  { label: "MRI brain w/ contrast", cents: 76_152 },
+  { label: "Cranioplasty (skull reconstruction)", cents: 1_984_000 },
+  { label: "OR time, 6 h", cents: 423_000 },
+  { label: "Anesthesia", cents: 167_805 },
+  { label: "Neurosurgeon fee", cents: 385_000 },
+  { label: "ICU bed, 4 nights", cents: 528_000 },
+  { label: "Med-surg bed, 6 nights", cents: 279_000 },
+  { label: "Bandages and wound dressings", cents: 42_869 },
+  { label: "Painkillers (IV morphine, oxycodone)", cents: 39_127 },
+  { label: "Labs and blood panels", cents: 64_183 },
+  { label: "Physical therapy", cents: 42_500 },
+  { label: "Supplies and pharmacy misc", cents: 85_405 },
 ];
 export const CAR_ACCIDENT_PRESET_ID = "car_accident";
 
@@ -41,7 +41,7 @@ export type CheckStep = {
 
 /**
  * After the card is scanned the bill is checked in this order (about 20 s in all), each step
- * taking its discount off. Together they take 32% off: on the preset, -$146,186.29.
+ * taking its discount off. Together they take 32% off: on the preset, -$14,618.63.
  */
 export const CHECK_STEPS: CheckStep[] = [
   {
@@ -86,6 +86,6 @@ export function parseCents(text: string): number | null {
 export const centsText = (cents: number) =>
   (cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-/** Full-cents currency for the bill, receipt and totals: $456,832.16, $18,450.00. */
+/** Full-cents currency for the bill, receipt and totals: $45,683.23, $1,845.00. */
 export const money = (cents: number) =>
   (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
