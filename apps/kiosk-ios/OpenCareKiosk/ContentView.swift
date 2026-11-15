@@ -21,6 +21,12 @@ struct ContentView: View {
             } message: {
                 Text("This device has no NFC (debug build). Enter a CareCard token.")
             }
+            .alert("Card not accepted", isPresented: Binding(
+                get: { model.simulateError != nil }, set: { if !$0 { model.simulateError = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(model.simulateError ?? "")
+            }
             .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
     }
 }

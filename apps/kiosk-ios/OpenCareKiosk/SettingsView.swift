@@ -5,9 +5,29 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var serverText = ""
     @State private var invalid = false
+    @State private var writeToken = ""
+    @State private var writeStatus: String?
+    @State private var writing = false
+    @State private var writer = CareCardWriter()
     #if DEBUG
     @State private var debugToken = ""
     #endif
+
+    private func writeCard() {
+        guard let token = CareCardToken.from(text: writeToken) else { return }
+        writing = true
+        writeStatus = nil
+        writer.write(token: token) { result in
+            writing = false
+            switch result {
+            case .success:
+                writeStatus = "CareCard written."
+                writeToken = ""
+            case .failure(let error):
+                writeStatus = error.description
+            }
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -35,8 +55,22 @@ struct SettingsView: View {
 
                 Section("Kiosk") {
                     Button("Pair this kiosk (staff PIN)") { model.open(path: "/pair"); dismiss() }
-                    Button("Kiosk start") { model.open(path: KioskModel.startPath); dismiss() }
+                    Button("Charge screen") { model.open(path: KioskModel.startPath); dismiss() }
                     Button("Reload") { model.reload(); dismiss() }
+                }
+
+                Section {
+                    TextField("Card token", text: $writeToken)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .font(.body.monospaced())
+                    Button(writing ? "Hold the card to the iPhone…" : "Write to card") { writeCard() }
+                        .disabled(writing || CareCardToken.from(text: writeToken) == nil)
+                    if let writeStatus { Text(writeStatus).font(.footnote).foregroundStyle(.secondary) }
+                } header: {
+                    Text("Write CareCard (staff)")
+                } footer: {
+                    Text("Paste the card token (the part after /t/ also works as a full link). It is written as one NFC text record and is not saved in the app. Locked tags can't be rewritten.")
                 }
 
                 Section("CareCard reader") {
@@ -73,6 +107,7 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Kiosk settings")
+            .onDisappear { writeToken = "" }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .onAppear { serverText = model.server.absoluteString }
