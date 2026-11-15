@@ -241,3 +241,34 @@ export async function requestHelp(req: RequestHelpRequest, demo = false) {
 
 /** Formula-ordered queue; each row carries its decision brief, path and remaining balance. */
 export const getBriefedQueue = () => (LIVE ? get<ReviewQueue>("/api/review/queue") : mock6.getReviewQueue());
+
+// Kiosk charges ---------------------------------------------------------------------------------
+
+/** The receipt a kiosk sends to /admin after the patient pays (route proposed on the board). */
+export type KioskChargeRequest = {
+  items: { label: string; cents: number }[];
+  discounts: { label: string; cents: number }[];
+  method: "nfc" | "hold";
+  preset: string | null;
+};
+export type KioskChargeResult =
+  | { sent: true; id: string }
+  | { sent: false; reason: "mock" | "not_kiosk" | "unavailable" | "failed" };
+
+/**
+ * POST /api/kiosk/charges from a paired kiosk. Never throws: the receipt stays on screen either
+ * way, and the result says whether /admin got it.
+ */
+export async function sendKioskCharge(req: KioskChargeRequest): Promise<KioskChargeResult> {
+  if (!LIVE) return { sent: false, reason: "mock" };
+  try {
+    const res = await post<{ charge?: { id?: string } }>("/api/kiosk/charges", req);
+    return { sent: true, id: res?.charge?.id ?? "" };
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      if (error.status === 401 || error.status === 403) return { sent: false, reason: "not_kiosk" };
+      if (error.status === 404 || error.status === 405) return { sent: false, reason: "unavailable" };
+    }
+    return { sent: false, reason: "failed" };
+  }
+}
