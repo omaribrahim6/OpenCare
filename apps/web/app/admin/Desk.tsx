@@ -197,7 +197,20 @@ export function Desk({ initialView }: { initialView: DeskView }) {
     );
   }
 
-  if (view === "fund" && load.phase === "done") return shell(<FundWorkspace key="fund" initialTab="overview" onLedger={() => setView("ledger")} />);
+  if (view === "fund" && load.phase === "done") return shell(
+      <FundWorkspace
+        key="fund"
+        initialTab="overview"
+        onLedger={() => setView("ledger")}
+        queue={items}
+        onViewQueue={() => setView("queue")}
+        onOpenRequest={(id) => {
+          setView("queue");
+          setSelectedId(id);
+          setDrawerId(id);
+        }}
+      />,
+    );
 
   if (view === "decided" && load.phase === "done") return shell(<Decided tick={decidedTick} />);
 
