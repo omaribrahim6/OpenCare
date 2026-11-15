@@ -137,7 +137,7 @@ function SignIn({ cardToken, onSignedIn }: { cardToken: string | null; onSignedI
         <p>
           {useCard
             ? "Enter your birth date to open your account."
-            : "Your account ID is printed on the front of your CareCard. You can also tap the card on the top of your phone."}
+            : "Your account ID is printed on the front of your CareCard."}
         </p>
         {!useCard && (
           <label className="d-login-field">
