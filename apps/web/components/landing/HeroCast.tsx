@@ -85,7 +85,8 @@ export function HeroCast() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<PortraitScene | null>(null);
-  const shownRef = useRef(-1);
+  // Which speaker the scene is showing. State, not a ref, so the canvas turns on when it changes.
+  const [shown, setShown] = useState(-1);
 
   // Start the 3D scene. Three.js loads only here, after the page is up.
   useEffect(() => {
@@ -112,20 +113,20 @@ export function HeroCast() {
   // Put the current speaker on stage once their model is in; fade across a change of speaker.
   useEffect(() => {
     const scene = sceneRef.current;
-    if (!scene || !loaded[index] || shownRef.current === index) return;
-    if (shownRef.current < 0 || reduced) {
-      shownRef.current = index;
+    if (!scene || !loaded[index] || shown === index) return;
+    if (shown < 0 || reduced) {
       scene.show(index);
+      setShown(index);
       return;
     }
     setSwapping(true);
     const timer = window.setTimeout(() => {
-      shownRef.current = index;
       scene.show(index);
+      setShown(index);
       setSwapping(false);
     }, SWAP_MS);
     return () => window.clearTimeout(timer);
-  }, [index, loaded, reduced]);
+  }, [index, loaded, reduced, shown]);
 
   // Pass the floor in turn until the reader picks someone.
   const next = (index + 1) % SPEAKERS.length;
@@ -141,7 +142,7 @@ export function HeroCast() {
   };
 
   const s = SPEAKERS[index];
-  const ready = loaded[index] && shownRef.current === index && !swapping;
+  const ready = loaded[index] && shown === index && !swapping;
 
   return (
     <div
