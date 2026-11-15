@@ -219,14 +219,15 @@ export function ChargeFlow() {
   // ---- Screens
 
   const staff = phase === "build" || phase === "search" || phase === "review";
+  const scanning = phase === "tap" || phase === "paying";
 
   return (
-    <main className={`page station station-session kc kc-${phase}`}>
-      <div className="station-bar">
+    <main className={`${scanning ? "kc-scan" : "page station station-session"} kc kc-${phase}`}>
+      {!scanning && <div className="station-bar">
         <Logo href={null} />
         <span className="kc-who">{staff ? <><Icon name="hospital" size={15} /> Hospital staff</> : <><Icon name="user" size={15} /> Patient</>}</span>
-      </div>
-      {!LIVE && <p className="kc-demo"><Icon name="info" size={15} /> Demo · simulated payment</p>}
+      </div>}
+      {!LIVE && !scanning && <p className="kc-demo"><Icon name="info" size={15} /> Demo · simulated payment</p>}
 
       {phase === "build" && (
         <section aria-labelledby="kc-title">
@@ -345,13 +346,12 @@ export function ChargeFlow() {
 
       {(phase === "tap" || phase === "paying") && (
         <section className="kc-pay" aria-labelledby="kc-title">
-          <p className="kc-due">Amount due</p>
-          <strong className="kc-due-amount">{money(paidCents)}</strong>
-          <h1 id="kc-title">{phase === "paying" ? "Processing…" : nfc === "on" ? "Tap your phone or card on the top of this phone" : "Hold the circle to pay"}</h1>
+          {/* The reader sits at the top edge, over the phone's NFC antenna. A finger held on it
+              for a second also pays: the presenter fallback where there's no Web NFC (iPhone). */}
           <button
             type="button"
             className={`kc-disc${holding ? " is-holding" : ""}${phase === "paying" ? " is-paying" : ""}`}
-            aria-label={`Hold to pay ${money(paidCents)}`}
+            aria-label="Card reader"
             disabled={phase === "paying"}
             onPointerDown={startHold}
             onPointerUp={endHold}
@@ -363,15 +363,24 @@ export function ChargeFlow() {
             <span className="kc-ring" />
             <span className="kc-ring" />
             <span className="kc-fill" />
-            {phase === "paying" ? <span className="kc-spin kc-spin-lg" /> : <Icon name="tap" size={46} strokeWidth={1.6} />}
+            {phase === "paying" ? <span className="kc-spin kc-spin-lg" /> : <Icon name="tap" size={44} strokeWidth={1.6} />}
           </button>
+          <h1 id="kc-title">
+            {phase === "paying" ? "Card read" : <>Hold your card or phone to the <span className="kc-hl">top</span> of this phone</>}
+            {phase !== "paying" && (
+              <svg className="kc-up" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" /></svg>
+            )}
+          </h1>
           <p className="kc-nfc" role="status">
-            {phase === "paying" ? "Approving payment (simulated)." :
-              nfc === "on" ? "Contactless is on. You can also hold the circle." :
-              nfc === "starting" ? "Turning on contactless…" :
-              nfc === "blocked" ? "Contactless isn't available (NFC off or not allowed). Hold the circle instead." :
-              "Press and hold the circle for a second."}
+            {phase === "paying" ? "Processing payment (simulated)…" :
+              nfc === "starting" ? "Turning on the card reader…" :
+              nfc === "blocked" ? "Turn on NFC in this phone's settings to use the card reader." :
+              "Waiting for your card…"}
           </p>
+          <div className="kc-due">
+            <span>Amount due</span>
+            <strong>{money(paidCents)}</strong>
+          </div>
           {phase === "tap" && <button type="button" className="kc-skip" onClick={cancelCharge}>Cancel</button>}
         </section>
       )}
@@ -389,7 +398,7 @@ export function ChargeFlow() {
           </div>
           <Summary items={items} discounts={discounts} paid />
           <dl className="kc-meta">
-            <div><dt>Paid with</dt><dd>{method === "nfc" ? "Contactless tap (NFC)" : "Tap on screen"}</dd></div>
+            <div><dt>Paid with</dt><dd>{method === "nfc" ? "Contactless card (NFC)" : "Contactless card"}</dd></div>
             <div><dt>Payment</dt><dd>Simulated · no card data read</dd></div>
           </dl>
           <p className={`kc-sent${sent?.sent ? " is-sent" : ""}`} role="status">
