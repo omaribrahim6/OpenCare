@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Logo } from "@/components/Logo";
-import { LIVE, sendKioskCharge, type KioskChargeResult } from "@/lib/api";
+import { LIVE } from "@/lib/api";
 import {
   CAR_ACCIDENT_PRESET,
   CAR_ACCIDENT_PRESET_ID,
@@ -17,20 +18,19 @@ import {
   SEARCH_STEPS,
   total,
   type ChargeLine,
-  type ChargeMethod,
 } from "./bill";
-import { watchForTap, type NfcWatch } from "./nfc";
+import { PAID_PATH, savePending } from "./pending";
+import { Summary } from "./Summary";
 
-// /kiosk/charge: hospital staff build an itemized bill, run the discount search, then hand the
-// phone to the patient, who taps a phone or card to pay. The receipt goes to /admin. The payment
-// is simulated: no card data is ever read.
+// /kiosk/charge: hospital staff build an itemized bill, run the discount search and press Charge.
+// The patient then scans a card or phone at the top of the kiosk phone, which opens
+// /kiosk/charge/paid (the receipt, sent to /admin). Holding a finger on the reader opens the same
+// page, for presenters. The payment is simulated: no card data is ever read.
 
 type Row = { key: number; label: string; amount: string };
-type Phase = "build" | "search" | "review" | "tap" | "paying" | "receipt";
-type NfcState = "off" | "starting" | "on" | "blocked";
+type Phase = "build" | "search" | "review" | "tap" | "paying";
 
 const HOLD_MS = 1200;
-const PAYING_MS = 1800;
 
 let nextKey = 1;
 const row = (label = "", cents?: number): Row => ({ key: nextKey++, label, amount: cents ? centsText(cents) : "" });
@@ -75,27 +75,14 @@ function useCountTo(target: number) {
   return shown;
 }
 
-const receiptNumber = () => `KC-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-
-const SEND_NOTE: Record<Exclude<KioskChargeResult, { sent: true }>["reason"], string> = {
-  mock: "Demo mode: this receipt stays on this phone.",
-  not_kiosk: "Not sent to admin: pair this phone as a kiosk with the staff PIN first.",
-  unavailable: "Not sent to admin yet: the admin route isn't live. The receipt stays on this phone.",
-  failed: "Couldn't reach admin. The receipt stays on this phone.",
-};
-
 export function ChargeFlow() {
+  const router = useRouter();
   const [phase, setPhase] = useState<Phase>("build");
   const [rows, setRows] = useState<Row[]>(() => [row()]);
   const [preset, setPreset] = useState<string | null>(null);
   const [bill, setBill] = useState<{ items: ChargeLine[]; discounts: ChargeLine[] } | null>(null);
   const [found, setFound] = useState(0); // search steps finished
-  const [method, setMethod] = useState<ChargeMethod>("hold");
-  const [nfc, setNfc] = useState<NfcState>("off");
   const [holding, setHolding] = useState(false);
-  const [sent, setSent] = useState<KioskChargeResult | null>(null);
-  const [receipt, setReceipt] = useState<{ no: string; at: Date } | null>(null);
-  const watch = useRef<NfcWatch | null>(null);
   const hold = useRef(0);
   const run = useRef(0);
 
@@ -111,15 +98,10 @@ export function ChargeFlow() {
   const foundCents = SEARCH_STEPS.slice(0, found).reduce((s, step) => s + (step.finds === null ? 0 : discounts[step.finds]?.cents ?? 0), 0);
   const running = useCountTo(phase === "search" ? billOriginal - foundCents : phase === "build" ? original : paidCents);
 
-  const stopNfc = useCallback(() => {
-    watch.current?.stop();
-    watch.current = null;
-  }, []);
   useEffect(() => () => {
-    stopNfc();
     window.clearTimeout(hold.current);
     run.current++;
-  }, [stopNfc]);
+  }, []);
 
   // ---- Build
 
@@ -156,64 +138,32 @@ export function ChargeFlow() {
     setPhase("review");
   };
 
-  // ---- Charge: the patient taps a phone or card (Web NFC), or holds the circle.
-
-  const paid = useCallback((how: ChargeMethod) => {
-    if (!bill) return;
-    stopNfc();
-    window.clearTimeout(hold.current);
-    setHolding(false);
-    setMethod(how);
-    navigator.vibrate?.(60);
-    setPhase("paying");
-    setSent(null);
-    setReceipt({ no: receiptNumber(), at: new Date() });
-    const id = ++run.current;
-    const sending = sendKioskCharge({ items: bill.items, discounts: bill.discounts, method: how, preset });
-    void Promise.all([sending, new Promise((r) => window.setTimeout(r, PAYING_MS))]).then(([result]) => {
-      if (id !== run.current) return;
-      setSent(result);
-      setPhase("receipt");
-    });
-  }, [bill, preset, stopNfc]);
+  // ---- Charge: save the bill for /kiosk/charge/paid, then wait for the card scan, which opens
+  // that page. A finger held on the reader opens it too.
 
   const charge = () => {
+    if (!bill) return;
+    savePending({ ...bill, preset, createdAt: new Date().toISOString(), receipt: null });
     setPhase("tap");
-    // Staff pressing Charge is the user gesture Web NFC needs to start scanning.
-    const w = watchForTap(() => paid("nfc"));
-    watch.current = w;
-    if (!w) return setNfc("off");
-    setNfc("starting");
-    w.ready.then(() => setNfc((s) => (s === "starting" ? "on" : s))).catch(() => {
-      if (watch.current === w) watch.current = null;
-      setNfc("blocked");
-    });
   };
   const cancelCharge = () => {
-    stopNfc();
     window.clearTimeout(hold.current);
     setHolding(false);
     setPhase("review");
   };
+  const paidByHold = () => {
+    setHolding(false);
+    setPhase("paying");
+    router.push(`${PAID_PATH}?via=hold`);
+  };
   const startHold = () => {
     window.clearTimeout(hold.current);
     setHolding(true);
-    hold.current = window.setTimeout(() => paid("hold"), HOLD_MS);
+    hold.current = window.setTimeout(paidByHold, HOLD_MS);
   };
   const endHold = () => {
     window.clearTimeout(hold.current);
     setHolding(false);
-  };
-
-  const newBill = () => {
-    run.current++;
-    stopNfc();
-    setBill(null);
-    setSent(null);
-    setReceipt(null);
-    setFound(0);
-    clearBill();
-    setPhase("build");
   };
 
   // ---- Screens
@@ -357,7 +307,7 @@ export function ChargeFlow() {
             onPointerUp={endHold}
             onPointerLeave={endHold}
             onPointerCancel={endHold}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") paid("hold"); }}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") paidByHold(); }}
             onContextMenu={(e) => e.preventDefault()}
           >
             <span className="kc-ring" />
@@ -371,12 +321,7 @@ export function ChargeFlow() {
               <svg className="kc-up" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" /></svg>
             )}
           </h1>
-          <p className="kc-nfc" role="status">
-            {phase === "paying" ? "Processing payment (simulated)…" :
-              nfc === "starting" ? "Turning on the card reader…" :
-              nfc === "blocked" ? "Turn on NFC in this phone's settings to use the card reader." :
-              "Waiting for your card…"}
-          </p>
+          <p className="kc-nfc" role="status">{phase === "paying" ? "Processing payment (simulated)…" : "Waiting for your card…"}</p>
           <div className="kc-due">
             <span>Amount due</span>
             <strong>{money(paidCents)}</strong>
@@ -385,55 +330,6 @@ export function ChargeFlow() {
         </section>
       )}
 
-      {phase === "receipt" && bill && receipt && (
-        <section aria-labelledby="kc-title">
-          <div className="kc-paid">
-            <Icon name="checkCircle" size={30} />
-            <div>
-              <h1 id="kc-title">Paid {money(paidCents)}</h1>
-              <p className="muted">
-                {receipt.at.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })} · {receipt.no}
-              </p>
-            </div>
-          </div>
-          <Summary items={items} discounts={discounts} paid />
-          <dl className="kc-meta">
-            <div><dt>Paid with</dt><dd>{method === "nfc" ? "Contactless card (NFC)" : "Contactless card"}</dd></div>
-            <div><dt>Payment</dt><dd>Simulated · no card data read</dd></div>
-          </dl>
-          <p className={`kc-sent${sent?.sent ? " is-sent" : ""}`} role="status">
-            <Icon name={sent?.sent ? "check" : "info"} size={15} />
-            {sent?.sent ? "Sent to admin for review." : sent ? SEND_NOTE[sent.reason] : "Sending to admin…"}
-          </p>
-          <button type="button" className="btn btn-lg kc-primary" onClick={newBill}>
-            <Icon name="plus" size={18} /> New bill
-          </button>
-        </section>
-      )}
     </main>
-  );
-}
-
-/** Original charges (itemized, collapsible), each discount, and what the patient pays. */
-function Summary({ items, discounts, paid = false }: { items: ChargeLine[]; discounts: ChargeLine[]; paid?: boolean }) {
-  const original = total(items);
-  const off = total(discounts);
-  return (
-    <div className="kc-summary">
-      <details>
-        <summary>
-          <span>Original bill · {items.length} {items.length === 1 ? "item" : "items"}</span>
-          <b>{money(original)}</b>
-        </summary>
-        <ul>
-          {items.map((l, n) => <li key={`${n}-${l.label}`}><span>{l.label}</span><span>{money(l.cents)}</span></li>)}
-        </ul>
-      </details>
-      {discounts.map((d) => (
-        <div key={d.label} className="kc-row kc-off"><span>{d.label}</span><b>−{money(d.cents)}</b></div>
-      ))}
-      <div className="kc-row kc-off kc-subtle"><span>Total discount</span><b>−{money(off)}</b></div>
-      <div className="kc-row kc-final"><span>{paid ? "Paid" : "Patient pays"}</span><b>{money(original - off)}</b></div>
-    </div>
   );
 }
