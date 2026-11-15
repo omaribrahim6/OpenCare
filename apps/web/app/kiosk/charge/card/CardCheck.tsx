@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Icon, type IconName } from "@/components/Icon";
@@ -182,6 +183,13 @@ export function CardCheck({ method }: { method: ChargeMethod }) {
           <p className="kc-lead">
             A reviewer will look at your request for <b>{money(outcome.cents)}</b>. If it&apos;s approved, the fund pays the
             hospital directly. You don&apos;t need to do anything else.
+          </p>
+          <p className="kc-track">
+            <Icon name="external" size={15} />
+            <span>
+              Track this claim at{" "}
+              <Link href="/user">{typeof window === "undefined" ? "" : window.location.host}/user</Link>
+            </span>
           </p>
           <Summary items={charge.items} discounts={outcome.discounts} finalLabel="Requested from the fund" />
           <dl className="kc-meta">
