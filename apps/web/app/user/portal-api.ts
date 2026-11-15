@@ -7,6 +7,7 @@ import type {
   PortalSessionResponse,
   PortalSignInRequest,
 } from "@abdulcare/contracts";
+import { scrub } from "@/lib/display";
 
 export class PortalError extends Error {
   constructor(
@@ -25,7 +26,8 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) throw new PortalError(res.status, body?.error?.message ?? `Request failed (${res.status})`);
-  return body as T;
+  // Same clean-up as every other page: no "(fictional)" or "simulated" labels on screen.
+  return scrub(body) as T;
 }
 
 export const getOverview = () => call<PortalOverviewResponse>("/api/user/me");
