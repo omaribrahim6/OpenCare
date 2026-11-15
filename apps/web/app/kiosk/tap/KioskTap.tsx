@@ -62,7 +62,27 @@ type Stream = { t: number; wobble: number; dur: number; delay: number; len: numb
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 
-export function KioskTap({ lang, ended, who }: { lang: KioskLang; ended: boolean; who?: string }) {
+const dollars = (cents: number) =>
+  (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
+
+/**
+ * The CareCard tap screen. /kiosk uses it as the welcome screen; /kiosk/charge reuses it to ask
+ * the patient to pay, with `amountCents` shown under the headline and `onHold` replacing the demo
+ * start when a finger is held on the scanner.
+ */
+export function KioskTap({
+  lang,
+  ended,
+  who,
+  amountCents,
+  onHold,
+}: {
+  lang: KioskLang;
+  ended: boolean;
+  who?: string;
+  amountCents?: number;
+  onHold?: () => void;
+}) {
   const t = COPY[lang];
   const router = useRouter();
   const root = useRef<HTMLDivElement>(null);
@@ -217,6 +237,7 @@ export function KioskTap({ lang, ended, who }: { lang: KioskLang; ended: boolean
     unpoke.current = window.setTimeout(() => setPoked(false), 1800);
     window.clearTimeout(hold.current);
     hold.current = window.setTimeout(async () => {
+      if (onHold) return onHold();
       const live = await startKioskDemoSession();
       if (live) {
         router.push(live.visitId ? `/kiosk/check?visit=${encodeURIComponent(live.visitId)}` : "/kiosk/check");
@@ -314,6 +335,12 @@ export function KioskTap({ lang, ended, who }: { lang: KioskLang; ended: boolean
           </span>
           {words(post)}
         </h1>
+        {amountCents !== undefined && (
+          <p className="kt-due">
+            <span>Amount due</span>
+            <strong>{dollars(amountCents)}</strong>
+          </p>
+        )}
         <p className="kt-ended" role="status">{showEnded ? t.ended : ""}</p>
       </main>
     </div>
