@@ -301,3 +301,23 @@ body:has(.kc-scan) { background: linear-gradient(180deg, #dbe8ff, #f3f7ff 55%, #
 .kc-lead { margin: 0 0 14px; color: var(--kc-muted); }
 .kc-lead b { color: var(--kc-ink); }
 @media (prefers-reduced-motion: reduce) { .kc-choices { animation: none; } }
+
+/* Staff: the final charge and Charge button pinned to the bottom of the screen. */
+.kc-checkout {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  gap: 10px;
+  margin: 16px calc(clamp(20px, 5vw, 32px) * -1) calc(clamp(20px, 5vw, 32px) * -1);
+  padding: 12px clamp(20px, 5vw, 32px) calc(14px + env(safe-area-inset-bottom, 0px));
+  border-radius: 0 0 28px 28px;
+  background: linear-gradient(180deg, #f6f9fecc, #f3f7ff 30%);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--kc-line);
+}
+.kc-checkout .kc-total { margin-top: 0; padding: 10px 16px; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.kc-checkout .kc-total strong { font-size: clamp(24px, 7vw, 32px); }
+.kc-checkout .kc-primary { margin-top: 0; }
+.kc-checkout .kc-hint { margin: 0; }
