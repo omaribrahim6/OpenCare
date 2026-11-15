@@ -68,11 +68,6 @@ export async function redeemGrant(
   deps: PaymentsDeps,
   input: { grantId: string; providerId: string; patientId: string },
 ): Promise<RedeemResult> {
-  // Nessie stores whole dollars only (it truncates cents), so check before claiming anything.
-  const target = await loadTarget(deps.db, input.grantId);
-  if (target.status === "approved" && target.approvedCents % 100 !== 0) {
-    throw new CoreError("bad_request", "Nessie pays whole dollars only; approve a whole-dollar amount");
-  }
   const { grant } = await claimForRedemption(deps.db, input);
   const payout = grant.status === "paid" ? "paid" : await settleNessie(deps, input.grantId);
   if (payout === "paid") await settleReceiptSafely(deps, input.grantId);
@@ -140,8 +135,18 @@ export function payoutDescription(idempotencyKey: string): string {
   return `AbdulCare grant payout ${idempotencyKey}`;
 }
 
+/**
+ * What the Nessie purchase moves for an approval. Nessie's sandbox keeps whole dollars only (it
+ * truncates cents), so it moves the whole-dollar part; our records keep the exact approved cents,
+ * the same split history-seed uses.
+ */
+export function nessiePayoutCents(approvedCents: number): number {
+  return approvedCents - (approvedCents % 100);
+}
+
 function matchesPayout(p: NessiePurchase, target: PayoutTarget): boolean {
-  return p.merchant_id === target.merchantId && dollarsToCents(p.amount) === target.approvedCents;
+  const moved = dollarsToCents(p.amount);
+  return p.merchant_id === target.merchantId && (moved === nessiePayoutCents(target.approvedCents) || moved === target.approvedCents);
 }
 
 // Nessie rail
@@ -185,7 +190,7 @@ async function settleNessie(deps: PaymentsDeps, grantId: string): Promise<Payout
     try {
       purchase = await nessie.createPurchase(deps.fundAccountId, {
         merchantId: target.merchantId,
-        amountCents: target.approvedCents,
+        amountCents: nessiePayoutCents(target.approvedCents),
         description: payoutDescription(attempt.idempotencyKey),
       });
     } catch (err) {
