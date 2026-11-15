@@ -121,13 +121,13 @@ export function ChargeFlow() {
             {phase === "reading" ? <span className="kc-spin kc-spin-lg" /> : <Icon name="tap" size={44} strokeWidth={1.6} />}
           </button>
           <h1 id="kc-title">
-            {phase === "reading" ? "Card read" : <>Hold your card or phone to the <span className="kc-hl">top</span> of this phone</>}
+            {phase === "reading" ? "CareCard read" : <>Tap your CareCard on the <span className="kc-hl">top</span> of this phone</>}
             {phase !== "reading" && (
               <svg className="kc-up" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" /></svg>
             )}
           </h1>
           <p className="kc-nfc" role="status">
-            {phase === "reading" ? "Checking your insurance…" : "We'll check your insurance and the hospital's help before you pay anything."}
+            {phase === "reading" ? "Checking your insurance…" : "We'll take off your insurance and the hospital's help before you pay anything."}
           </p>
         </section>
         <section className="kc-billcard" aria-label="Your bill">
@@ -204,14 +204,17 @@ export function ChargeFlow() {
           <Icon name="plus" size={16} /> Add line item
         </button>
 
-        <div className="kc-total">
-          <span>Total charges · {lines?.length ?? 0} {lines?.length === 1 ? "item" : "items"}</span>
-          <strong>{money(original)}</strong>
+        {/* The final charge and the Charge button stay on screen while staff scroll the lines. */}
+        <div className="kc-checkout">
+          {lines === null && <p className="kc-hint" role="status">Every line needs a description and an amount above $0.</p>}
+          <div className="kc-total">
+            <span>Final charge · {lines?.length ?? 0} {lines?.length === 1 ? "item" : "items"}</span>
+            <strong>{money(original)}</strong>
+          </div>
+          <button type="button" className="btn btn-lg kc-primary" disabled={!canCharge} onClick={charge}>
+            <Icon name="card" size={18} /> Charge patient
+          </button>
         </div>
-        {lines === null && <p className="kc-hint" role="status">Every line needs a description and an amount above $0.</p>}
-        <button type="button" className="btn btn-lg kc-primary" disabled={!canCharge} onClick={charge}>
-          <Icon name="card" size={18} /> Charge patient
-        </button>
       </section>
     </main>
   );

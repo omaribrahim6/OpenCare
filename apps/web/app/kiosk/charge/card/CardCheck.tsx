@@ -219,7 +219,7 @@ export function CardCheck({ method }: { method: ChargeMethod }) {
       {!LIVE && <p className="kc-demo"><Icon name="info" size={15} /> Demo · simulated payment</p>}
       <section className="bw" aria-labelledby="kc-title">
         <h1 id="kc-title">{checked ? "Your bill, checked" : "Checking your bill"}</h1>
-        <p className="muted kc-sub">{checked ? "Here's what's left after every discount." : "Card read. Looking for every discount before you pay."}</p>
+        <p className="muted kc-sub">{checked ? "Here's what's left after every discount." : "CareCard read. Taking off every discount before you pay."}</p>
 
         <div className="bw-balance">
           <span>{checked ? "Left to pay" : "Balance"}</span>
