@@ -59,7 +59,7 @@ The full list is in §16 of the proposal text below. These are the ones that blo
 | Q3 | Does Gemini still rank the fund's queue? | Proposal §3C | No. The published `need-v1` formula orders the fund's queue; the ranking code can stay unused in `packages/ai` | **Decided:** drop Gemini ranking; `need-v1` orders the queue |
 | Q4 | How is "submitted" shown when nothing is actually submitted? | Proposal §5 Stage 6 | "Submitted (simulated)", with the label always visible | **Decided** |
 | Q5 | What happens to the current kiosk, provider and caseworker screens? | Musa's Claude | Revision 2: the provider terminal becomes the hospital intake terminal; the caseworker desk becomes the final reviewer's queue with the decision brief; the kiosk becomes the patient's bill page | **Decided** |
-| Q6 | Product name: keep "TrumpCare"? | Musa's Claude | "TrumpCare" was the popular name for the 2017 AHCA repeal bill and could read as political or satire. Decide separately from the product | Open |
+| Q6 | Product name: keep "TrumpCare"? | Musa's Claude | **OpenCare** (Omar, Nov 14, PR #98). Earlier: AbdulCare, and the working name TrumpCare, which was the popular name for the 2017 AHCA repeal bill | Decided |
 | Q7 | Does the bill come from Nessie, from a seeded document, or both? | Proposal §3E | A seeded hospital-attested bill, with no OCR. The injection flag stays on the seeded documents and packet text (a tampered seeded bill is still a demo moment). Nessie keeps payouts and donations | **Decided:** seeded, hospital-attested |
 | Q9 | When the AI "applies" to a hospital policy, who decides it? | Musa's Claude | **Musa:** the hospital approves it. For the demo that approval is simulated (the policy's rules decide) and always labeled "hospital decision (simulated)" | **Decided** (Musa; accepted by Omar) |
 | Q10 | Is the fund's algorithm an eligibility cut-off, a ranking, or both? | Musa's Claude | **Musa: ranking only, no cut-off.** Everyone is eligible (the point of Medicare for All is that it's for everyone); the fixed algorithm puts the most eligible first and the less eligible further down the queue | **Decided** (Musa; accepted by Omar) |
@@ -101,7 +101,7 @@ Revision 2, accepted with the proposal. Musa can still adjust it; the spec PR is
 - **Overclaiming:** simulated submissions or decisions shown as real would undercut trust with judges.
 - **Scope:** revision 2 adds insurance and hospital-policy steps; it must still fit before Sun 9:00 AM. Cut first: the insurance UI detail, then the number of policies.
 - **Gemini availability** (Q8): the key is approved now, but every Gemini step keeps its rule or template fallback so a failed or slow call never stalls the demo.
-- **Naming** (Q6).
+- **Naming** (Q6): resolved, the product is OpenCare.
 
 ## Positions
 
@@ -148,6 +148,7 @@ Musa's Claude (an opinion): agree, with changes. The pivot only works with the M
 
 ## Decision log
 
+- **2026-11-14 20:25 EST: Q6 decided.** Omar named the product **OpenCare** (PR #98, also recorded in SPEC). All open questions are now closed.
 - **2026-11-14 13:30 EST: specced.** Musa approved SPEC revision 6 (PR #41). Q6 (the name) remains open for Musa.
 - **2026-11-14 12:30 EST: accepted** by `@omaribrahim6` (DECIDED on #32): revision 2 as Musa proposes it, including his answers to Q1–Q5, Q7 and Q9–Q13. Musa settles the remaining open questions (Q6 name; Q12 owning lane), the MVP scope and the spec PR without further approval. Omar's Vertex AI key is approved for all agents (Q8): Gemini runs live, with fallbacks kept.
 
@@ -161,6 +162,7 @@ Musa's Claude (an opinion): agree, with changes. The pivot only works with the M
 - 2026-11-14 12:45 EST, Musa's Claude (steward): Q11 answered by Musa; the brief suggests the full remaining balance. MVP item 5 now spells out the brief.
 - 2026-11-14 12:50 EST, Musa's Claude (steward): recorded Omar's decision. Status Accepted, decision log, answered questions marked decided, Q8 updated for the approved Vertex key. Q6 and Q12's owning lane remain open for Musa.
 - 2026-11-14 13:15 EST, Musa's Claude (steward): recorded Musa's two frontends (patient app and admin panel), the live-demo flow and payout on approval. Q12's lane is the api lane. Spec revision 6 drafted from this doc.
+- 2026-11-15 01:30 UTC, Musa's Claude (steward): marked Q6 decided (OpenCare, PR #98) and noted it in the decision log.
 
 ## Proposal (revision 1, for history)
 
