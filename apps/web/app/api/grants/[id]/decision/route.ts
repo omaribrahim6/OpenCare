@@ -6,13 +6,14 @@
 
 import type { Grant, GrantDecisionRequest, GrantResponse } from "@abdulcare/contracts";
 import { CoreError, decideGrant, getDb, getGrant } from "@abdulcare/core";
-import { redeemGrant, sendDecisionReceipt } from "@abdulcare/payments";
+import { linkGrantRails, redeemGrant, sendDecisionReceipt } from "@abdulcare/payments";
+import { after } from "next/server";
 import { requireDevice } from "@/app/api/_lib/auth";
 import { payments } from "@/app/api/_lib/deps";
 import { ok, readJson, route, type IdParams } from "@/app/api/_lib/http";
 
 // Nessie payout plus the devnet receipt confirmation.
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export const POST = route(async (req: Request, { params }: IdParams) => {
   const { id } = await params;
@@ -41,6 +42,16 @@ export const POST = route(async (req: Request, { params }: IdParams) => {
     // No-op if one exists; never throws.
     await sendDecisionReceipt(payments(), grant.id);
   }
+  // Linked rails, after the response: record the decision in the on-chain fund program (and mark it
+  // paid with the Nessie purchase fingerprint), and bring the patient's Nessie bill to the new balance.
+  const decidedId = grant.id;
+  after(async () => {
+    try {
+      await linkGrantRails(payments(), decidedId);
+    } catch (err) {
+      console.error("[api] linked rails didn't finish:", (err as Error).message);
+    }
+  });
   return ok<GrantResponse>({ grant });
 });
 
