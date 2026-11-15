@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import type { Bill, Grant, GrantStatus, PortalOverviewResponse } from "@abdulcare/contracts";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import type { Bill, Grant, GrantStatus, PortalOverviewResponse, PortalPaymentReceipt } from "@abdulcare/contracts";
 import { GoldCareCard } from "@/components/desk/GoldCareCard";
 import { Icon } from "@/components/Icon";
 import { LogoWordmark } from "@/components/Logo";
@@ -251,6 +252,10 @@ function Dashboard({
     return o.kind === "partial" || o.kind === "denied" ? [{ bill: b, grant: g, outcome: o }] : [];
   });
   const refresh = () => getOverview().then(onRefresh, () => {});
+  // The pay sheet lives here, not on the bill, so the receipt stays up after the bill is paid off.
+  const [sheet, setSheet] = useState<{ visitId: string; receipt: PortalPaymentReceipt | null } | null>(null);
+  const receiptFor = (visitId: string) => data.receipts?.find((r) => r.visitId === visitId) ?? null;
+  const sheetBill = sheet ? bills.find((b) => b.visit.id === sheet.visitId) : undefined;
   const name = cleanName(patient.displayName);
   const owed = bills.reduce((s, b) => s + b.remainingCents, 0);
   const charged = bills.reduce((s, b) => s + b.chargesCents, 0);
@@ -315,7 +320,7 @@ function Dashboard({
                     {outcome.kind === "partial" && <>The fund denied the other {usd(outcome.deniedCents)}. </>}
                     You have <strong>{usd(outOfPocket(bill))}</strong> still to pay out of pocket.
                   </p>
-                  <PayButton visitId={bill.visit.id} amountCents={outOfPocket(bill)} onPaid={refresh} />
+                  <PayButton amountCents={outOfPocket(bill)} onPay={() => setSheet({ visitId: bill.visit.id, receipt: null })} />
                   <PlanOffer visitId={bill.visit.id} />
                 </li>
               ))}
@@ -351,7 +356,16 @@ function Dashboard({
             <ul className="u-list">
               {bills.map((b) => {
                 const g = byVisit.get(b.visit.id);
-                return <BillRow key={b.visit.id} bill={b} canPay={!g || !OPEN.includes(g.status)} onPaid={refresh} />;
+                return (
+                  <BillRow
+                    key={b.visit.id}
+                    bill={b}
+                    canPay={!g || !OPEN.includes(g.status)}
+                    receipt={receiptFor(b.visit.id)}
+                    onPay={() => setSheet({ visitId: b.visit.id, receipt: null })}
+                    onViewReceipt={(r) => setSheet({ visitId: b.visit.id, receipt: r })}
+                  />
+                );
               })}
             </ul>
           )}
@@ -384,6 +398,16 @@ function Dashboard({
           </p>
         </section>
       </main>
+      {sheet && sheetBill && (
+        <PaySheet
+          bill={sheetBill}
+          payFrom={data.payFrom ?? null}
+          initialReceipt={sheet.receipt}
+          liveReceipt={receiptFor(sheet.visitId)}
+          onPaid={refresh}
+          onClose={() => setSheet(null)}
+        />
+      )}
     </div>
   );
 }
@@ -445,7 +469,19 @@ function ClaimRow({ grant: g, bill }: { grant: Grant; bill?: Bill }) {
   );
 }
 
-function BillRow({ bill: b, canPay, onPaid }: { bill: Bill; canPay: boolean; onPaid: () => void }) {
+function BillRow({
+  bill: b,
+  canPay,
+  receipt,
+  onPay,
+  onViewReceipt,
+}: {
+  bill: Bill;
+  canPay: boolean;
+  receipt: PortalPaymentReceipt | null;
+  onPay: () => void;
+  onViewReceipt: (r: PortalPaymentReceipt) => void;
+}) {
   return (
     <li className="u-row">
       <details className="u-bill">
@@ -474,8 +510,25 @@ function BillRow({ bill: b, canPay, onPaid }: { bill: Bill; canPay: boolean; onP
           </li>
         </ol>
         {b.pendingCents > 0 && <p className="u-note">{usd(b.pendingCents)} is on its way from the community fund.</p>}
-        {b.patientPaidCents > 0 && <p className="u-note">You paid {usd(b.patientPaidCents)} on this bill.</p>}
-        {canPay && outOfPocket(b) > 0 && <PayButton visitId={b.visit.id} amountCents={outOfPocket(b)} onPaid={onPaid} />}
+        {b.patientPaidCents > 0 && (
+          <div className="u-row-foot u-paid-foot">
+            <span>
+              <Icon name="check" size={14} /> You paid {usd(b.patientPaidCents)}
+              {receipt ? ` on ${shortDate(receipt.paidAt)}` : ""}
+            </span>
+            {receipt?.explorerUrl && (
+              <a href={receipt.explorerUrl} target="_blank" rel="noreferrer">
+                Solana receipt <Icon name="external" size={13} />
+              </a>
+            )}
+            {receipt && (
+              <button type="button" className="u-link-btn" onClick={() => onViewReceipt(receipt)}>
+                <Icon name="receipt" size={13} /> View receipt
+              </button>
+            )}
+          </div>
+        )}
+        {canPay && outOfPocket(b) > 0 && <PayButton amountCents={outOfPocket(b)} onPay={onPay} />}
         {b.visit.lineItems.length > 0 && (
           <>
             <p className="u-sub">Itemized charges</p>
@@ -494,57 +547,206 @@ function BillRow({ bill: b, canPay, onPaid }: { bill: Bill; canPay: boolean; onP
   );
 }
 
-/** Pay what's left on a bill from the patient's checking (Nessie). Asks once before paying. */
-function PayButton({ visitId, amountCents, onPaid }: { visitId: string; amountCents: number; onPaid: () => void }) {
-  const [step, setStep] = useState<"idle" | "confirm" | "paying" | "done">("idle");
+/** Opens the pay sheet for what's left on a bill. */
+function PayButton({ amountCents, onPay }: { amountCents: number; onPay: () => void }) {
+  return (
+    <div className="u-pay">
+      <button className="d-btn d-btn-teal u-wide" onClick={onPay}>
+        <Icon name="bill" /> Pay the rest: {usd(amountCents)}
+      </button>
+    </div>
+  );
+}
+
+const shortId = (id: string) => (id.length > 14 ? `${id.slice(0, 6)}…${id.slice(-6)}` : id);
+const paidTime = (iso: string) =>
+  new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+
+/**
+ * Confirm, pay, then a receipt: the amount, where it goes, where it comes from, the bank transaction
+ * and the public Solana record. Opened from a bill; stays up after the bill is paid off.
+ */
+function PaySheet({
+  bill,
+  payFrom,
+  initialReceipt,
+  liveReceipt,
+  onPaid,
+  onClose,
+}: {
+  bill: Bill;
+  payFrom: string | null;
+  initialReceipt: PortalPaymentReceipt | null;
+  liveReceipt: PortalPaymentReceipt | null;
+  onPaid: () => Promise<unknown>;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [step, setStep] = useState<"confirm" | "paying" | "done">(initialReceipt ? "done" : "confirm");
+  const [paid, setPaid] = useState<PortalPaymentReceipt | null>(initialReceipt);
   const [error, setError] = useState<string | null>(null);
+  const [amountCents] = useState(() => outOfPocket(bill));
+  // The newest copy wins: the account refresh fills in the Solana signature once devnet confirms.
+  const receipt = liveReceipt?.solanaSignature ? liveReceipt : (paid ?? liveReceipt);
+
+  useEffect(() => {
+    const d = ref.current;
+    if (d && !d.open) d.showModal();
+  }, []);
+
+  // Devnet can take a few seconds longer than the payment: check back until the receipt lands.
+  const pendingChain = step === "done" && !receipt?.solanaSignature;
+  const refresh = useRef(onPaid);
+  refresh.current = onPaid;
+  useEffect(() => {
+    if (!pendingChain) return;
+    let tries = 0;
+    const t = setInterval(() => {
+      tries += 1;
+      void refresh.current();
+      if (tries >= 10) clearInterval(t);
+    }, 4000);
+    return () => clearInterval(t);
+  }, [pendingChain]);
 
   async function pay() {
     setStep("paying");
     setError(null);
     try {
-      await payBalance(visitId, amountCents);
+      const res = await payBalance(bill.visit.id, amountCents);
+      setPaid(res.receipt ?? null);
       setStep("done");
-      onPaid();
     } catch (err) {
       setError(err instanceof Error ? err.message : "The payment didn't go through. Try again.");
-      setStep("idle");
-      onPaid(); // the balance may have changed; show the current one
+      setStep("confirm");
+    } finally {
+      void onPaid(); // show the current balance either way
     }
   }
 
-  if (step === "done") {
-    return (
-      <p className="u-paid" role="status">
-        <Icon name="check" size={14} /> Paid {usd(amountCents)}. This bill is settled.
-      </p>
-    );
-  }
-  return (
-    <div className="u-pay">
-      {step === "confirm" ? (
-        <>
-          <span>Pay {usd(amountCents)} now?</span>
-          <div className="u-pay-actions">
-            <button className="d-btn" onClick={() => setStep("idle")}>
+  const close = () => {
+    if (step === "paying") return;
+    ref.current?.close();
+  };
+
+  return createPortal(
+    <dialog
+      ref={ref}
+      className="u-sheet"
+      aria-labelledby="u-sheet-title"
+      onClose={onClose}
+      onCancel={(e) => {
+        if (step === "paying") e.preventDefault();
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) close();
+      }}
+    >
+      {step !== "done" ? (
+        <div className="u-sheet-body">
+          <p className="d-kicker">Pay the rest of this bill</p>
+          <h2 id="u-sheet-title" className="u-sheet-amount">
+            {usd(amountCents)}
+          </h2>
+          <dl className="u-sheet-facts">
+            <div>
+              <dt>To</dt>
+              <dd>{bill.visit.hospital.name}</dd>
+            </div>
+            <div>
+              <dt>For</dt>
+              <dd>
+                {bill.visit.description}, {shortDate(bill.visit.date)}
+              </dd>
+            </div>
+            <div>
+              <dt>From</dt>
+              <dd>{payFrom ?? "Your account"}</dd>
+            </div>
+            <div>
+              <dt>Balance after</dt>
+              <dd>{usd(Math.max(0, bill.remainingCents - amountCents))}</dd>
+            </div>
+          </dl>
+          <p className="u-sheet-note">
+            <Icon name="shield" size={14} /> Payments can&apos;t be undone. You&apos;ll get a receipt, and the payment is
+            recorded on Solana without your name.
+          </p>
+          {error && (
+            <p className="d-login-error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="u-sheet-actions">
+            <button type="button" className="d-btn" onClick={close} disabled={step === "paying"}>
               Cancel
             </button>
-            <button className="d-btn d-btn-teal" onClick={() => void pay()}>
-              Confirm payment
+            <button type="button" className="d-btn d-btn-teal" onClick={() => void pay()} disabled={step === "paying"} autoFocus>
+              {step === "paying" ? "Paying…" : `Pay ${usd(amountCents)}`}
             </button>
           </div>
-        </>
+        </div>
       ) : (
-        <button className="d-btn d-btn-teal u-wide" onClick={() => setStep("confirm")} disabled={step === "paying"}>
-          <Icon name="bill" /> {step === "paying" ? "Paying…" : `Pay the rest: ${usd(amountCents)}`}
-        </button>
+        <div className="u-sheet-body u-receipt">
+          <span className="u-receipt-check" aria-hidden="true">
+            <Icon name="check" size={26} />
+          </span>
+          <p className="d-kicker">Payment sent</p>
+          <h2 id="u-sheet-title" className="u-sheet-amount">
+            {usd(receipt?.amountCents ?? amountCents)}
+          </h2>
+          <p className="u-muted u-receipt-to">to {receipt?.hospital ?? bill.visit.hospital.name}. This bill is settled.</p>
+          <dl className="u-sheet-facts">
+            <div>
+              <dt>Date</dt>
+              <dd>{receipt ? paidTime(receipt.paidAt) : "Just now"}</dd>
+            </div>
+            <div>
+              <dt>For</dt>
+              <dd>{bill.visit.description}</dd>
+            </div>
+            <div>
+              <dt>From</dt>
+              <dd>{receipt?.fromAccount ?? payFrom ?? "Your account"}</dd>
+            </div>
+            {receipt?.bankTransactionId && (
+              <div>
+                <dt>Bank transaction</dt>
+                <dd className="u-mono" title={receipt.bankTransactionId}>
+                  {shortId(receipt.bankTransactionId)}
+                </dd>
+              </div>
+            )}
+            <div>
+              <dt>Solana receipt</dt>
+              <dd>
+                {receipt?.explorerUrl && receipt.solanaSignature ? (
+                  <a href={receipt.explorerUrl} target="_blank" rel="noreferrer" className="u-chain-link">
+                    <span className="u-mono">{shortId(receipt.solanaSignature)}</span> <Icon name="external" size={13} />
+                  </a>
+                ) : (
+                  <span className="u-chain-pending">
+                    <span className="u-dot-pulse" aria-hidden="true" /> Recording on Solana…
+                  </span>
+                )}
+              </dd>
+            </div>
+          </dl>
+          <p className="u-sheet-note">
+            <Icon name="lock" size={14} /> The public record shows the amount and an anonymous reference, never your name.
+          </p>
+          <div className="u-sheet-actions">
+            <button type="button" className="d-btn" onClick={() => window.print()}>
+              <Icon name="receipt" /> Print receipt
+            </button>
+            <button type="button" className="d-btn d-btn-teal" onClick={close} autoFocus>
+              Done
+            </button>
+          </div>
+        </div>
       )}
-      {error && (
-        <p className="d-login-error" role="alert">
-          {error}
-        </p>
-      )}
-    </div>
+    </dialog>,
+    document.body,
   );
 }
 
