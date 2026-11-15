@@ -284,3 +284,65 @@
 .u-plan-on { margin: 12px 0 0; padding: 10px 14px; border-radius: 14px; background: var(--oc-iris-soft, #eeeffc); color: var(--oc-ink, #171a2b); }
 .u-proof-item p { margin: 0 0 6px; line-height: 1.5; }
 .u-proof-item a { color: var(--oc-iris, #4d55d4); }
+
+/* ------------------------------------------------------------ Pay sheet and receipt */
+
+.u-paid-foot { flex-wrap: wrap; gap: 6px 14px; }
+.u-paid-foot > span { display: inline-flex; align-items: center; gap: 5px; color: #1d7a46; }
+.u-link-btn {
+  display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none;
+  color: var(--oc-iris); font: inherit; cursor: pointer;
+}
+.u-link-btn:hover { text-decoration: underline; }
+
+.u-sheet {
+  --d-teal: #4750d3; --d-teal-deep: #2d37bf; --d-line: #e5e5ee; --d-text: #151627; --d-text-2: #535465;
+  width: min(440px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 0; overflow: auto;
+  border: 0; border-radius: 22px; background: #fff; color: var(--oc-ink);
+  box-shadow: 0 30px 80px -20px rgba(23, 26, 43, 0.45);
+}
+.u-sheet::backdrop { background: rgba(17, 19, 36, 0.42); backdrop-filter: blur(3px); }
+.u-sheet[open] { animation: u-sheet-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes u-sheet-in { from { opacity: 0; transform: translateY(14px) scale(0.98); } }
+.u-sheet-body { display: grid; gap: 14px; padding: 26px 24px 22px; }
+.u-sheet .d-kicker { margin: 0; }
+.u-sheet-amount { margin: -6px 0 0; font-size: 40px; font-weight: 400; letter-spacing: -0.04em; line-height: 1.1; }
+.u-sheet-facts { display: grid; margin: 0; border-top: 1px solid var(--oc-line); }
+.u-sheet-facts > div {
+  display: flex; justify-content: space-between; gap: 16px; padding: 11px 0;
+  border-bottom: 1px solid var(--oc-line); font-size: 14px;
+}
+.u-sheet-facts dt { color: var(--oc-slate); flex: none; }
+.u-sheet-facts dd { margin: 0; text-align: right; font-weight: 500; overflow-wrap: anywhere; }
+.u-sheet-note { display: flex; gap: 8px; align-items: flex-start; margin: 0; font-size: 13px; color: var(--oc-slate); line-height: 1.45; }
+.u-sheet-note svg { flex: none; margin-top: 2px; }
+.u-sheet-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; margin-top: 4px; }
+.u-sheet-actions .d-btn { justify-content: center; min-height: 46px; }
+
+.u-receipt { justify-items: stretch; }
+.u-receipt-check {
+  display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%;
+  background: #e3f5ea; color: #1d7a46; animation: u-pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes u-pop { from { transform: scale(0.4); opacity: 0; } }
+.u-receipt-to { margin: -8px 0 0; }
+.u-chain-link { display: inline-flex; align-items: center; gap: 4px; color: var(--oc-iris); text-decoration: none; }
+.u-chain-link:hover { text-decoration: underline; }
+.u-chain-pending { display: inline-flex; align-items: center; gap: 7px; color: var(--oc-slate); font-weight: 400; }
+.u-dot-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--oc-iris); animation: u-pulse 1.2s ease-in-out infinite; }
+@keyframes u-pulse { 50% { opacity: 0.25; } }
+
+@media (max-width: 520px) {
+  /* A bottom sheet on phones. */
+  .u-sheet { width: 100vw; max-width: 100vw; margin: auto 0 0; border-radius: 22px 22px 0 0; }
+  .u-sheet-body { padding-bottom: calc(22px + env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .u-sheet[open], .u-receipt-check, .u-dot-pulse { animation: none; }
+}
+@media print {
+  body:has(.u-sheet[open]) > :not(.u-sheet) { display: none !important; }
+  .u-sheet { position: static; box-shadow: none; width: 100%; max-height: none; }
+  .u-sheet::backdrop { display: none; }
+  .u-sheet-actions { display: none; }
+}
