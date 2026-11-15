@@ -82,6 +82,16 @@ export interface EndSessionResponse {
   ok: true;
 }
 
+// POST /api/session/demo (paired kiosk device only): the kiosk's hold-to-start demo. Starts a normal
+// patient session for the seeded demo patient (same cookie as a card tap). If none of their recent
+// visits has a balance left, the demo ER visit is logged as simulated hospital intake with its
+// policy applications prepared, so the bill walk always has a bill. No request body.
+export interface DemoSessionResponse {
+  patient: PatientSummary;
+  /** The visit to walk: the newest one with a balance left. Pass it as ?visitId to the bill routes. */
+  visitId: string;
+}
+
 // ---------------------------------------------------------------------------
 // Patient (kiosk, active patient session)
 
