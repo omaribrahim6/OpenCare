@@ -1,0 +1,164 @@
+/* OpenCare skin. Loaded last: it carries the landing page's look (mist page with soft morning
+   light, ink text, one iris accent, pill buttons, soft white cards, light numerals) onto every
+   other screen without touching their layout. Screen-specific rules stay in their own sheets. */
+
+:root {
+  --oc-mist: #f4f5fb;
+  --oc-ink: #171a2b;
+  --oc-slate: #5c6178;
+  --oc-line: rgba(23, 26, 43, 0.09);
+  --oc-iris: #4d55d4;
+  --oc-iris-soft: #eeeffc;
+  --oc-shadow: 0 30px 60px -44px rgba(54, 60, 130, 0.4);
+}
+
+body,
+body:has(.d-public),
+body:has(.station) {
+  color: var(--oc-ink);
+  background-color: var(--oc-mist);
+  background-image:
+    radial-gradient(48% 420px at 22% 0, rgba(214, 208, 250, 0.7), transparent 72%),
+    radial-gradient(44% 400px at 82% 0, rgba(255, 210, 187, 0.5), transparent 70%);
+  background-repeat: no-repeat;
+}
+h1, h2, h3 { font-weight: 400; letter-spacing: -0.03em; }
+strong, b { font-weight: 500; }
+:focus-visible { outline-color: var(--oc-iris); }
+
+/* ------------------------------------------------------------ Shared pieces */
+
+/* Buttons are pills; the main action is ink and turns iris on hover. */
+.btn, .d-btn, .v-outline, .ink-btn { border-radius: 999px; font-weight: 450; }
+.btn-primary, .d-btn.d-btn-teal, .ink-btn {
+  border: 1px solid var(--oc-ink);
+  background: var(--oc-ink);
+  color: #fff;
+  box-shadow: none;
+}
+.btn-primary:hover:not(:disabled), .d-btn.d-btn-teal:hover:not(:disabled), .ink-btn:hover:not(:disabled) {
+  border-color: var(--oc-iris);
+  background: var(--oc-iris);
+}
+.d-btn { padding-inline: 18px; }
+.v-outline { border-color: rgba(255, 255, 255, 0.9); background: rgba(255, 255, 255, 0.7); color: var(--oc-ink); }
+.v-outline:hover { background: #fff; }
+
+/* Cards: white, soft and rounder. */
+.card, .d-card, .g-card,
+.d-public .d-fund-workspace .g-card {
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 26px;
+  background: #fff;
+  box-shadow: var(--oc-shadow);
+}
+.d-card { padding: 20px; }
+.d-card-head h2, .card-title, .g-title { font-weight: 450; letter-spacing: -0.02em; }
+
+/* Fields */
+.input, .select, .textarea, .d-ledger-search input, .d-login-field input { border-radius: 14px; }
+.input:focus, .select:focus, .textarea:focus { border-color: var(--oc-iris); box-shadow: 0 0 0 3px var(--oc-iris-soft); }
+
+/* Segmented controls: one pill, the chosen option in ink. */
+.tabs { padding: 4px; border: 1px solid rgba(255, 255, 255, 0.9); border-radius: 999px; background: rgba(23, 26, 43, 0.05); }
+.tabs button, .tabs a { height: 32px; padding: 0 14px; border-radius: 999px; color: var(--oc-slate); font-weight: 400; }
+.tabs [aria-selected="true"], .tabs [aria-current="page"] { background: var(--oc-ink); color: #fff; box-shadow: none; }
+.tabs [aria-selected="true"] .count, .tabs [aria-current="page"] .count { color: rgba(255, 255, 255, 0.75); }
+
+/* Tables: quiet headers, hairlines, no fills. */
+.table th, .ledger-table th {
+  border-bottom: 1px solid var(--oc-line);
+  background: transparent;
+  color: var(--oc-slate);
+  font-weight: 400;
+}
+.table td { border-bottom-color: var(--oc-line); }
+.lc-clickable:hover td { background: var(--oc-mist); }
+
+dialog { border-radius: 28px; }
+dialog::backdrop { background: rgba(23, 26, 43, 0.32); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+
+/* ------------------------------------------------------------ Public ledger (/fund) */
+
+.d-public { max-width: 1240px; padding: 0 clamp(16px, 4vw, 48px) 56px; background: transparent; }
+.d-public-bar { justify-content: space-between; gap: 16px; margin: 0; padding-block: clamp(14px, 2vw, 24px); }
+.d-public-bar .logo { gap: 10px; font-size: 19px; font-weight: 500; letter-spacing: -0.02em; }
+.d-public-bar .logo-mark { width: 32px; height: 32px; }
+.oc-nav { display: flex; align-items: center; gap: clamp(4px, 1.2vw, 12px); }
+.oc-nav a { padding: 9px 14px; border-radius: 999px; color: var(--oc-ink); font-size: 15px; text-decoration: none; white-space: nowrap; }
+.oc-nav a:hover { background: rgba(255, 255, 255, 0.8); }
+.oc-nav .oc-nav-staff { border: 1px solid var(--oc-line); background: rgba(255, 255, 255, 0.6); }
+
+.d-public .d-fund-workspace .v-page-header { align-items: flex-end; margin: clamp(20px, 4vw, 48px) 0 24px; }
+.d-public .d-fund-workspace .pub-h1 {
+  margin: 0;
+  color: var(--oc-ink);
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  font-weight: 350;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+.d-public .d-fund-workspace .pub-h1 small { max-width: 62ch; margin-top: 14px; color: var(--oc-slate); font-size: 16px; font-weight: 400; line-height: 1.55; }
+.d-public .d-ledger-search { max-width: 420px; margin-bottom: 20px; color: var(--oc-slate); font-size: 13.5px; }
+.d-public .d-ledger-search { display: grid; gap: 7px; }
+.d-public .d-ledger-search input { width: 100%; min-height: 48px; padding: 0 18px; border: 1px solid var(--oc-line); font: inherit; border-radius: 999px; background: rgba(255, 255, 255, 0.75); }
+.d-public .d-ledger-search input:focus { outline: none; border-color: var(--oc-iris); box-shadow: 0 0 0 3px var(--oc-iris-soft); }
+.d-public .d-fund-workspace > .g-card { padding: clamp(18px, 2.4vw, 30px); }
+.d-public .table-wrap { border: 0; border-radius: 0; }
+.d-public .lc-filter-row .g-sub { color: var(--oc-slate); }
+.d-public .lc-link, .d-public .ledger-table .sig { color: var(--oc-iris); }
+.d-public .ledger-table .cents { color: var(--oc-slate); }
+
+/* The four totals read like the landing page's stats: a label and a light numeral. */
+.d-public .lc-summary { gap: 0; margin-bottom: 26px; border-top: 1px solid var(--oc-line); border-bottom: 1px solid var(--oc-line); }
+.d-public .lc-summary div { padding: 18px 18px 18px 0; border-radius: 0; background: none; }
+.d-public .lc-summary div + div { padding-left: 18px; border-left: 1px solid var(--oc-line); }
+.d-public .lc-summary dt { color: var(--oc-slate); font-size: 14px; }
+.d-public .lc-summary dd { font-size: clamp(1.5rem, 2.6vw, 2.1rem); font-weight: 350; letter-spacing: -0.035em; }
+.d-public .lc-summary small { font-weight: 400; letter-spacing: 0; }
+.d-public .ledger-table td { height: 62px; }
+.d-public .act-icon { border-radius: 13px; }
+.d-public .proto-note { color: var(--oc-slate); }
+
+@media (max-width: 640px) {
+  .oc-nav .oc-nav-staff { display: none; }
+  .oc-nav a { padding-inline: 8px; font-size: 14px; }
+  .d-public .lc-summary div + div { padding-left: 0; border-left: 0; border-top: 1px solid var(--oc-line); }
+}
+
+/* ------------------------------------------------------------ Admin (/admin) */
+
+.desk { background: transparent; }
+.d-side { border-right: 1px solid var(--oc-line); background: rgba(255, 255, 255, 0.6); }
+.d-logo { font-weight: 500; letter-spacing: -0.02em; }
+.d-nav a, .d-nav button { height: 46px; border-radius: 999px; font-size: 15px; }
+.d-nav a:hover, .d-nav button:hover { background: rgba(23, 26, 43, 0.05); }
+.d-nav [aria-current="page"] { border-color: var(--oc-ink); background: var(--oc-ink); color: #fff; font-weight: 400; box-shadow: none; }
+.d-nav [aria-current="page"] svg { color: #fff; }
+.d-nav .d-count { background: var(--oc-iris); }
+.d-main { background: transparent; }
+.d-head { border-bottom: 1px solid var(--oc-line); background: rgba(255, 255, 255, 0.6); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+.d-body { padding: 20px 24px 32px; gap: 20px; }
+
+/* The PIN screen is one soft card on the lit page. */
+.d-login { background: transparent; }
+.d-login-card { border: 1px solid rgba(255, 255, 255, 0.9); border-radius: 30px; background: rgba(255, 255, 255, 0.8); box-shadow: var(--oc-shadow); }
+
+/* ------------------------------------------------------------ Kiosk and staff stations */
+
+.station {
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--oc-shadow);
+  color: var(--oc-ink);
+  -webkit-backdrop-filter: blur(22px) saturate(1.2);
+  backdrop-filter: blur(22px) saturate(1.2);
+}
+.station h1 { font-weight: 350; letter-spacing: -0.04em; }
+.station .btn:not(.secondary, .btn-danger) { border-color: var(--oc-ink); background: var(--oc-ink); color: #fff; }
+.station .btn:not(.secondary, .btn-danger):hover:not(:disabled) { border-color: var(--oc-iris); background: var(--oc-iris); }
+.station h2 { font-weight: 450; }
+.station .muted, .station-bar { color: var(--oc-slate); }
+.station-bar .logo { color: var(--oc-ink); font-weight: 500; }
+.d-nav [aria-current="page"] .d-count { background: #fff; color: var(--oc-ink); }

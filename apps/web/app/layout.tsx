@@ -1,12 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Geist_Mono, Inter } from "next/font/google";
+import { Geist_Mono, Lexend } from "next/font/google";
 import "./globals.css";
 import "./site.css";
 import "./kiosk.css";
 import "./desk.css";
 import "./terminal.css";
+import "./opencare.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-ui", display: "swap" });
+// Lexend was designed from reading-fluency research; the whole site uses it.
+const lexend = Lexend({ subsets: ["latin"], variable: "--font-ui", display: "swap" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 
 export const metadata: Metadata = {
@@ -18,12 +20,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#f3f3f1",
+  themeColor: "#f4f5fb",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`${lexend.variable} ${geistMono.variable}`}>
       <body>{children}</body>
     </html>
   );

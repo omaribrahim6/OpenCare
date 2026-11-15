@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { FundWorkspace } from "../admin/FundWorkspace";
 
@@ -10,6 +11,13 @@ export default function PublicLedgerPage() {
     <main className="d-public">
       <header className="d-public-bar">
         <Logo />
+        <nav className="oc-nav" aria-label="Main">
+          <Link href="/">Home</Link>
+          <Link href="/kiosk">Patient portal</Link>
+          <Link href="/admin" className="oc-nav-staff">
+            Staff
+          </Link>
+        </nav>
       </header>
       <FundWorkspace initialTab="ledger" />
     </main>
