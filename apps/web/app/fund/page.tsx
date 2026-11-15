@@ -20,7 +20,7 @@ export default function PublicLedgerPage() {
           </Link>
         </nav>
       </header>
-      <FundWorkspace initialTab="ledger" />
+      <FundWorkspace initialTab="ledger" audience="public" />
     </main>
   );
 }
