@@ -226,7 +226,7 @@ export interface GrantListResponse {
 // `bill` for the patient. Polling this reconciles a pending payout or receipt.
 
 // POST /api/grants/:id/decision (reviewer device)
-// Rev 6: approval (whole dollars, at most the remaining balance and the available budget) starts
+// Rev 6: approval (any cents from $1.00, at most the remaining balance and the available budget) starts
 // the Nessie payout to the hospital and the Solana receipt in the same request; the response shows
 // payment_pending or paid. One approval is enough at any amount.
 export type GrantDecisionRequest =

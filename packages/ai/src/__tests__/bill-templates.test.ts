@@ -43,8 +43,8 @@ test("brief template: path as given, reasons from factor values, full balance su
   assert.deepEqual(b.flags, []);
 });
 
-test("brief template: whole-dollar suggestion and second approval above the threshold", () => {
-  assert.equal(suggestedCents(43_250), 43_200);
+test("brief template: exact suggestion with cents and second approval above the threshold", () => {
+  assert.equal(suggestedCents(43_250), 43_250);
   assert.equal(suggestedCents(-5), 0);
   const big = briefTemplate(briefInput({ remainingCents: 121_500 }));
   assert.deepEqual([big.suggestedCents, big.needsSecondApproval], [121_500, true]);
