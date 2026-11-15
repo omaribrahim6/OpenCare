@@ -4,11 +4,12 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, test } from "node:test";
 import type { Device, InsurancePlan, NeedEngine } from "@abdulcare/contracts";
 import { fallbackBillEngine } from "./bill-fallback";
-import { issueCard, resolveTap } from "./cards";
+import { getSessionPatient, issueCard, resolveTap } from "./cards";
 import type { Db } from "./db";
 import { pairDevice } from "./devices";
 import { claimForRedemption, completePayout, decideGrant, getGrant, requestHelp } from "./grants";
 import { adjudicate, setInsurancePlan } from "./insurance";
+import { startKioskDemo } from "./kiosk-demo";
 import { getCaseDetail, getReviewQueue } from "./need";
 import { setPatientProfile } from "./profiles";
 import { createTestDb, seedBasics } from "./test-helpers";
@@ -232,5 +233,65 @@ describe("fund requests", () => {
     assert.equal((await getGrant(db, grant.id)).status, "paid");
     // Asking again returns the paid request rather than opening a new one.
     assert.equal((await requestHelp(db, { patientId: "pat_1", visitId: bill.visit.id })).status, "paid");
+  });
+});
+
+describe("paired kiosk demo", () => {
+  const fixture = { patientId: "pat_1", templateId: "tpl_er" };
+
+  async function pairKiosk(label: string) {
+    return (await pairDevice(db, { role: "kiosk", pin: "4242", label })).device;
+  }
+
+  test("a hospital cannot start a demo patient session", async () => {
+    await rejectsWith(startKioskDemo(db, engines, { ...fixture, device: hospital }), "forbidden");
+    const { rows } = await db.query("select 1 from sessions");
+    assert.equal(rows.length, 0);
+  });
+
+  test("creates a normal session, reuses the open bill, and replaces it after payment", async () => {
+    const device = await pairKiosk("Demo kiosk");
+    const start = () => startKioskDemo(db, engines, { ...fixture, device });
+
+    const first = await start();
+    assert.equal(first.logged, true);
+    assert.equal(first.patient.id, fixture.patientId);
+    assert.equal((await getSessionPatient(db, first.sessionSecret, device))?.id, fixture.patientId);
+    const bill = await getBill(db, first.visitId);
+    assert.ok(bill.remainingCents > 0);
+    assert.equal(bill.visit.attestedBy, "Kiosk demo (simulated hospital intake)");
+    assert.equal(bill.hospitalAssistanceCents, 0);
+    assert.ok(bill.applications.length > 0);
+
+    const second = await start();
+    assert.equal(second.logged, false);
+    assert.equal(second.visitId, first.visitId);
+    assert.equal((await getSessionPatient(db, second.sessionSecret, device))?.id, fixture.patientId);
+
+    const { device: reviewer } = await pairDevice(db, { role: "reviewer", pin: "4242", label: "Caseworker" });
+    const grant = await requestHelp(db, { patientId: fixture.patientId, visitId: first.visitId });
+    const { remainingCents } = await getBill(db, first.visitId);
+    await decideGrant(db, grant.id, reviewer.id, { decision: "approve", approvedCents: remainingCents });
+    await claimForRedemption(db, { grantId: grant.id, providerId: grant.provider.id, patientId: fixture.patientId });
+    await completePayout(db, grant.id);
+    assert.equal((await getBill(db, first.visitId)).remainingCents, 0);
+
+    const third = await start();
+    assert.equal(third.logged, true);
+    assert.notEqual(third.visitId, first.visitId);
+    assert.ok((await getBill(db, third.visitId)).remainingCents > 0);
+  });
+
+  test("two paired kiosks starting together share one visit", async () => {
+    const firstKiosk = await pairKiosk("First kiosk");
+    const secondKiosk = await pairKiosk("Second kiosk");
+
+    const [first, second] = await Promise.all(
+      [firstKiosk, secondKiosk].map((device) => startKioskDemo(db, engines, { ...fixture, device })),
+    );
+
+    assert.equal(first.visitId, second.visitId);
+    const { rows } = await db.query("select id from visits where patient_id = $1", [fixture.patientId]);
+    assert.equal(rows.length, 1);
   });
 });
