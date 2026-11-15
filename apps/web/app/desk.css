@@ -3575,3 +3575,86 @@ body:has(.d-public) {
   color: #fff;
   box-shadow: none;
 }
+
+/* ------------------------------------------------------------ Site menu (home, ledger, account) */
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.site-nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: var(--oc-slate, #5c6178);
+  font-size: 15px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.site-nav a:hover {
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--oc-ink, #171a2b);
+}
+.site-nav a[aria-current="page"] {
+  background: #fff;
+  color: var(--oc-ink, #171a2b);
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(23, 26, 43, 0.06), 0 6px 16px -10px rgba(23, 26, 43, 0.25);
+}
+/* Staff is set apart: a thin divider and a lock, never highlighted as a page. */
+.site-nav .site-nav-staff {
+  position: relative;
+  margin-left: 10px;
+  font-size: 14px;
+}
+.site-nav .site-nav-staff::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 25%;
+  height: 50%;
+  border-left: 1px solid var(--oc-line, rgba(23, 26, 43, 0.12));
+}
+.site-nav .site-nav-staff svg {
+  opacity: 0.75;
+}
+.site-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: clamp(14px, 2vw, 24px) clamp(16px, 4vw, 48px);
+}
+.site-brand {
+  display: inline-flex;
+  color: var(--oc-ink, #171a2b);
+  text-decoration: none;
+}
+/* The account sign-in card sits under the header instead of filling the whole screen. */
+.site-bar + .d-login,
+.site-bar + .u-portal.u-center {
+  min-height: calc(100dvh - 90px);
+}
+@media (max-width: 640px) {
+  .site-nav {
+    gap: 0;
+  }
+  .site-nav a {
+    padding: 7px 9px;
+    font-size: 14px;
+  }
+  .site-nav .site-nav-staff {
+    margin-left: 6px;
+  }
+}
+@media (max-width: 420px) {
+  .site-nav a[href="/"] {
+    display: none;
+  }
+}
