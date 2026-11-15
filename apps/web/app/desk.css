@@ -3658,3 +3658,30 @@ body:has(.d-public) {
     display: none;
   }
 }
+/* Phones: the menu scrolls sideways instead of pushing the page wider; the logo keeps its size. */
+@media (max-width: 560px) {
+  .site-brand,
+  .site-bar > :first-child {
+    flex-shrink: 0;
+  }
+  .site-nav {
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+  }
+  .site-nav::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Linked rails on the case drawer: the bank check and the refund form. */
+.dr-bank { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 0 0 8px; }
+.dr-bank div { display: flex; justify-content: space-between; gap: 8px; }
+.dr-bank dt { color: var(--oc-slate, #5c6178); }
+.dr-bank dd { margin: 0; font-variant-numeric: tabular-nums; }
+.dr-refund-open { margin-top: 10px; }
+.dr-refund { display: grid; gap: 10px; margin-top: 12px; }
+.dr-refund label { display: grid; gap: 4px; font-size: 0.9rem; color: var(--oc-slate, #5c6178); }
+.dr-refund-actions { display: flex; gap: 8px; justify-content: flex-end; }
