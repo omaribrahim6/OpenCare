@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon, SolanaMark, type IconName } from "@/components/Icon";
-import { VioletOverview } from "@/components/site/VioletOverview";
+import { FundOverview } from "./FundOverview";
 import { DonatePanel } from "@/components/site/DonatePanel";
 import { LedgerCaseDrawer } from "@/components/site/LedgerCaseDrawer";
 import { getFundSummary, getLedger } from "@/lib/api";
 import { explorerTx, shortDate, shortSig, usd, usdParts } from "@/lib/format";
 import { FORMULA_WEIGHTS } from "@/lib/mock";
 import type { LedgerEntry, LedgerResponse } from "@abdulcare/contracts";
-import type { FundSummary } from "@/lib/types";
+import type { FundSummary, QueueItem } from "@/lib/types";
 import { CATEGORY_LABEL } from "@/lib/types";
 
 type FundTab = "overview" | "ledger" | "about";
@@ -26,7 +26,19 @@ const EVENT: Record<string, { label: string; icon: IconName; bg: string; fg: str
 
 const WEIGHT_COLORS = ["var(--mint)", "var(--sky)", "var(--lilac)", "var(--rose)", "var(--sand)", "#dadddb"];
 
-export function FundWorkspace({ initialTab, onLedger }: { initialTab: FundTab; onLedger?: () => void }) {
+export function FundWorkspace({
+  initialTab,
+  onLedger,
+  queue,
+  onViewQueue,
+  onOpenRequest,
+}: {
+  initialTab: FundTab;
+  onLedger?: () => void;
+  queue?: QueueItem[];
+  onViewQueue?: () => void;
+  onOpenRequest?: (grantId: string) => void;
+}) {
   const ledgerOnly = initialTab === "ledger";
   const donationDialog = useRef<HTMLDialogElement>(null);
   const [search, setSearch] = useState("");
@@ -111,7 +123,7 @@ export function FundWorkspace({ initialTab, onLedger }: { initialTab: FundTab; o
         </div>
       )}
 
-      {tab === "overview" && <VioletOverview summary={s} showLedger={() => onLedger?.()} showRules={() => setTab("about")} showDonation={showDonation} />}
+      {tab === "overview" && <FundOverview summary={s} queue={queue} onLedger={() => onLedger?.()} onViewQueue={onViewQueue} onOpenRequest={onOpenRequest} />}
       {tab === "ledger" && (
         <>
           <label className="d-ledger-search">
