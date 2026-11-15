@@ -18,6 +18,17 @@ const DEDUPE_MINUTES = 10;
 /** Who a kiosk charge bills when no CareCard was tapped (the presenter's hold fallback). */
 export const KIOSK_CHARGE_FALLBACK_PATIENT = "pat_demo_john";
 
+/**
+ * Who a kiosk charge bills: the tapped patient, else the demo patient. With `requireCard` (the
+ * kiosk iPhone app, which reads the card natively and has no hold fallback) a charge without a
+ * tapped card is refused.
+ */
+export function kioskChargePatient(tappedPatientId: string | null | undefined, opts: { requireCard: boolean }): string {
+  if (tappedPatientId) return tappedPatientId;
+  if (opts.requireCard) throw new CoreError("unauthenticated", "No CareCard was tapped. Tap the card to continue.");
+  return KIOSK_CHARGE_FALLBACK_PATIENT;
+}
+
 export interface KioskChargeLine {
   label: string;
   cents: number;

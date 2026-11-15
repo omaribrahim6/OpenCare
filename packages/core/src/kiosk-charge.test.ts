@@ -4,7 +4,7 @@ import { assessNeed } from "@abdulcare/ai";
 import type { NeedEngine } from "@abdulcare/contracts";
 import { fallbackBillEngine } from "./bill-fallback";
 import { pairDevice } from "./devices";
-import { recordKioskCharge } from "./kiosk-charge";
+import { KIOSK_CHARGE_FALLBACK_PATIENT, kioskChargePatient, recordKioskCharge } from "./kiosk-charge";
 import { assessGrant } from "./need";
 import { getPortalOverview, setPatientAccount, signInToPortal } from "./portal";
 import { setPatientProfile } from "./profiles";
@@ -105,4 +105,15 @@ test("bad bills are refused", async () => {
   await assert.rejects(recordKioskCharge(db, charge(device, { items: [{ label: "x", cents: -5 }] }), engines), bad);
   await assert.rejects(recordKioskCharge(db, charge(device, { discounts: [{ label: "All of it", cents: 45_683_216 }] }), engines), bad);
   await assert.rejects(recordKioskCharge(db, charge(device, { outcome: "maybe" }), engines), bad);
+});
+
+test("the kiosk app must have a tapped card; the web hold demo still bills the demo patient", () => {
+  assert.equal(kioskChargePatient("pat_1", { requireCard: true }), "pat_1");
+  assert.equal(kioskChargePatient("pat_1", { requireCard: false }), "pat_1");
+  assert.equal(kioskChargePatient(null, { requireCard: false }), KIOSK_CHARGE_FALLBACK_PATIENT);
+  assert.throws(
+    () => kioskChargePatient(null, { requireCard: true }),
+    (err) => err instanceof CoreError && err.code === "unauthenticated",
+  );
+  assert.throws(() => kioskChargePatient(undefined, { requireCard: true }), CoreError);
 });
