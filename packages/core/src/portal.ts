@@ -157,7 +157,7 @@ export async function getPortalOverview(db: Db, patient: PortalPatient): Promise
  */
 export async function payPatientBalance(
   db: Db,
-  input: { patientId: string; visitId: string; amountCents: unknown },
+  input: { patientId: string; visitId: string; amountCents: unknown; nessiePurchaseId?: string | null },
 ): Promise<PortalPayResponse> {
   const expected = input.amountCents;
   if (!Number.isSafeInteger(expected) || (expected as number) < 0) {
@@ -189,8 +189,17 @@ export async function payPatientBalance(
     await tx.query(
       `insert into bill_events (id, visit_id, type, amount_cents, source_kind, source_label, source_id,
                                 status, simulated, reference, label, seq)
-       values ($1, $2, 'patient_payment', $3, 'patient', 'Patient', null, 'confirmed', true, null, $4, $5)`,
-      [newId("bev"), input.visitId, bill.remainingCents, "You paid the rest out of pocket (simulated)", Number(seqRows[0]?.seq ?? 0) + 1],
+       values ($1, $2, 'patient_payment', $3, 'patient', 'Patient', null, 'confirmed', $4, $5, $6, $7)`,
+      [
+        newId("bev"),
+        input.visitId,
+        bill.remainingCents,
+        // Linked rails: paid from the patient's Nessie checking when it went through, else simulated.
+        !input.nessiePurchaseId,
+        input.nessiePurchaseId ?? null,
+        input.nessiePurchaseId ? "You paid the rest from your checking account" : "You paid the rest out of pocket (simulated)",
+        Number(seqRows[0]?.seq ?? 0) + 1,
+      ],
     );
     paidCents = bill.remainingCents;
   });
