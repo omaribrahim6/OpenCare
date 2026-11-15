@@ -1,12 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { fallbackBillEngine } from "./bill-fallback";
 import { issueCard } from "./cards";
+import { pairDevice } from "./devices";
+import { completePayout, decideGrant, getGrant } from "./grants";
+import { recordKioskCharge } from "./kiosk-charge";
 import {
   PORTAL_MAX_FAILURES,
   endPortalSession,
   getPortalOverview,
   getPortalPatient,
   normalizeAccountCode,
+  payPatientBalance,
   setPatientAccount,
   signInToPortal,
 } from "./portal";
@@ -93,4 +98,60 @@ test("the overview lists only the patient's own bills and claims", async () => {
   assert.deepEqual(overview.bills.map((b) => b.visit.id), ["visit_mine"]);
   assert.equal(overview.bills[0].remainingCents, 10000);
   assert.deepEqual(overview.claims.map((g) => g.id), ["grant_visit_mine"]);
+});
+
+// A kiosk charge leaves $1,234.56 for the fund, so partial approvals and paying the rest can be tested.
+async function claimSetup() {
+  const db = await createTestDb();
+  await seedBasics(db, 1_000_000);
+  await db.query("insert into providers (id, name, kind) values ('prv_demo_hospital', 'Valley General Hospital', 'hospital')");
+  const { device: kiosk } = await pairDevice(db, { role: "kiosk", label: "Kiosk phone", pin: "4242" });
+  const { device: reviewer } = await pairDevice(db, { role: "reviewer", label: "Caseworker", pin: "4242" });
+  const rec = await recordKioskCharge(
+    db,
+    { device: kiosk, patientId: "pat_1", items: [{ label: "ER visit", cents: 123_456 }], discounts: [], method: "nfc", preset: null, outcome: "fund_request" },
+    { bills: fallbackBillEngine },
+  );
+  assert.ok(rec.grant);
+  return { db, reviewer, grantId: rec.grant.id, visitId: rec.visitId };
+}
+
+test("a reviewer can approve part of a request, in cents, and the patient pays the rest", async () => {
+  const { db, reviewer, grantId, visitId } = await claimSetup();
+  const approved = await decideGrant(db, grantId, reviewer.id, { decision: "approve", approvedCents: 100_050 });
+  assert.equal(approved.approvedCents, 100_050);
+  assert.equal(approved.requestedCents, 123_456);
+
+  // Still being paid: the patient can't pay yet.
+  await assert.rejects(payPatientBalance(db, { patientId: "pat_1", visitId, amountCents: 23_406 }), (err) => code(err) === "invalid_state");
+
+  await db.query("update grants set status = 'payment_pending' where id = $1", [grantId]);
+  await completePayout(db, grantId);
+  assert.equal((await getGrant(db, grantId)).status, "paid");
+
+  // Someone else, or a stale amount, pays nothing.
+  await assert.rejects(payPatientBalance(db, { patientId: "pat_2", visitId, amountCents: 23_406 }), (err) => code(err) === "forbidden");
+  await assert.rejects(payPatientBalance(db, { patientId: "pat_1", visitId, amountCents: 23_400 }), (err) => code(err) === "conflict");
+
+  const paid = await payPatientBalance(db, { patientId: "pat_1", visitId, amountCents: 23_406 });
+  assert.equal(paid.paidCents, 23_406);
+  assert.equal(paid.bill.patientPaidCents, 23_406);
+  assert.equal(paid.bill.fundPaidCents, 100_050);
+  assert.equal(paid.bill.remainingCents, 0);
+
+  // Paying again does nothing.
+  const again = await payPatientBalance(db, { patientId: "pat_1", visitId, amountCents: 23_406 });
+  assert.equal(again.paidCents, 0);
+  assert.equal(again.bill.patientPaidCents, 23_406);
+});
+
+test("after a denial the patient can pay the whole balance out of pocket", async () => {
+  const { db, reviewer, grantId, visitId } = await claimSetup();
+  await decideGrant(db, grantId, reviewer.id, { decision: "reject" });
+  const paid = await payPatientBalance(db, { patientId: "pat_1", visitId, amountCents: 123_456 });
+  assert.equal(paid.paidCents, 123_456);
+  assert.equal(paid.bill.remainingCents, 0);
+  const overview = await getPortalOverview(db, { id: "pat_1", displayName: "Test Patient", accountCode: null, birthYear: null });
+  assert.equal(overview.claims[0].status, "rejected");
+  assert.equal(overview.bills[0].remainingCents, 0);
 });

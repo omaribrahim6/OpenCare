@@ -2,13 +2,13 @@
 // on their CareCard, or by tapping the card (its secret token), plus their birth date. Portal
 // sessions are separate from kiosk sessions: their own table, their own cookie, no device needed.
 
-import type { PortalOverviewResponse, PortalPatient } from "@abdulcare/contracts";
+import type { PortalOverviewResponse, PortalPatient, PortalPayResponse } from "@abdulcare/contracts";
 import { patientForCardToken } from "./cards";
 import type { Db } from "./db";
 import { listGrants } from "./grants";
 import { getInsurancePlan } from "./insurance";
 import { getPatientWithProfile } from "./profiles";
-import { CoreError, newSecret, sha256 } from "./util";
+import { CoreError, newId, newSecret, sha256 } from "./util";
 import { getBill, listPatientVisitIds } from "./visits";
 
 export const PORTAL_COOKIE = "opencare_portal";
@@ -147,4 +147,52 @@ export async function getPortalOverview(db: Db, patient: PortalPatient): Promise
   for (const id of await listPatientVisitIds(db, patient.id)) bills.push(await getBill(db, id, { patientId: patient.id }));
   const claims = await listGrants(db, { patientId: patient.id });
   return { patient, profile, plan, bills, claims };
+}
+
+/**
+ * The patient pays what's left on one of their bills out of pocket (simulated, like a kiosk
+ * payment). Used after the fund covered part of a bill or declined it. Refused while a fund request
+ * for the visit is still being decided or paid, and when the balance isn't the amount the patient
+ * saw. Paying again once the bill is cleared pays nothing.
+ */
+export async function payPatientBalance(
+  db: Db,
+  input: { patientId: string; visitId: string; amountCents: unknown },
+): Promise<PortalPayResponse> {
+  const expected = input.amountCents;
+  if (!Number.isSafeInteger(expected) || (expected as number) < 0) {
+    throw new CoreError("bad_request", "amountCents must be the balance in cents");
+  }
+  let paidCents = 0;
+  await db.transaction(async (tx) => {
+    // Lock the visit so a double tap can't pay twice.
+    const { rows: visits } = await tx.query<{ patient_id: string }>(
+      "select patient_id from visits where id = $1 for update",
+      [input.visitId],
+    );
+    if (!visits[0]) throw new CoreError("not_found", "Visit not found");
+    if (visits[0].patient_id !== input.patientId) throw new CoreError("forbidden", "Not this patient's visit");
+    const { rows: live } = await tx.query(
+      "select id from grants where visit_id = $1 and status in ('pending_review', 'approved', 'payment_pending')",
+      [input.visitId],
+    );
+    if (live[0]) throw new CoreError("invalid_state", "The community fund is still deciding or paying this bill. Pay once it's done.");
+
+    const bill = await getBill(tx, input.visitId, { patientId: input.patientId });
+    if (bill.remainingCents <= 0) return;
+    if (bill.remainingCents !== expected) throw new CoreError("conflict", "The balance changed. Check the new amount and try again.");
+
+    const { rows: seqRows } = await tx.query<{ seq: number }>(
+      "select coalesce(max(seq), 0)::int as seq from bill_events where visit_id = $1",
+      [input.visitId],
+    );
+    await tx.query(
+      `insert into bill_events (id, visit_id, type, amount_cents, source_kind, source_label, source_id,
+                                status, simulated, reference, label, seq)
+       values ($1, $2, 'patient_payment', $3, 'patient', 'Patient', null, 'confirmed', true, null, $4, $5)`,
+      [newId("bev"), input.visitId, bill.remainingCents, "You paid the rest out of pocket (simulated)", Number(seqRows[0]?.seq ?? 0) + 1],
+    );
+    paidCents = bill.remainingCents;
+  });
+  return { bill: await getBill(db, input.visitId, { patientId: input.patientId }), paidCents };
 }

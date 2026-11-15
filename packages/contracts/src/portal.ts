@@ -1,6 +1,7 @@
 // Patient portal (/user): the patient's own view of their account on their phone.
 
 import type { Bill, InsurancePlan } from "./bills";
+import type { Cents } from "./grants";
 import type { Grant, PatientProfile } from "./records";
 
 export interface PortalPatient {
@@ -36,4 +37,17 @@ export interface PortalOverviewResponse {
   bills: Bill[];
   /** Every request to the community fund, newest first. */
   claims: Grant[];
+}
+
+// POST /api/user/bills/:visitId/pay: the signed-in patient pays what's left on a bill out of pocket
+// (simulated), e.g. after the fund covered part of it or declined. amountCents must equal the
+// balance the patient was shown; if it changed, the server refuses with 409 and nothing is paid.
+export interface PortalPayRequest {
+  amountCents: Cents;
+}
+
+export interface PortalPayResponse {
+  bill: Bill;
+  /** What this request paid; 0 when the bill was already paid off. */
+  paidCents: Cents;
 }
