@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Bill, Grant, GrantStatus, PortalOverviewResponse } from "@abdulcare/contracts";
 import { GoldCareCard } from "@/components/desk/GoldCareCard";
 import { Icon } from "@/components/Icon";
-import { LogoMark } from "@/components/Logo";
+import { LogoMark, LogoWordmark } from "@/components/Logo";
 import { STATUS_LABEL } from "@/components/StatusBadge";
 import { cleanName, firstName, shortDate, stepLabel, usd } from "@/lib/format";
 import { PortalError, getOverview, signIn, signOut } from "./portal-api";
@@ -117,8 +117,7 @@ function SignIn({ cardToken, onSignedIn }: { cardToken: string | null; onSignedI
     <main className="d-login u-login">
       <form className="d-login-card" onSubmit={submit}>
         <div className="d-login-brand">
-          <LogoMark />
-          OpenCare
+          <LogoWordmark />
         </div>
         <div className="u-login-card" aria-hidden="true">
           <GoldCareCard name="Your name" memberId="XXXX-XXX-XXXX" dob="XX-XX-XXXX" />
