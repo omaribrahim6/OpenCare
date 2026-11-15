@@ -1,16 +1,16 @@
 .patient-workspace {
-  --insurance: #075deb;
-  --hospital: #8cafe9;
+  --insurance: #4750d3;
+  --hospital: #9ca0d9;
   --fund: #b06a38;
-  --payment: #477c9e;
-  --remaining: #abbcd7;
+  --payment: #5d619a;
+  --remaining: #b3b5cf;
   color: var(--d-text);
 }
 
 .patient-workspace h1 {
   margin: 26px 0 8px;
   font-size: clamp(2rem, 5vw, 3rem);
-  font-weight: 650;
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 
@@ -26,7 +26,7 @@
   min-height: 44px;
   color: var(--d-teal-deep);
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .patient-back {
@@ -37,7 +37,7 @@
   color: #274a3d;
   text-decoration: none;
   font-size: .9rem;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .patient-nav a {
@@ -47,7 +47,7 @@
 
 .patient-nav a[aria-current] {
   background: white;
-  box-shadow: 0 1px 4px #132d2520;
+  box-shadow: 0 1px 4px #17182a20;
 }
 
 .patient-nav svg,
@@ -87,7 +87,7 @@
   text-decoration: none;
 }
 
-.patient-visit:hover { border-color: #91b5ef; background: #f8fbff; }
+.patient-visit:hover { border-color: #a1a6df; background: #f9f9fe; }
 
 .patient-visit-icon {
   display: grid;
@@ -95,7 +95,7 @@
   height: 43px;
   place-items: center;
   border-radius: 12px;
-  background: #ebf1fa;
+  background: #edeef8;
   color: var(--d-teal);
 }
 
@@ -117,7 +117,7 @@
   background: #f2ede2;
   color: #654921;
   font-size: .75rem;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .patient-status[data-paid="true"] {
@@ -165,7 +165,7 @@
   cursor: pointer;
 }
 
-.patient-bar button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px #162e27; }
+.patient-bar button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px #1a1b2b; }
 [data-part="insurance"] { --part: var(--insurance); }
 [data-part="hospital"] { --part: var(--hospital); }
 [data-part="fund"] { --part: var(--fund); }
@@ -194,7 +194,7 @@
   cursor: pointer;
 }
 
-.patient-legend button[aria-pressed="true"] { background: #ebf1fc; border-color: var(--d-line); }
+.patient-legend button[aria-pressed="true"] { background: #edeefa; border-color: var(--d-line); }
 .patient-legend strong, .patient-legend small { display: block; }
 .patient-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; }
 
@@ -203,7 +203,7 @@
   margin: 12px 0 0;
   padding: 10px 12px;
   border-radius: 8px;
-  background: #f3f6fa;
+  background: #f4f4f9;
   font-size: .9rem;
 }
 
@@ -222,10 +222,10 @@
 
 .patient-lines strong { white-space: nowrap; }
 .patient-plan { margin-bottom: 0; }
-.patient-plan dd { margin: 0; font-weight: 650; text-align: right; }
+.patient-plan dd { margin: 0; font-weight: 500; text-align: right; }
 
 .patient-action {
-  background: #ebf1fc;
+  background: #edeefa;
   border-color: var(--d-line);
 }
 
@@ -236,7 +236,7 @@
 }
 
 .patient-note summary,
-.patient-details summary { cursor: pointer; font-weight: 600; }
+.patient-details summary { cursor: pointer; font-weight: 500; }
 .patient-note label { display: block; margin-top: 8px; }
 .patient-details ul { margin-top: 10px; }
 
@@ -277,7 +277,7 @@
 
 .patient-visit-heading {
   padding: clamp(18px, 4vw, 28px);
-  background: #ebf1fa;
+  background: #edeef8;
 }
 
 .patient-visit-heading h1 { margin: 0; font-size: clamp(1.65rem, 4vw, 2.5rem); }
@@ -296,14 +296,14 @@
   border-radius: 0;
   border-bottom: 1px solid var(--d-line);
   background: white;
-  color: #111c2b;
+  color: #151627;
 }
 
 .patient-balance > div > span,
 .patient-balance > div > strong { display: block; }
 .patient-balance > div > strong {
   font-size: clamp(2.75rem, 8vw, 4rem);
-  font-weight: 650;
+  font-weight: 500;
   letter-spacing: -.055em;
   line-height: 1.1;
   overflow-wrap: anywhere;
@@ -354,7 +354,7 @@
 
 .patient-desk .d-body { width: 100%; max-width: 1240px; }
 .patient-desk .d-head { justify-content: space-between; }
-.patient-desk .d-head > strong { font-size: 20px; font-weight: 550; }
+.patient-desk .d-head > strong { font-size: 20px; font-weight: 450; }
 .patient-desk-nav { margin-top: 20px; }
 .patient-mobile-nav { display: none; }
 
@@ -368,34 +368,34 @@
 .patient-desk .patient-visit {
   padding-inline: 4px;
   border: 0;
-  border-bottom: 1px solid #dce6f2;
+  border-bottom: 1px solid #dfe0ef;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
 }
-.patient-desk .patient-visit:hover { background: #eff5ff; }
+.patient-desk .patient-visit:hover { background: #f1f2fd; }
 .patient-desk .patient-visit:focus-visible {
-  outline: 2px solid #075deb;
+  outline: 2px solid #4750d3;
   outline-offset: 3px;
 }
 
 .patient-desk .patient-status { padding: 0; border-radius: 0; background: transparent; }
 
 .patient-desk {
-  --d-teal: #075deb;
-  --d-teal-deep: #074ebb;
-  --d-teal-ink: #143468;
+  --d-teal: #4750d3;
+  --d-teal-deep: #2f38bc;
+  --d-teal-ink: #272b64;
   --d-canvas: #fcfdff;
-  --d-line: #dfe7f1;
-  --d-tile: #f4f7fb;
-  --d-text: #111c2b;
-  --d-text-2: #46566a;
-  --d-muted: #5e6e82;
+  --d-line: #e2e2ee;
+  --d-tile: #f5f5fa;
+  --d-text: #151627;
+  --d-text-2: #505168;
+  --d-muted: #686980;
   background: #fcfdff;
 }
 .patient-desk .d-main, .patient-desk .d-head { background: #fcfdff; }
 .patient-desk .d-nav [aria-current="page"] {
-  color: #104fb6;
-  border-color: #dceaff;
-  background: #eaf3ff;
+  color: #363eb6;
+  border-color: #e1e3fa;
+  background: #edeefc;
 }
