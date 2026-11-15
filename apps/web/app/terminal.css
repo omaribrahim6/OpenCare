@@ -32,8 +32,6 @@
 .station-provider > .card:has(.big) { background: #e1ebfc; border-color: #eff5fe; }
 
 /* Reuse the product colors across public and role-specific screens. */
-.logo-mark rect { fill: #075deb; }
-.logo-mark path { fill: #fff; }
 
 .station :is(.portal-panel, .card) { border-color: #dce6f2; }
 .station :is(input:not([type="radio"],[type="checkbox"]), select, textarea) {
