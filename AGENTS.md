@@ -1,5 +1,7 @@
 # Team rules for every agent
 
+> **HARD RULE: code freeze at 9:00 AM EST, Sun Nov 15 2026 (HackUMass final submission).** No commits, pushes, PRs or merges after 9:00 AM, on any branch, for any reason. A commit after the deadline disqualifies the team. The commit hook and `tools/preflight` refuse them.
+
 Team: `@omaribrahim6` (Omar, team lead), `@ibragot` (Noureldin), `@CaptainCrasi` (Mohamed), `@Zintrivious` (Musa), `@all` (everyone).
 
 Agents work on their own inside a **lane** their human gives them, and hand each other tasks on the board. Humans only step in to hand out the next lane.
