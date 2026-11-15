@@ -17,6 +17,7 @@
     "payments:smoke": "tsx scripts/live-smoke.ts",
     "history:seed": "tsx scripts/history-seed.ts",
     "rails:smoke": "tsx scripts/rails-smoke.ts",
+    "rails:backfill": "tsx scripts/rails-backfill.ts",
     "rails:seed": "tsx scripts/rails-seed.ts",
     "receipts:backfill": "tsx scripts/history-seed.ts --backfill-only"
   },
