@@ -3685,3 +3685,18 @@ body:has(.d-public) {
 .dr-refund { display: grid; gap: 10px; margin-top: 12px; }
 .dr-refund label { display: grid; gap: 4px; font-size: 0.9rem; color: var(--oc-slate, #5c6178); }
 .dr-refund-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* Public ledger totals: each amount stays on one line. The numerals scale with the row's width
+   (opencare.css loads later, hence the extra class), and the row folds to 2 then 1 column. */
+.d-public .lc-summary.pl-summary { container-type: inline-size; grid-template-columns: repeat(4, minmax(max-content, 1fr)); }
+.d-public .lc-summary.pl-summary dd { white-space: nowrap; font-size: clamp(1.15rem, 2.3cqi, 2.1rem); }
+@media (max-width: 1080px) {
+  .d-public .lc-summary.pl-summary { grid-template-columns: repeat(2, minmax(max-content, 1fr)); }
+  .d-public .lc-summary.pl-summary dd { font-size: clamp(1.15rem, 4.4cqi, 2.1rem); }
+  .d-public .lc-summary.pl-summary div:nth-child(3) { padding-left: 0; border-left: 0; }
+  .d-public .lc-summary.pl-summary div:nth-child(n + 3) { border-top: 1px solid var(--oc-line); }
+}
+@media (max-width: 640px) {
+  .d-public .lc-summary.pl-summary { grid-template-columns: minmax(0, 1fr); }
+  .d-public .lc-summary.pl-summary dd { font-size: clamp(1.15rem, 8.5cqi, 2.1rem); }
+}
