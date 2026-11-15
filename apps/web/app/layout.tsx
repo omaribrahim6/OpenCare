@@ -10,7 +10,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-ui", display: "swap"
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "AbdulCare", template: "%s · AbdulCare" },
+  title: { default: "OpenCare", template: "%s · OpenCare" },
   description:
     "Tap a CareCard, understand your medical bill, and get help paying it from a community fund. People decide, AI assists, and every dollar has a public receipt.",
 };

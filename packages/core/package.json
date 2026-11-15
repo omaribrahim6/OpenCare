@@ -2,7 +2,7 @@
   "name": "@abdulcare/core",
   "version": "0.1.0",
   "private": true,
-  "description": "AbdulCare server core: database, devices, card taps, documents, grant state machine, fund. Server-only.",
+  "description": "OpenCare server core: database, devices, card taps, documents, grant state machine, fund. Server-only.",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {

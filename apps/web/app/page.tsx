@@ -1,4 +1,4 @@
-// Public landing page: what AbdulCare is, who funds it, what's in the fund, and the way into the
+// Public landing page: what OpenCare is, who funds it, what's in the fund, and the way into the
 // public ledger. Server-rendered from core; numbers are cached for a minute. No patient data.
 
 import type { Metadata } from "next";
@@ -9,6 +9,7 @@ import type { FundSummary, LedgerEntry, TopDonorsResponse } from "@abdulcare/con
 import { getDb, getFundSummary, listLedger, listTopDonors } from "@abdulcare/core";
 import { BillStage } from "@/components/landing/BillStage";
 import { DONOR_KIND_LABEL, DonorMark, logoIdForName } from "@/components/landing/DonorMark";
+import { LogoMark } from "@/components/Logo";
 import { cleanName, usd, usdCompact } from "@/lib/format";
 import { CATEGORY_LABEL } from "@/lib/types";
 import "./landing.css";
@@ -21,9 +22,9 @@ const serif = Newsreader({ subsets: ["latin"], style: ["italic"], axes: ["opsz"]
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: { absolute: "AbdulCare · Every dollar of care, in public" },
+  title: { absolute: "OpenCare · Every dollar of care, in public" },
   description:
-    "AbdulCare runs a hospital bill through insurance, the hospital's own assistance and a community fund. A person approves every grant, and every claim and donation is published without the patient's identity.",
+    "OpenCare runs a hospital bill through insurance, the hospital's own assistance and a community fund. A person approves every grant, and every claim and donation is published without the patient's identity.",
 };
 
 interface LandingData {
@@ -67,15 +68,6 @@ function money(cents: number) {
   return Math.abs(cents) >= 100_000_000 ? usdCompact(cents) : usd(Math.round(cents / 100) * 100);
 }
 
-function Mark() {
-  return (
-    <svg viewBox="0 0 32 32" className="ln-brand-mark" aria-hidden="true">
-      <rect width="32" height="32" rx="10" fill="var(--ln-iris)" />
-      <path d="M14 8.5h4V14h5.5v4H18v5.5h-4V18H8.5v-4H14z" fill="#fff" />
-    </svg>
-  );
-}
-
 export default async function Landing() {
   const { fund, donors, claims, cases, declined } = await data();
   const available = fund?.availableCents ?? null;
@@ -85,9 +77,9 @@ export default async function Landing() {
   return (
     <div className={`landing ${sans.variable} ${serif.variable}`}>
       <header className="ln-top">
-        <Link href="/" className="ln-brand" aria-label="AbdulCare home">
-          <Mark />
-          AbdulCare
+        <Link href="/" className="ln-brand" aria-label="OpenCare home">
+          <LogoMark className="ln-brand-mark" />
+          OpenCare
         </Link>
         <nav className="ln-nav" aria-label="Main">
           <Link href="/fund">Public ledger</Link>
@@ -102,7 +94,7 @@ export default async function Landing() {
         <section className="ln-hero" aria-labelledby="ln-title">
           <h1 id="ln-title">One hospital bill. Every source of help. A public receipt for every dollar.</h1>
           <p className="ln-lede">
-            AbdulCare runs a hospital bill through the patient&rsquo;s insurance, then every assistance policy the
+            OpenCare runs a hospital bill through the patient&rsquo;s insurance, then every assistance policy the
             hospital offers, then a community fund paid for by hospitals, public programs and donors. A person approves
             every grant, and every claim and donation is published with the patient&rsquo;s identity removed.
           </p>

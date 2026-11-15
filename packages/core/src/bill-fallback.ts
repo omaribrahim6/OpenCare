@@ -101,7 +101,7 @@ export function applicationTextFallback(input: ApplicationTextInput): Applicatio
     `Monthly household income: ${p.monthlyIncomeCents == null ? "unknown" : usd(p.monthlyIncomeCents)}`,
     `Insurance: ${p.insurance ?? "unknown"}`,
     ...input.evaluation.criteria.map((c) => `- ${c.label}: ${c.met == null ? "unknown" : c.met ? "met" : "not met"} (${c.detail})`),
-    "Prepared from the patient's TrumpCare profile. Submission is simulated.",
+    "Prepared from the patient's OpenCare profile. Submission is simulated.",
   ];
   return { text: lines.join("\n"), source: "template", model: null };
 }

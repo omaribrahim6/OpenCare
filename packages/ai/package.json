@@ -2,7 +2,7 @@
   "name": "@abdulcare/ai",
   "version": "0.1.0",
   "private": true,
-  "description": "AbdulCare ai lane: need formula, Gemini queue ranking, transaction classification, bill explanations, injection flag. Server-only.",
+  "description": "OpenCare ai lane: need formula, Gemini queue ranking, transaction classification, bill explanations, injection flag. Server-only.",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {

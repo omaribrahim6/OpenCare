@@ -1,4 +1,4 @@
-# TrumpCare (working name)
+# OpenCare
 ## Hackathon product and engineering specification
 **Status:** MVP, revision 6 • **Event:** HackUMass XIV (hacking Fri Nov 13, 8:30 PM → final submission Sun Nov 15, 9:00 AM) • **Base URL:** https://abdulcare.vercel.app (custom domain later)
 
@@ -31,7 +31,7 @@
 **Revision 2 changes (Nov 14):** NFC CareCards on a phone kiosk replace the Raspberry Pi; Capital One Nessie and Solana devnet added; four lanes.
 
 ## 1. Product
-TrumpCare runs a hospital bill through every source of help, in order, and shows the patient one bill that shrinks at each step.
+OpenCare runs a hospital bill through every source of help, in order, and shows the patient one bill that shrinks at each step.
 
 1. **Visit logged.** At the hospital, staff tap the patient's **CareCard** on a hospital terminal and log the visit and its charges. The bill is **hospital-attested**.
 2. **Insurance.** The patient's plan on file pays its share (deductible, coinsurance, out-of-pocket maximum).
@@ -45,7 +45,7 @@ The central demo is one journey: **tap at hospital → visit logged → insuranc
 The project is inspired by advocacy for Medicare for All: care for everyone, with no one turned away. It is an independent hackathon prototype with no affiliation or endorsement.
 
 ## 2. Problem and users
-A hospital bill passes through insurance, hospital financial assistance and charity in separate processes, each with its own forms. Patients give up partway, or never learn what they qualify for. TrumpCare runs every step for them, and the only thing the patient needs is a card.
+A hospital bill passes through insurance, hospital financial assistance and charity in separate processes, each with its own forms. Patients give up partway, or never learn what they qualify for. OpenCare runs every step for them, and the only thing the patient needs is a card.
 
 | User | Needs |
 | --- | --- |
@@ -256,7 +256,7 @@ Tracks: Best Overall, Best MedTech Hack, Most Impactful AI Hack; **Best Use of N
 
 Deadlines: initial submission **Sun 12:00 AM**, final **Sun 9:00 AM**, judging **12:30 PM**.
 
-**Name: open (proposal 001, Q6).** The working name is "TrumpCare" (previously AbdulCare). Musa decides before the Devpost entry. The base URL stays the Vercel URL, so the CareCards never need rewriting.
+**Name: OpenCare** (Omar, Nov 14 2026; closes proposal 001, Q6). Earlier names were AbdulCare and the working name TrumpCare; package names, cookies and the Vercel URL keep the old identifier. The base URL stays the Vercel URL, so the CareCards never need rewriting.
 
 Independent-project footer: "Independent hackathon prototype. Not affiliated with or endorsed by any political figure, hospital, insurer or government program. Demonstration uses fictional data, Capital One Nessie mock banking, and Solana devnet."
 
