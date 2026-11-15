@@ -17,11 +17,17 @@ final class KioskModel: NSObject, ObservableObject {
     @Published var showSettings = false
     @Published var simulatePrompt = false
     @Published var simulateText = ""
+    /// Path of the open page, kept current through client-side navigation too.
+    @Published private(set) var currentPath = ""
 
     let webView: WKWebView
     private let scanner = CareCardScanner()
     private var simulateCompletion: ((Result<String, ScanError>) -> Void)?
     private var toastTask: Task<Void, Never>?
+    private var urlObservation: NSKeyValueObservation?
+
+    /// Kiosk screens where a patient taps a card (the floating reader button shows only there).
+    static let tapScreens: Set<String> = ["/kiosk", "/kiosk/charge"]
 
     override init() {
         let saved = UserDefaults.standard.string(forKey: Self.serverKey)
@@ -39,8 +45,17 @@ final class KioskModel: NSObject, ObservableObject {
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = false
+        urlObservation = webView.observe(\.url, options: [.new]) { [weak self] webView, _ in
+            let path = webView.url?.path ?? ""
+            Task { @MainActor in self?.currentPath = path }
+        }
         #if DEBUG
         webView.isInspectable = true
+        // Debug launch argument: `-startPath /some/page` opens that page first.
+        if let path = UserDefaults.standard.string(forKey: "startPath"), path.hasPrefix("/") {
+            open(path: path)
+            return
+        }
         #endif
         open(path: Self.startPath)
     }
@@ -89,6 +104,10 @@ final class KioskModel: NSObject, ObservableObject {
         return scheme?.lowercased() == server.scheme
             && host?.lowercased() == server.host?.lowercased()
             && (port ?? defaultPort) == (server.port ?? defaultPort)
+    }
+
+    var showsCardButton: Bool {
+        loadError == nil && pageIsOnServer && Self.tapScreens.contains(currentPath)
     }
 
     private var pageIsOnServer: Bool {

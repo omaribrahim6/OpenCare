@@ -8,7 +8,10 @@ struct ContentView: View {
         WebViewContainer(webView: model.webView)
             .ignoresSafeArea(.container, edges: .bottom)
             .overlay { if let error = model.loadError { LoadErrorView(message: error, model: model) } }
-            .overlay(alignment: .bottomTrailing) { CareCardButton(model: model).padding(16) }
+            // Top right, below the page header: clear of the kiosk screens' own buttons.
+            .overlay(alignment: .topTrailing) {
+                if model.showsCardButton { CareCardButton(model: model).padding(.top, 72).padding(.trailing, 12) }
+            }
             .overlay(alignment: .top) {
                 if let toast = model.toast {
                     Text(toast)
@@ -35,15 +38,16 @@ struct ContentView: View {
 }
 
 /// Tap: read a CareCard. Long-press: settings, reload, back to the kiosk start.
+/// Shown on the kiosk tap screens only (/kiosk and /kiosk/charge).
 private struct CareCardButton: View {
     @ObservedObject var model: KioskModel
 
     var body: some View {
         Button { model.nativeTap() } label: {
             Image(systemName: "wave.3.right.circle.fill")
-                .font(.system(size: 30))
+                .font(.system(size: 26))
                 .symbolRenderingMode(.hierarchical)
-                .frame(width: 52, height: 52)
+                .frame(width: 46, height: 46)
                 .background(.ultraThinMaterial, in: Circle())
         }
         .accessibilityLabel("Tap your CareCard")
