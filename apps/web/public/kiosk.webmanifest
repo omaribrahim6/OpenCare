@@ -5,10 +5,18 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#c9c1f0",
-  "theme_color": "#c9c1f0",
+  "background_color": "#ffffff",
+  "theme_color": "#0b49ba",
   "icons": [
-    { "src": "/kiosk-icon-180.png", "sizes": "180x180", "type": "image/png" },
-    { "src": "/kiosk-icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "/kiosk-icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/kiosk-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
   ]
 }
