@@ -72,12 +72,16 @@ export function FundWorkspace({
         e.kind === "donation" ? "Donation" : "Provider payment",
         e.kind === "donation" ? "" : publicCaseId(e.reference),
         e.kind === "donation" ? (e.donorLabel ?? "Community contribution") : (e.hospital ?? ""),
+        e.kind === "donation" || !e.category ? "" : CATEGORY_LABEL[e.category],
+        e.chargesCents == null ? "" : e.chargesCents / 100,
+        e.insurerPaidCents == null ? "" : e.insurerPaidCents / 100,
+        e.hospitalAssistanceCents == null ? "" : e.hospitalAssistanceCents / 100,
         (e.kind === "donation" ? 1 : -1) * e.amountCents / 100,
         new Date(e.at).toLocaleDateString("en-US", { month: "short", year: "numeric" }),
         e.solanaSignature,
       ].map(field).join(","));
       const url = URL.createObjectURL(new Blob([
-        ["Event,Public case ID,Provider or donor,Amount (USD),Reporting period,Solana signature", ...pub].join("\r\n"),
+        ["Event,Public case ID,Provider or donor,Care category,Billed (USD),Insurance paid (USD),Hospital assistance (USD),Fund amount (USD),Reporting period,Solana signature", ...pub].join("\r\n"),
       ], { type: "text/csv;charset=utf-8" }));
       const link = document.createElement("a");
       link.href = url;

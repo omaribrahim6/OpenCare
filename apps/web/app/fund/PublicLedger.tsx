@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { LedgerEntry, LedgerResponse } from "@abdulcare/contracts";
 import { Icon, SolanaMark, type IconName } from "@/components/Icon";
 import { explorerTx, shortSig, usd, usdParts } from "@/lib/format";
+import { CATEGORY_LABEL } from "@/lib/types";
 
 // The public ledger (/fund): every dollar in and out, with only what's safe to publish. Cases are
 // shown by a short public case ID, the paying hospital, the amount and the month; no diagnosis,
@@ -261,6 +262,8 @@ export function PublicLedger({ ledger }: { ledger: LedgerResponse | null }) {
         )}
       </div>
 
+      {t && <DeclinedSummary totals={t} />}
+
       {open && <PublicRecord entry={open} onClose={() => setOpen(null)} />}
     </section>
   );
@@ -328,6 +331,8 @@ function PublicRecord({ entry: e, onClose }: { entry: LedgerEntry; onClose: () =
         <small>{pay ? "Community fund paid" : "Donated to the community fund"}</small>
         <strong>{usd(e.amountCents)}</strong>
       </div>
+
+      {pay && <MoneySteps entry={e} />}
 
       <ul className="pl-record-rows">
         <li>
@@ -419,5 +424,64 @@ function PublicRecord({ entry: e, onClose }: { entry: LedgerEntry; onClose: () =
         </span>
       </p>
     </dialog>
+  );
+}
+
+/** Billed → insurance → hospital assistance → fund, as amounts only, with a coarse care category. */
+function MoneySteps({ entry: e }: { entry: LedgerEntry }) {
+  const billed = e.chargesCents;
+  if (billed == null) return null;
+  const steps: [string, number | null | undefined, boolean][] = [
+    ["Billed", billed, false],
+    ["Insurance paid", e.insurerPaidCents, true],
+    ["Hospital assistance", e.hospitalAssistanceCents, true],
+    ["Community fund paid", e.amountCents, true],
+  ];
+  const left = billed - (e.insurerPaidCents ?? 0) - (e.hospitalAssistanceCents ?? 0) - e.amountCents;
+  return (
+    <section className="pl-steps" aria-label="How the bill was paid">
+      <div className="pl-steps-head">
+        <small>How the bill was paid</small>
+        {e.category && <span className="chip chip-line">{CATEGORY_LABEL[e.category]}</span>}
+      </div>
+      <ol>
+        {steps.map(([label, cents, minus]) => (
+          <li key={label}>
+            <span>{label}</span>
+            <b>{cents == null ? "—" : `${minus && cents > 0 ? "−" : ""}${usd(cents)}`}</b>
+          </li>
+        ))}
+        <li className="pl-steps-left">
+          <span>Left for the patient</span>
+          <b>{usd(Math.max(0, left))}</b>
+        </li>
+      </ol>
+    </section>
+  );
+}
+
+type Totals = LedgerResponse["totals"] & { declinedByReason?: { reason: string; count: number }[] };
+
+/** Declines are public as totals: how many requests the fund said no to, and why, never which ones. */
+function DeclinedSummary({ totals }: { totals: Totals }) {
+  const reasons = (totals.declinedByReason ?? []).filter((r) => r.count > 0);
+  return (
+    <section className="pl-declined" aria-label="Declined requests">
+      <div>
+        <strong>{totals.declined.toLocaleString()}</strong>
+        <span>{totals.declined === 1 ? "request declined" : "requests declined"}</span>
+      </div>
+      {reasons.length > 0 ? (
+        <ul>
+          {reasons.map((r) => (
+            <li key={r.reason}>
+              {r.reason} <b>{r.count.toLocaleString()}</b>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted">Declined requests are counted here, not listed, so no one can be identified.</p>
+      )}
+    </section>
   );
 }
