@@ -4,7 +4,7 @@ import "../../check/check.css";
 import "../charge.css";
 
 export const metadata: Metadata = { title: "Your bill" };
-export const viewport: Viewport = { themeColor: "#eaf2ff" };
+export const viewport: Viewport = { themeColor: "#edeefc" };
 
 // The page a card scan opens. The presenter's hold on the reader adds ?via=hold; the NFC scan
 // opens it as is.
