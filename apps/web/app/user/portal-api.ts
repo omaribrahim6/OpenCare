@@ -1,6 +1,12 @@
 // Client calls for /user. The portal cookie is httpOnly, so the browser sends it on its own.
 
-import type { PortalOverviewResponse, PortalSessionResponse, PortalSignInRequest } from "@abdulcare/contracts";
+import type {
+  PortalOverviewResponse,
+  PortalPayRequest,
+  PortalPayResponse,
+  PortalSessionResponse,
+  PortalSignInRequest,
+} from "@abdulcare/contracts";
 
 export class PortalError extends Error {
   constructor(
@@ -28,3 +34,9 @@ export const signIn = (req: PortalSignInRequest) =>
   call<PortalSessionResponse>("/api/user/session", { method: "POST", body: JSON.stringify(req) });
 
 export const signOut = () => call<{ ok: true }>("/api/user/session", { method: "DELETE" });
+
+export const payBalance = (visitId: string, amountCents: number) =>
+  call<PortalPayResponse>(`/api/user/bills/${encodeURIComponent(visitId)}/pay`, {
+    method: "POST",
+    body: JSON.stringify({ amountCents } satisfies PortalPayRequest),
+  });

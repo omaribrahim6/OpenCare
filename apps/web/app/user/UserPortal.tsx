@@ -8,7 +8,7 @@ import { Icon } from "@/components/Icon";
 import { LogoMark, LogoWordmark } from "@/components/Logo";
 import { STATUS_LABEL } from "@/components/StatusBadge";
 import { cleanName, firstName, shortDate, stepLabel, usd } from "@/lib/format";
-import { PortalError, getOverview, signIn, signOut } from "./portal-api";
+import { PortalError, getOverview, payBalance, signIn, signOut } from "./portal-api";
 
 type State =
   | { kind: "loading" }
@@ -80,6 +80,7 @@ export function UserPortal({ cardToken }: { cardToken: string | null }) {
   return (
     <Dashboard
       data={state.data}
+      onRefresh={(data) => setState({ kind: "ready", data })}
       onSignOut={async () => {
         await signOut().catch(() => {});
         setState({ kind: "signed_out" });
@@ -187,8 +188,58 @@ const PILL: Record<GrantStatus, string> = {
   canceled: "",
 };
 
-function Dashboard({ data, onSignOut }: { data: PortalOverviewResponse; onSignOut: () => void }) {
+/**
+ * How a decided claim turned out. Partial: the fund covered less than was asked (the rest was
+ * denied). The patient owes whatever is still left on the bill.
+ */
+interface Outcome {
+  kind: "full" | "partial" | "denied" | "open";
+  requestedCents: number;
+  coveredCents: number;
+  deniedCents: number;
+}
+
+function outcomeOf(g: Grant): Outcome {
+  const requestedCents = g.requestedCents;
+  if (g.status === "rejected") return { kind: "denied", requestedCents, coveredCents: 0, deniedCents: requestedCents };
+  if (g.status === "approved" || g.status === "payment_pending" || g.status === "paid") {
+    const coveredCents = g.approvedCents ?? 0;
+    const deniedCents = Math.max(0, requestedCents - coveredCents);
+    return { kind: deniedCents > 0 ? "partial" : "full", requestedCents, coveredCents, deniedCents };
+  }
+  return { kind: "open", requestedCents, coveredCents: 0, deniedCents: 0 };
+}
+
+/** What the patient still pays on a bill: the balance less anything the fund is already sending. */
+const outOfPocket = (b: Bill) => Math.max(0, b.remainingCents - b.pendingCents);
+
+/** The newest claim on each visit. */
+function latestClaimByVisit(claims: Grant[]): Map<string, Grant> {
+  const map = new Map<string, Grant>();
+  for (const g of claims) if (g.visit && !map.has(g.visit.id)) map.set(g.visit.id, g); // newest first
+  return map;
+}
+
+function Dashboard({
+  data,
+  onRefresh,
+  onSignOut,
+}: {
+  data: PortalOverviewResponse;
+  onRefresh: (data: PortalOverviewResponse) => void;
+  onSignOut: () => void;
+}) {
   const { patient, profile, plan, bills, claims } = data;
+  const byVisit = latestClaimByVisit(claims);
+  const billFor = (g: Grant) => (g.visit ? bills.find((b) => b.visit.id === g.visit?.id) : undefined);
+  // Prompt to pay the rest once the fund has decided and covered only part of a bill, or none of it.
+  const toPay = bills.flatMap((b) => {
+    const g = byVisit.get(b.visit.id);
+    if (!g || OPEN.includes(g.status) || outOfPocket(b) <= 0) return [];
+    const o = outcomeOf(g);
+    return o.kind === "partial" || o.kind === "denied" ? [{ bill: b, grant: g, outcome: o }] : [];
+  });
+  const refresh = () => getOverview().then(onRefresh, () => {});
   const name = cleanName(patient.displayName);
   const owed = bills.reduce((s, b) => s + b.remainingCents, 0);
   const charged = bills.reduce((s, b) => s + b.chargesCents, 0);
@@ -231,6 +282,35 @@ function Dashboard({ data, onSignOut }: { data: PortalOverviewResponse; onSignOu
           <Tile icon="heart" label="Fund paid" value={usd(fundPaid)} />
         </section>
 
+        {toPay.length > 0 && (
+          <section className="d-card u-section u-due" aria-labelledby="u-due">
+            <div className="d-card-head">
+              <h2 id="u-due">Left to pay</h2>
+            </div>
+            <ul className="u-list">
+              {toPay.map(({ bill, outcome }) => (
+                <li key={bill.visit.id} className="u-due-item">
+                  <p className="u-due-title">
+                    {outcome.kind === "denied" ? (
+                      <>You&apos;ve been denied for {usd(outcome.deniedCents)}.</>
+                    ) : (
+                      <>
+                        You&apos;ve been partially accepted for {usd(outcome.coveredCents)} of {usd(outcome.requestedCents)}.
+                      </>
+                    )}
+                  </p>
+                  <p className="u-muted">
+                    {bill.visit.description} at {bill.visit.hospital.name}.{" "}
+                    {outcome.kind === "partial" && <>The fund denied the other {usd(outcome.deniedCents)}. </>}
+                    You have <strong>{usd(outOfPocket(bill))}</strong> still to pay out of pocket.
+                  </p>
+                  <PayButton visitId={bill.visit.id} amountCents={outOfPocket(bill)} onPaid={refresh} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <section className="d-card u-section" aria-labelledby="u-claims">
           <div className="d-card-head">
             <h2 id="u-claims">Claims</h2>
@@ -241,7 +321,7 @@ function Dashboard({ data, onSignOut }: { data: PortalOverviewResponse; onSignOu
           ) : (
             <ul className="u-list">
               {claims.map((g) => (
-                <ClaimRow key={g.id} grant={g} />
+                <ClaimRow key={g.id} grant={g} bill={billFor(g)} />
               ))}
             </ul>
           )}
@@ -255,9 +335,10 @@ function Dashboard({ data, onSignOut }: { data: PortalOverviewResponse; onSignOu
             <p className="u-empty">No bills yet. Bills appear here once a hospital logs a visit to your CareCard.</p>
           ) : (
             <ul className="u-list">
-              {bills.map((b) => (
-                <BillRow key={b.visit.id} bill={b} />
-              ))}
+              {bills.map((b) => {
+                const g = byVisit.get(b.visit.id);
+                return <BillRow key={b.visit.id} bill={b} canPay={!g || !OPEN.includes(g.status)} onPaid={refresh} />;
+              })}
             </ul>
           )}
         </section>
@@ -305,8 +386,11 @@ function Tile({ icon, label, value, strong = false }: { icon: string; label: str
   );
 }
 
-function ClaimRow({ grant: g }: { grant: Grant }) {
+function ClaimRow({ grant: g, bill }: { grant: Grant; bill?: Bill }) {
   const paid = g.status === "paid" ? (g.approvedCents ?? 0) : 0;
+  const o = outcomeOf(g);
+  const left = bill ? outOfPocket(bill) : null;
+  const label = o.kind === "partial" ? "Partly approved" : STATUS_LABEL[g.status];
   return (
     <li className="u-row">
       <div className="u-row-main">
@@ -317,8 +401,22 @@ function ClaimRow({ grant: g }: { grant: Grant }) {
       </div>
       <div className="u-row-side">
         <strong>{usd(g.approvedCents ?? g.requestedCents)}</strong>
-        <span className={`d-pill dot ${PILL[g.status]}`}>{STATUS_LABEL[g.status]}</span>
+        <span className={`d-pill dot ${o.kind === "partial" ? "amber" : PILL[g.status]}`}>{label}</span>
       </div>
+      {(o.kind === "partial" || o.kind === "denied") && (
+        <p className={`u-outcome ${o.kind}`}>
+          {o.kind === "denied"
+            ? `You've been denied for ${usd(o.deniedCents)}.`
+            : `You've been partially accepted for ${usd(o.coveredCents)} of ${usd(o.requestedCents)}, and denied for ${usd(o.deniedCents)}.`}{" "}
+          {left == null
+            ? null
+            : left > 0
+              ? `You have ${usd(left)} still to pay out of pocket.`
+              : bill && bill.patientPaidCents > 0
+                ? `You paid the remaining ${usd(bill.patientPaidCents)}. Nothing is left to pay.`
+                : "Nothing is left to pay on this bill."}
+        </p>
+      )}
       {(paid > 0 || g.receipt?.explorerUrl) && (
         <div className="u-row-foot">
           {paid > 0 && <span>Paid to {g.provider.name}{g.paidAt ? ` on ${shortDate(g.paidAt)}` : ""}</span>}
@@ -333,7 +431,7 @@ function ClaimRow({ grant: g }: { grant: Grant }) {
   );
 }
 
-function BillRow({ bill: b }: { bill: Bill }) {
+function BillRow({ bill: b, canPay, onPaid }: { bill: Bill; canPay: boolean; onPaid: () => void }) {
   return (
     <li className="u-row">
       <details className="u-bill">
@@ -362,6 +460,8 @@ function BillRow({ bill: b }: { bill: Bill }) {
           </li>
         </ol>
         {b.pendingCents > 0 && <p className="u-note">{usd(b.pendingCents)} is on its way from the community fund.</p>}
+        {b.patientPaidCents > 0 && <p className="u-note">You paid {usd(b.patientPaidCents)} on this bill.</p>}
+        {canPay && outOfPocket(b) > 0 && <PayButton visitId={b.visit.id} amountCents={outOfPocket(b)} onPaid={onPaid} />}
         {b.visit.lineItems.length > 0 && (
           <>
             <p className="u-sub">Itemized charges</p>
@@ -377,6 +477,60 @@ function BillRow({ bill: b }: { bill: Bill }) {
         )}
       </details>
     </li>
+  );
+}
+
+/** Pay what's left on a bill out of pocket (simulated). Asks once before paying. */
+function PayButton({ visitId, amountCents, onPaid }: { visitId: string; amountCents: number; onPaid: () => void }) {
+  const [step, setStep] = useState<"idle" | "confirm" | "paying" | "done">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  async function pay() {
+    setStep("paying");
+    setError(null);
+    try {
+      await payBalance(visitId, amountCents);
+      setStep("done");
+      onPaid();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The payment didn't go through. Try again.");
+      setStep("idle");
+      onPaid(); // the balance may have changed; show the current one
+    }
+  }
+
+  if (step === "done") {
+    return (
+      <p className="u-paid" role="status">
+        <Icon name="check" size={14} /> Paid {usd(amountCents)}. This bill is settled.
+      </p>
+    );
+  }
+  return (
+    <div className="u-pay">
+      {step === "confirm" ? (
+        <>
+          <span>Pay {usd(amountCents)} now?</span>
+          <div className="u-pay-actions">
+            <button className="d-btn" onClick={() => setStep("idle")}>
+              Cancel
+            </button>
+            <button className="d-btn d-btn-teal" onClick={() => void pay()}>
+              Confirm payment
+            </button>
+          </div>
+        </>
+      ) : (
+        <button className="d-btn d-btn-teal u-wide" onClick={() => setStep("confirm")} disabled={step === "paying"}>
+          <Icon name="bill" /> {step === "paying" ? "Paying…" : `Pay the rest: ${usd(amountCents)}`}
+        </button>
+      )}
+      {error && (
+        <p className="d-login-error" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 

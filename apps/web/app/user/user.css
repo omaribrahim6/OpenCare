@@ -193,6 +193,30 @@
 .u-sub { margin: 14px 0 0; font-size: 13px; color: var(--oc-slate); }
 .u-items { background: transparent; padding: 4px 0 0; color: var(--oc-slate); }
 
+/* ------------------------------------------------------------ Partial and denied claims, paying the rest */
+
+.u-outcome {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.u-outcome.partial { background: #fff6e5; color: #7a4b00; }
+.u-outcome.denied { background: #fdecec; color: #8a1f1f; }
+.u-due { border-color: #f1c779; }
+.u-due-item { display: grid; gap: 6px; padding: 12px 0; border-top: 1px solid var(--oc-line); }
+.u-due-item:first-child { border-top: 0; padding-top: 2px; }
+.u-due-title { margin: 0; font-size: 16px; font-weight: 500; }
+.u-due-item .u-muted { margin: 0; font-size: 14px; line-height: 1.45; }
+.u-due-item .u-muted strong { color: var(--oc-ink); font-variant-numeric: tabular-nums; }
+.u-pay { display: grid; gap: 8px; margin-top: 10px; }
+.u-pay > span { font-size: 15px; font-weight: 500; }
+.u-pay-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.u-pay-actions .d-btn { justify-content: center; min-height: 44px; }
+.u-paid { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font-size: 14px; color: #1d7a46; }
+
 /* ------------------------------------------------------------ Profile */
 
 .u-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; margin: 0; }
