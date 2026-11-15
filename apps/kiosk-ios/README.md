@@ -28,7 +28,8 @@ OpenCareKiosk app ──► token ──► WKWebView (kiosk site)
   default persistent website data store, so the kiosk's pairing and session cookies survive
   relaunches. The user agent ends with `OpenCareKiosk/1`.
 - **Reading a card.** Two ways start a scan, and both use the same reader:
-  1. **The floating button** (bottom right). It reads the card, then opens `<server>/t/<token>`
+  1. **The floating button** (top right, shown only on the kiosk tap screens `/kiosk` and
+     `/kiosk/charge`). It reads the card, then opens `<server>/t/<token>`
      in the WebView. That page is the same one the card's own link opens: it calls `tap(token)`
      and routes (charge waiting → `/kiosk/charge/card`, otherwise `/kiosk/check`). This works with
      today's web app, no web changes needed. Long-press the button for Settings, Reload and
@@ -40,7 +41,8 @@ OpenCareKiosk app ──► token ──► WKWebView (kiosk site)
   matches `^[A-Za-z0-9_-]{10,64}$`. The card format is unchanged.
 - **Simulator.** It has no NFC. In DEBUG builds a scan with no NFC reader asks for a token
   instead, and Settings → Debug → Simulate scan opens `/t/<token>` directly. Release builds
-  report `nfc_unavailable`.
+  report `nfc_unavailable`. Debug builds also take a `-startPath /some/page` launch argument
+  (`xcrun simctl launch <device> com.opencare.kiosk.dev -startPath /kiosk/charge`).
 
 Files: `OpenCareKiosk/KioskModel.swift` (WebView, bridge, settings), `CareCardScanner.swift`
 (Core NFC and token parsing), `ContentView.swift`, `SettingsView.swift`.
@@ -121,11 +123,11 @@ newer), and a USB cable.
 6. **Trust the developer** if the app won't open ("Untrusted Developer"): on the iPhone go to
    Settings → General → VPN & Device Management → your developer account → **Trust**. Then
    open **OpenCare Kiosk** again.
-7. **Pair the kiosk once.** In the app, long-press the round button at the bottom right →
+7. **Pair the kiosk once.** On the kiosk start screen, long-press the round button at the top right →
    **Settings** → **Pair this kiosk (staff PIN)**. Enter the staff PIN (ask Omar; never commit
    it). The pairing cookie stays after relaunch.
 8. **Test a card.** Open the kiosk start (or start a charge at `/kiosk/charge`), tap the round
-   CareCard button, and hold the card near the top of the iPhone. The kiosk should open that
+   CareCard button at the top right, and hold the card near the top of the iPhone. The kiosk should open that
    patient's bill (or the waiting charge) without leaving the app.
 
 Apps installed this way with a paid account keep working for a year; just press Run again to
