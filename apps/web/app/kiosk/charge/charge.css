@@ -115,31 +115,14 @@
   font-variant-numeric: tabular-nums;
 }
 .kc-total small { color: var(--kc-muted); font-size: 14px; }
-.kc-big { margin-top: 0; }
-.kc-meter { height: 8px; margin: 8px 0 4px; border-radius: 999px; background: #dfe8f7; overflow: hidden; }
-.kc-meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #5a9aff, var(--kc-blue)); transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
 
-/* Search */
-.kc-steps { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 4px; }
-.kc-steps li {
-  display: grid;
-  grid-template-columns: 24px 1fr auto;
-  gap: 10px;
-  align-items: center;
-  padding: 9px 2px;
-  border-bottom: 1px solid #e8edf6;
-  color: var(--kc-ink);
-  animation: kc-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.kc-steps li:not([data-done]) { color: var(--kc-muted); }
-.kc-steps b { color: var(--kc-saved); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.kc-tick { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #e3f4ec; color: var(--kc-saved); }
-.kc-spin { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid #cfdcf3; border-top-color: var(--kc-blue); animation: kc-spin 0.8s linear infinite; }
+.kc-spin { display: inline-block; width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid #cfdcf3; border-top-color: var(--kc-blue); animation: kc-spin 0.8s linear infinite; }
 .kc-spin-lg { width: 46px; height: 46px; border-width: 4px; }
+.kc-primary .kc-spin, .kc-fund-btn .kc-spin { width: 16px; height: 16px; border-width: 2px; border-color: #ffffff66; border-top-color: #fff; }
+.kc-fund-btn .kc-spin { border-color: #075deb33; border-top-color: var(--kc-blue); }
 @keyframes kc-spin { to { transform: rotate(360deg); } }
-@keyframes kc-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-/* Summary (review and receipt) */
+/* Summary (patient bill and receipt) */
 .kc-summary {
   display: grid;
   padding: 6px 18px;
@@ -282,7 +265,39 @@ body:has(.kc-scan) { background: linear-gradient(180deg, #dbe8ff, #f3f7ff 55%, #
   .kc-line { grid-template-columns: minmax(0, 1fr) 128px 28px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .kc-ring, .kc-steps li, .kc-up { animation: none; }
+  .kc-ring, .kc-up { animation: none; }
   .kc-ring { opacity: 0; }
-  .kc-meter i { transition: none; }
 }
+
+/* The patient's bill under the reader, before the scan. */
+.kc-billcard { margin-top: 26px; text-align: left; }
+.kc-billcard h2 { margin: 0 0 8px; font-size: 17px; font-weight: 650; }
+.kc-scan .kc-skip { margin-top: 16px; }
+
+/* The card page: checking, then pay or ask the fund. */
+.kc-card .bw-balance { margin-top: 4px; }
+.kc-card .bw-balance strong { font-size: clamp(34px, 10.5vw, 50px); }
+.kc-checking { color: var(--kc-muted); font-weight: 550; font-size: 14px; }
+.kc-choices { display: grid; gap: 14px; margin-top: 18px; animation: kc-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.kc-choices .kc-primary { margin-top: 0; }
+.kc .kc-fund { display: grid; gap: 4px; }
+.kc .kc-fund h2 { margin: 0; font-size: 18px; }
+.kc .kc-fund-btn {
+  display: flex;
+  width: 100%;
+  min-height: 50px;
+  margin-top: 10px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1.5px solid var(--kc-blue);
+  color: var(--kc-blue);
+  font-size: 16px;
+  font-weight: 650;
+}
+.kc .kc-fund-btn:hover:not(:disabled) { background: var(--kc-soft); }
+@keyframes kc-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.kc-asked { color: #c2185b; }
+.kc-asked h1 { font-size: clamp(22px, 6vw, 28px); line-height: 1.2; }
+.kc-lead { margin: 0 0 14px; color: var(--kc-muted); }
+.kc-lead b { color: var(--kc-ink); }
+@media (prefers-reduced-motion: reduce) { .kc-choices { animation: none; } }

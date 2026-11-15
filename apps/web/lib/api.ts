@@ -244,12 +244,16 @@ export const getBriefedQueue = () => (LIVE ? get<ReviewQueue>("/api/review/queue
 
 // Kiosk charges ---------------------------------------------------------------------------------
 
-/** The receipt a kiosk sends to /admin after the patient pays (route proposed on the board). */
+/**
+ * What a kiosk sends to /admin once the patient settles the bill (route proposed on the board):
+ * paid by card, or asked the community care fund for the balance left after the discounts.
+ */
 export type KioskChargeRequest = {
   items: { label: string; cents: number }[];
   discounts: { label: string; cents: number }[];
   method: "nfc" | "hold";
   preset: string | null;
+  outcome: "paid" | "fund_request";
 };
 export type KioskChargeResult =
   | { sent: true; id: string }

@@ -30,33 +30,49 @@ export const MAX_LABEL = 80;
 
 export const total = (lines: ChargeLine[]) => lines.reduce((sum, l) => sum + l.cents, 0);
 
-/**
- * The scripted discount search takes 32% off in three lines (15% charity care, 12% insurance
- * match, the rest prompt-pay), rounded to the cent. On the preset that is -$146,186.29.
- */
-export function discountsFor(originalCents: number): ChargeLine[] {
-  const all = Math.round(originalCents * 0.32);
-  const charity = Math.round(originalCents * 0.15);
-  const insurance = Math.round(originalCents * 0.12);
-  return [
-    { label: "Charity care (hospital financial assistance)", cents: charity },
-    { label: "Insurance match (auto med-pay, negotiated rate)", cents: insurance },
-    { label: "Prompt-pay self-pay discount", cents: all - charity - insurance },
-  ].filter((d) => d.cents > 0);
-}
+export type CheckStep = {
+  id: "insurance" | "policy" | "discounts";
+  title: string;
+  /** Shown one after another while this step loads. */
+  working: string[];
+  /** Shown once it lands. */
+  detail: string;
+};
 
-/** The steps the discount search shows, in order. Each one ends with the discount it found, if any. */
-export const SEARCH_STEPS: { label: string; finds: number | null }[] = [
-  { label: "Checking charity care", finds: null },
-  { label: "Screening income against the financial assistance policy", finds: 0 },
-  { label: "Matching insurance", finds: null },
-  { label: "Checking auto policy med-pay coverage", finds: 1 },
-  { label: "Comparing negotiated rates", finds: null },
-  { label: "Applying prompt-pay discounts", finds: 2 },
-  { label: "Applying discounts", finds: null },
+/**
+ * After the card is scanned the bill is checked in this order (about 20 s in all), each step
+ * taking its discount off. Together they take 32% off: on the preset, -$146,186.29.
+ */
+export const CHECK_STEPS: CheckStep[] = [
+  {
+    id: "insurance",
+    title: "Insurance",
+    working: ["Matching insurance", "Checking auto policy med-pay coverage", "Comparing negotiated rates"],
+    detail: "Auto med-pay and the plan's negotiated rate (simulated).",
+  },
+  {
+    id: "policy",
+    title: "Hospital financial assistance policy",
+    working: ["Checking charity care", "Screening income against the hospital's policy", "Applying charity care"],
+    detail: "Charity care under the hospital's policy (simulated).",
+  },
+  {
+    id: "discounts",
+    title: "Prompt-pay discount",
+    working: ["Applying discounts", "Checking self-pay discounts"],
+    detail: "Self-pay discount for paying today (simulated).",
+  },
 ];
-/** About 20 s in all. */
-export const SEARCH_STEP_MS = 2900;
+export const CHECK_STEP_MS = 6000;
+export const CHECK_MESSAGE_MS = 2000;
+
+/** The discount each check step takes off: 12% insurance, 15% charity care, the rest prompt-pay. */
+export function discountsFor(originalCents: number): Record<CheckStep["id"], number> {
+  const all = Math.round(originalCents * 0.32);
+  const insurance = Math.round(originalCents * 0.12);
+  const policy = Math.round(originalCents * 0.15);
+  return { insurance, policy, discounts: all - insurance - policy };
+}
 
 /** Parses "12,960.00" or "$3,875.4" into cents; null if it isn't a positive amount. */
 export function parseCents(text: string): number | null {

@@ -1,35 +1,40 @@
-// The charge waiting to be paid, kept in this browser between /kiosk/charge (staff press Charge)
-// and /kiosk/charge/paid (opened by the reader). Storage can be blocked, so every call is safe.
+// The bill waiting for the patient, kept in this browser between /kiosk/charge (staff press
+// Charge) and /kiosk/charge/card (opened by the card scan). Storage can be blocked, so every call
+// is safe.
 
 import type { KioskChargeResult } from "@/lib/api";
-import { CAR_ACCIDENT_PRESET, CAR_ACCIDENT_PRESET_ID, discountsFor, total, type ChargeLine, type ChargeMethod } from "./bill";
+import { CAR_ACCIDENT_PRESET, CAR_ACCIDENT_PRESET_ID, type ChargeLine, type ChargeMethod } from "./bill";
 
-export type PaidReceipt = {
+/** How the patient settled the remaining balance. */
+export type ChargeOutcome = {
+  kind: "paid" | "fund_request";
   no: string;
-  paidAt: string;
+  at: string;
   method: ChargeMethod;
-  /** Null while the receipt is still being sent to admin. */
+  discounts: ChargeLine[];
+  /** Paid by card, or asked of the community care fund. */
+  cents: number;
+  /** Null while it is still being sent to admin. */
   sent: KioskChargeResult | null;
 };
 
 export type PendingCharge = {
   items: ChargeLine[];
-  discounts: ChargeLine[];
   preset: string | null;
   createdAt: string;
-  receipt: PaidReceipt | null;
+  outcome: ChargeOutcome | null;
 };
 
 const KEY = "abdulcare-kiosk-charge";
 
-/** The fixed page the card reader opens once a card is scanned. */
-export const PAID_PATH = "/kiosk/charge/paid";
+/** The fixed page a card scan opens. */
+export const CARD_PATH = "/kiosk/charge/card";
 
 export function savePending(charge: PendingCharge) {
   try {
     localStorage.setItem(KEY, JSON.stringify(charge));
   } catch {
-    // Storage blocked: the paid page falls back to the demo bill.
+    // Storage blocked: the card page falls back to the demo bill.
   }
 }
 
@@ -37,7 +42,7 @@ export function loadPending(): PendingCharge | null {
   try {
     const raw = localStorage.getItem(KEY);
     const data = raw ? (JSON.parse(raw) as PendingCharge) : null;
-    return data && Array.isArray(data.items) && data.items.length > 0 && Array.isArray(data.discounts) ? data : null;
+    return data && Array.isArray(data.items) && data.items.length > 0 ? { ...data, outcome: data.outcome ?? null } : null;
   } catch {
     return null;
   }
@@ -51,13 +56,7 @@ export function clearPending() {
   }
 }
 
-/** What the paid page shows when this browser has no charge waiting: the car accident demo. */
+/** What the card page uses when this browser has no bill waiting: the car accident demo. */
 export function demoCharge(): PendingCharge {
-  return {
-    items: CAR_ACCIDENT_PRESET,
-    discounts: discountsFor(total(CAR_ACCIDENT_PRESET)),
-    preset: CAR_ACCIDENT_PRESET_ID,
-    createdAt: new Date().toISOString(),
-    receipt: null,
-  };
+  return { items: CAR_ACCIDENT_PRESET, preset: CAR_ACCIDENT_PRESET_ID, createdAt: new Date().toISOString(), outcome: null };
 }
