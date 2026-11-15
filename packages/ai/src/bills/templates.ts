@@ -103,9 +103,9 @@ export function briefFlags(input: BriefInput): BriefFlag[] {
   return flags;
 }
 
-/** Reviewers approve whole dollars, so the suggestion is the remaining balance rounded down to a dollar. */
+/** Reviewers can approve cents, so the suggestion is the exact remaining balance. */
 export function suggestedCents(remainingCents: number): number {
-  return Math.max(0, Math.floor(remainingCents / 100) * 100);
+  return Math.max(0, remainingCents);
 }
 
 export function briefReasonsTemplate(input: BriefInput): string[] {

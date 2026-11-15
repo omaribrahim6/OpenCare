@@ -1,4 +1,4 @@
-// POST /api/grants/:id/decision: a reviewer approves (whole dollars, reserving budget) or rejects.
+// POST /api/grants/:id/decision: a reviewer approves (cents allowed, from $1.00, reserving budget) or rejects.
 // One approval is enough at any amount. A rejection sends a devnet decision receipt.
 // Rev 6: approval pays the hospital in the same request (Nessie payout, then the Solana receipt);
 // there is no provider tap. Repeating an approval retries a payout that didn't finish, and never

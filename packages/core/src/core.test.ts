@@ -205,7 +205,7 @@ describe("grants", () => {
   test("approval reserves budget; it can't exceed the request or the fund", async () => {
     const grantId = await pendingGrant();
     await rejectsWith(decideGrant(db, grantId, reviewer.id, { decision: "approve", approvedCents: 5000 }), "bad_request");
-    await rejectsWith(decideGrant(db, grantId, reviewer.id, { decision: "approve", approvedCents: 4450 }), "bad_request"); // cents
+    await rejectsWith(decideGrant(db, grantId, reviewer.id, { decision: "approve", approvedCents: 99 }), "bad_request"); // under $1.00
     await db.query("update fund set total_cents = 1000");
     await rejectsWith(decideGrant(db, grantId, reviewer.id, { decision: "approve", approvedCents: 4500 }), "insufficient_funds");
     assert.equal((await getGrant(db, grantId)).status, "pending_review"); // rolled back
