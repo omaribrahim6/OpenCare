@@ -9,7 +9,7 @@ import type { FundSummary, LedgerEntry, TopDonorsResponse } from "@abdulcare/con
 import { getDb, getFundSummary, listLedger, listTopDonors } from "@abdulcare/core";
 import { BillStage } from "@/components/landing/BillStage";
 import { DONOR_KIND_LABEL, DonorMark, logoIdForName } from "@/components/landing/DonorMark";
-import { LogoMark } from "@/components/Logo";
+import { LogoWordmark } from "@/components/Logo";
 import { cleanName, usd, usdCompact } from "@/lib/format";
 import { CATEGORY_LABEL } from "@/lib/types";
 import "./landing.css";
@@ -78,8 +78,7 @@ export default async function Landing() {
     <div className={`landing ${sans.variable} ${serif.variable}`}>
       <header className="ln-top">
         <Link href="/" className="ln-brand" aria-label="OpenCare home">
-          <LogoMark className="ln-brand-mark" />
-          OpenCare
+          <LogoWordmark />
         </Link>
         <nav className="ln-nav" aria-label="Main">
           <Link href="/fund">Public ledger</Link>
