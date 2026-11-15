@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { Logo } from "@/components/Logo";
-import { SiteNav } from "@/components/SiteNav";
+import { SiteHeader } from "@/components/SiteNav";
 import { FundWorkspace } from "../admin/FundWorkspace";
 
 export const metadata: Metadata = { title: "Public ledger" };
@@ -9,10 +8,7 @@ export const metadata: Metadata = { title: "Public ledger" };
 export default function PublicLedgerPage() {
   return (
     <main className="d-public">
-      <header className="d-public-bar">
-        <Logo compact />
-        <SiteNav current="ledger" />
-      </header>
+      <SiteHeader current="ledger" />
       <FundWorkspace initialTab="ledger" audience="public" />
     </main>
   );

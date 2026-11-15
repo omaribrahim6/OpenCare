@@ -11,8 +11,7 @@ import { scrub } from "@/lib/display";
 import { BillStage } from "@/components/landing/BillStage";
 import { HeroCast } from "@/components/landing/HeroCast";
 import { DONOR_KIND_LABEL, DonorMark, logoIdForName } from "@/components/landing/DonorMark";
-import { LogoWordmark } from "@/components/Logo";
-import { SiteNav } from "@/components/SiteNav";
+import { SiteHeader } from "@/components/SiteNav";
 import { cleanName, usd, usdCompact } from "@/lib/format";
 import { CATEGORY_LABEL } from "@/lib/types";
 import "./landing.css";
@@ -79,12 +78,7 @@ export default async function Landing() {
 
   return (
     <div className={`landing ${sans.variable} ${serif.variable}`}>
-      <header className="ln-top">
-        <Link href="/" className="ln-brand" aria-label="OpenCare home">
-          <LogoWordmark />
-        </Link>
-        <SiteNav current="home" />
-      </header>
+      <SiteHeader current="home" />
 
       <main>
         <section className="ln-hero" aria-labelledby="ln-title">
