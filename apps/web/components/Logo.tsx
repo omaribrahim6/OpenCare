@@ -13,7 +13,7 @@ export function LogoWordmark({ compact = false }: { compact?: boolean }) {
     <Image
       className="logo-wordmark"
       src={WORDMARK_SRC}
-      width={1066}
+      width={1008}
       height={204}
       alt="OpenCare"
       unoptimized
