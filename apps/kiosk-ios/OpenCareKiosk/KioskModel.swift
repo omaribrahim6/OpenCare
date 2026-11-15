@@ -6,7 +6,7 @@ import WebKit
 @MainActor
 final class KioskModel: NSObject, ObservableObject {
     static let defaultServer = "https://abdulcare.vercel.app"
-    static let startPath = "/kiosk"
+    static let startPath = "/kiosk/charge"
     static let userAgentSuffix = "OpenCareKiosk/1"
     private static let serverKey = "serverURL"
 
@@ -16,12 +16,15 @@ final class KioskModel: NSObject, ObservableObject {
     @Published var showSettings = false
     @Published var simulatePrompt = false
     @Published var simulateText = ""
+    /// DEBUG simulate path only: why the server refused the simulated card (the NFC sheet shows it on a device).
+    @Published var simulateError: String?
     /// Path of the open page, kept current through client-side navigation too.
     @Published private(set) var currentPath = ""
 
     let webView: WKWebView
     private let scanner = CareCardScanner()
     private var simulateCompletion: ((Result<String, ScanError>) -> Void)?
+    private var simulateVerify: CareCardScanner.Verify?
     private var urlObservation: NSKeyValueObservation?
 
     /// Kiosk screens where a patient taps a card: tapping their "Tap here" disc opens the reader.
@@ -29,9 +32,12 @@ final class KioskModel: NSObject, ObservableObject {
     /// The page background (globals.css --bg), shown before the first paint so there is no flash.
     static let pageBackground = UIColor(red: 0xf4 / 255, green: 0xf5 / 255, blue: 0xfb / 255, alpha: 1)
 
-    /// Injected at document end. Keeps WebView extras Safari doesn't show off the UI (long-press
-    /// callout, text selection outside form fields), and turns a tap on the kiosk tap screen's
-    /// own "Tap here" disc (.kt-core) into a native scan. The page itself is not changed.
+    /// Injected at document end; the page itself is not changed. It:
+    /// - keeps WebView extras Safari doesn't show off the UI (long-press callout, text selection
+    ///   outside form fields);
+    /// - opens the card reader when the kiosk tap screen appears on /kiosk/charge (after staff
+    ///   press Charge patient), and when its own "Tap here" disc (.kt-core) is tapped;
+    /// - blocks the disc's hold-to-tap demo shortcut: in the app a charge needs a real card tap.
     private static let pageScript = """
     (() => {
       const style = document.createElement('style');
@@ -40,12 +46,19 @@ final class KioskModel: NSObject, ObservableObject {
         body *:not(input):not(textarea):not(select):not([contenteditable]) { -webkit-user-select: none; user-select: none; }
       `;
       document.documentElement.appendChild(style);
-      document.addEventListener('click', (e) => {
-        const p = location.pathname, path = p.length > 1 && p.endsWith('/') ? p.slice(0, -1) : p;
-        if (path !== '/kiosk' && path !== '/kiosk/charge') return;
-        if (!(e.target instanceof Element) || !e.target.closest('.kt-core')) return;
-        window.webkit.messageHandlers.carecard.postMessage({ action: 'tap' });
-      }, true);
+      const path = () => { const p = location.pathname; return p.length > 1 && p.endsWith('/') ? p.slice(0, -1) : p; };
+      const onTapScreen = () => path() === '/kiosk' || path() === '/kiosk/charge';
+      const scan = () => window.webkit.messageHandlers.carecard.postMessage({ action: 'tap' });
+      const onDisc = (e) => onTapScreen() && e.target instanceof Element && e.target.closest('.kt-core');
+      // Capture phase on document runs before React's listeners, so the hold timer never starts.
+      document.addEventListener('pointerdown', (e) => { if (onDisc(e)) e.stopPropagation(); }, true);
+      document.addEventListener('click', (e) => { if (onDisc(e)) scan(); }, true);
+      let shown = false;
+      new MutationObserver(() => {
+        const now = path() === '/kiosk/charge' && !!document.querySelector('.kt-core');
+        if (now && !shown) scan();
+        shown = now;
+      }).observe(document.documentElement, { childList: true, subtree: true });
     })();
     """
 
@@ -149,12 +162,15 @@ final class KioskModel: NSObject, ObservableObject {
 
     // MARK: Scanning
 
-    /// Reads a CareCard. Without NFC (the simulator), DEBUG builds ask for a token instead.
-    func scan(_ completion: @escaping (Result<String, ScanError>) -> Void) {
-        if CareCardScanner.isAvailable { return scanner.scan(completion) }
+    /// Reads a CareCard; `verify` runs while the NFC sheet is still open (see CareCardScanner).
+    /// Without NFC (the simulator), DEBUG builds ask for a token instead.
+    func scan(verify: CareCardScanner.Verify? = nil, _ completion: @escaping (Result<String, ScanError>) -> Void) {
+        let verify = verify ?? { _, done in done(nil) }
+        if CareCardScanner.isAvailable { return scanner.scan(verify: verify, completion) }
         #if DEBUG
         guard simulateCompletion == nil else { return completion(.failure(.busy)) }
         simulateCompletion = completion
+        simulateVerify = verify
         simulateText = ""
         simulatePrompt = true
         #else
@@ -165,18 +181,64 @@ final class KioskModel: NSObject, ObservableObject {
     /// Answers the DEBUG "simulate scan" prompt.
     func finishSimulate(submit: Bool) {
         let done = simulateCompletion
+        let verify = simulateVerify
         simulateCompletion = nil
+        simulateVerify = nil
         guard submit else { done?(.failure(.cancelled)); return }
-        if let token = CareCardToken.from(text: simulateText) { done?(.success(token)) } else { done?(.failure(.invalidCard)) }
+        guard let token = CareCardToken.from(text: simulateText) else {
+            simulateError = NFCCopy.notACareCard
+            done?(.failure(.invalidCard))
+            return
+        }
+        (verify ?? { _, ok in ok(nil) })(token) { [weak self] errorMessage in
+            if let errorMessage {
+                self?.simulateError = errorMessage
+                done?(.failure(.rejected))
+            } else {
+                done?(.success(token))
+            }
+        }
     }
 
-    /// The floating CareCard button: scan, then open /t/<token>, where the web app taps and routes.
+    /// The kiosk tap screen: read the card, have the server check it (POST /api/tap from the page,
+    /// so the session cookie lands in the WebView) while the sheet is open, then open /t/<token>,
+    /// where the web app routes on (the waiting charge, else the bill walk). A refused card shows
+    /// its error in the NFC sheet and the kiosk stays on the tap screen.
     func nativeTap() {
-        scan { [weak self] result in
+        scan(verify: { [weak self] token, done in
+            guard let self else { return done("Couldn't check the card. Try again.") }
+            self.tapInPage(token: token, done)
+        }) { [weak self] result in
             guard let self else { return }
             switch result {
             case .success(let token): self.openTap(token: token)
             case .failure: break // The NFC sheet already told the patient.
+            }
+        }
+    }
+
+    /// POST /api/tap from inside the page: the server checks the card's HMAC and, on this paired
+    /// kiosk, starts that patient's session. nil on success, else the message for the NFC sheet.
+    private func tapInPage(token: String, _ done: @escaping (String?) -> Void) {
+        guard pageIsOnServer else { return done("Couldn't check the card. Try again.") }
+        let script = """
+        const r = await fetch('/api/tap', { method: 'POST', credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) });
+        if (!r.ok) return 'http_' + r.status;
+        const result = await r.json();
+        return (result && result.kind) || 'error';
+        """
+        webView.callAsyncJavaScript(script, arguments: ["token": token], in: nil, in: .page) { result in
+            switch result {
+            case .success(let kind as String):
+                switch kind {
+                case "session": done(nil)
+                case "unknown_card": done("This card isn't recognized. Ask staff for help.")
+                case "unpaired_device": done("This kiosk isn't set up yet. Ask staff for help.")
+                default: done("This device isn't set up as a kiosk. Ask staff for help.")
+                }
+            default:
+                done("Couldn't check the card. Try again.")
             }
         }
     }

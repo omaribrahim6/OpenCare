@@ -6,25 +6,16 @@ enum ScanError: String, Error {
     case cancelled
     case timeout
     case invalidCard = "invalid_card"
+    /// The server didn't accept the card (unknown, revoked, or the kiosk isn't paired).
+    case rejected
     case nfcUnavailable = "nfc_unavailable"
     case busy
     case failed
-
-    /// A short message for the kiosk screen, or nil when nothing needs saying.
-    var message: String? {
-        switch self {
-        case .cancelled: return nil
-        case .timeout: return "No card found. Try again."
-        case .invalidCard: return "That isn't an OpenCare CareCard."
-        case .nfcUnavailable: return "This iPhone can't read cards."
-        case .busy: return "Already reading a card."
-        case .failed: return "Couldn't read the card. Try again."
-        }
-    }
 }
 
-/// Pulls the card token out of what a CareCard holds. The tag has one NDEF URI record,
-/// `https://<host>/t/<token>`; a text record with a bare token (or that URL) is accepted too.
+/// Pulls the card token out of what a CareCard holds. A card has one NDEF Text record whose
+/// payload is the raw token. Older cards hold a URI record, `https://<host>/t/<token>`, which is
+/// still accepted.
 enum CareCardToken {
     private static let pattern = try! NSRegularExpression(pattern: "^[A-Za-z0-9_-]{10,64}$")
 
@@ -49,28 +40,53 @@ enum CareCardToken {
     }
 
     static func from(messages: [NFCNDEFMessage]) -> String? {
-        for record in messages.flatMap(\.records) {
-            if let url = record.wellKnownTypeURIPayload(), let token = from(url: url) { return token }
+        let records = messages.flatMap(\.records)
+        for record in records {
             let (text, _) = record.wellKnownTypeTextPayload()
             if let text, let token = from(text: text) { return token }
         }
+        for record in records {
+            if let url = record.wellKnownTypeURIPayload(), let token = from(url: url) { return token }
+        }
         return nil
+    }
+
+    /// What a CareCard is written with: one NDEF Text record holding the token.
+    static func message(for token: String) -> NFCNDEFMessage? {
+        guard isValid(token), let record = NFCNDEFPayload.wellKnownTypeTextPayload(string: token, locale: Locale(identifier: "en")) else { return nil }
+        return NFCNDEFMessage(records: [record])
     }
 }
 
+/// The NFC sheet's text. Mohamed's call: no "top of the phone" wording.
+enum NFCCopy {
+    static let ready = "Tap your card."
+    static let checking = "Checking your card…"
+    static let accepted = "Card accepted."
+    static let notACareCard = "That isn't an OpenCare CareCard."
+}
+
 /// One NFC read at a time with `NFCNDEFReaderSession`. Callbacks arrive on the main queue.
+///
+/// `verify` runs while the sheet is still open: pass nil to accept the token, or a message to show
+/// in the sheet as an error. So a card the server rejects never leaves the tap screen.
 final class CareCardScanner: NSObject, NFCNDEFReaderSessionDelegate {
+    typealias Verify = (_ token: String, _ done: @escaping (_ errorMessage: String?) -> Void) -> Void
+
     static var isAvailable: Bool { NFCNDEFReaderSession.readingAvailable }
 
     private var session: NFCNDEFReaderSession?
+    private var verify: Verify?
     private var completion: ((Result<String, ScanError>) -> Void)?
+    private var verifying = false
 
-    func scan(_ completion: @escaping (Result<String, ScanError>) -> Void) {
+    func scan(verify: @escaping Verify, _ completion: @escaping (Result<String, ScanError>) -> Void) {
         guard self.completion == nil else { return completion(.failure(.busy)) }
         guard Self.isAvailable else { return completion(.failure(.nfcUnavailable)) }
+        self.verify = verify
         self.completion = completion
         let session = NFCNDEFReaderSession(delegate: self, queue: .main, invalidateAfterFirstRead: false)
-        session.alertMessage = "Hold the CareCard near the top of the iPhone."
+        session.alertMessage = NFCCopy.ready
         self.session = session
         session.begin()
     }
@@ -78,30 +94,130 @@ final class CareCardScanner: NSObject, NFCNDEFReaderSessionDelegate {
     private func finish(_ result: Result<String, ScanError>) {
         let done = completion
         completion = nil
+        verify = nil
         session = nil
+        verifying = false
         done?(result)
     }
 
     func readerSessionDidBecomeActive(_ session: NFCNDEFReaderSession) {}
 
     func readerSession(_ session: NFCNDEFReaderSession, didDetectNDEFs messages: [NFCNDEFMessage]) {
-        if let token = CareCardToken.from(messages: messages) {
-            session.alertMessage = "CareCard read."
-            session.invalidate()
-            finish(.success(token))
-        } else {
-            session.invalidate(errorMessage: "That isn't an OpenCare CareCard.")
-            finish(.failure(.invalidCard))
+        guard !verifying else { return }
+        guard let token = CareCardToken.from(messages: messages) else {
+            session.invalidate(errorMessage: NFCCopy.notACareCard)
+            return finish(.failure(.invalidCard))
+        }
+        verifying = true
+        session.alertMessage = NFCCopy.checking
+        (verify ?? { _, done in done(nil) })(token) { [weak self] errorMessage in
+            guard let self, self.completion != nil else { return }
+            if let errorMessage {
+                session.invalidate(errorMessage: errorMessage)
+                self.finish(.failure(.rejected))
+            } else {
+                session.alertMessage = NFCCopy.accepted
+                session.invalidate()
+                self.finish(.success(token))
+            }
         }
     }
 
     func readerSession(_ session: NFCNDEFReaderSession, didInvalidateWithError error: Error) {
-        // Also called after a successful read's invalidate(); finish() already ran then.
+        // Also called after our own invalidate(); finish() already ran then.
         guard completion != nil else { return }
         switch (error as? NFCReaderError)?.code {
         case .readerSessionInvalidationErrorUserCanceled: finish(.failure(.cancelled))
         case .readerSessionInvalidationErrorSessionTimeout: finish(.failure(.timeout))
         default: finish(.failure(.failed))
+        }
+    }
+}
+
+/// Writes a token to a blank (or rewritable) tag as one NDEF Text record. Staff only, from Settings.
+final class CareCardWriter: NSObject, NFCNDEFReaderSessionDelegate {
+    private var session: NFCNDEFReaderSession?
+    private var message: NFCNDEFMessage?
+    private var completion: ((Result<Void, WriteError>) -> Void)?
+
+    enum WriteError: Error, CustomStringConvertible {
+        case invalidToken, nfcUnavailable, busy, cancelled, failed(String)
+        var description: String {
+            switch self {
+            case .invalidToken: return "That isn't a valid card token."
+            case .nfcUnavailable: return "This device can't write NFC tags."
+            case .busy: return "Already writing a card."
+            case .cancelled: return "Cancelled."
+            case .failed(let why): return why
+            }
+        }
+    }
+
+    func write(token: String, _ completion: @escaping (Result<Void, WriteError>) -> Void) {
+        guard self.completion == nil else { return completion(.failure(.busy)) }
+        guard let message = CareCardToken.message(for: token) else { return completion(.failure(.invalidToken)) }
+        guard NFCNDEFReaderSession.readingAvailable else { return completion(.failure(.nfcUnavailable)) }
+        self.message = message
+        self.completion = completion
+        let session = NFCNDEFReaderSession(delegate: self, queue: .main, invalidateAfterFirstRead: false)
+        session.alertMessage = "Hold a blank CareCard to the iPhone to write it."
+        self.session = session
+        session.begin()
+    }
+
+    private func finish(_ result: Result<Void, WriteError>) {
+        let done = completion
+        completion = nil
+        message = nil
+        session = nil
+        done?(result)
+    }
+
+    private func fail(_ session: NFCNDEFReaderSession, _ why: String) {
+        session.invalidate(errorMessage: why)
+        finish(.failure(.failed(why)))
+    }
+
+    func readerSessionDidBecomeActive(_ session: NFCNDEFReaderSession) {}
+
+    // Required by the protocol; with didDetect tags implemented, reads arrive there instead.
+    func readerSession(_ session: NFCNDEFReaderSession, didDetectNDEFs messages: [NFCNDEFMessage]) {}
+
+    func readerSession(_ session: NFCNDEFReaderSession, didDetect tags: [NFCNDEFTag]) {
+        guard let message else { return }
+        guard tags.count == 1, let tag = tags.first else {
+            session.alertMessage = "More than one card found. Hold just one."
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { session.restartPolling() }
+            return
+        }
+        session.connect(to: tag) { [weak self] error in
+            guard let self else { return }
+            if error != nil { return self.fail(session, "Couldn't connect to the card. Try again.") }
+            tag.queryNDEFStatus { status, capacity, error in
+                if error != nil { return self.fail(session, "Couldn't read the card. Try again.") }
+                switch status {
+                case .notSupported: return self.fail(session, "This tag can't hold a CareCard.")
+                case .readOnly: return self.fail(session, "This card is locked and can't be rewritten.")
+                case .readWrite:
+                    guard message.length <= capacity else { return self.fail(session, "This tag is too small.") }
+                    tag.writeNDEF(message) { error in
+                        if error != nil { return self.fail(session, "Writing failed. Try again.") }
+                        session.alertMessage = "CareCard written."
+                        session.invalidate()
+                        self.finish(.success(()))
+                    }
+                @unknown default: return self.fail(session, "This tag can't hold a CareCard.")
+                }
+            }
+        }
+    }
+
+    func readerSession(_ session: NFCNDEFReaderSession, didInvalidateWithError error: Error) {
+        guard completion != nil else { return }
+        if (error as? NFCReaderError)?.code == .readerSessionInvalidationErrorUserCanceled {
+            finish(.failure(.cancelled))
+        } else {
+            finish(.failure(.failed("The card wasn't written.")))
         }
     }
 }

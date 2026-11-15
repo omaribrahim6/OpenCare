@@ -13,43 +13,51 @@ NFC, so it isn't a target.
 
 ## How it works
 
+The app runs the full kiosk charge flow from the web, with the same screens:
+
 ```
-CareCard (NDEF URI https://abdulcare.vercel.app/t/<token>)
-   │  Core NFC (NFCNDEFReaderSession)
+/kiosk/charge  staff type the itemized bill (or press "Car accident demo": 17 lines, $456,832.16)
+   │  Charge patient
    ▼
-OpenCareKiosk app ──► token ──► WKWebView (kiosk site)
-                                  │  tap(token) → POST /api/tap  (device + session cookies)
-                                  ▼
-                       /kiosk/charge/card (charge waiting) or /kiosk/check
+tap screen     the NFC sheet opens by itself ("Tap your card")
+   │  Core NFC reads the card's token
+   │  POST /api/tap from the page (sheet still open): server checks the token's HMAC,
+   │  starts that patient's session (httpOnly cookie in the WebView)
+   ▼
+/kiosk/charge/card   discount countdown ($456,832.16 → $310,645.00), billing the tapped patient
+   │  Send to the community fund
+   ▼
+POST /api/kiosk/charges   a real claim on that patient's account (/admin, the patient's /user)
 ```
 
-- **WebView.** Loads `<server>/kiosk`. The server defaults to `https://abdulcare.vercel.app` and is
-  changed in the app's settings (for example your Mac's `http://192.168.1.20:3000`). It uses the
-  default persistent website data store, so the kiosk's pairing and session cookies survive
-  relaunches. The user agent ends with `OpenCareKiosk/1`.
+- **Card format.** A CareCard holds **one NDEF Text record whose payload is the raw card token**
+  (`^[A-Za-z0-9_-]{10,64}$`, the part that used to come after `/t/`). Older cards with a URI
+  record `https://<host>/t/<token>` still work: the app takes the token from the path.
+- **Only a real card moves the flow on.** The server checks the token before the sheet closes.
+  An unknown or revoked card (or an unpaired kiosk) shows its error in Apple's NFC sheet, and
+  the kiosk stays on the tap screen. The disc's hold-to-tap demo shortcut is blocked in the app.
+  `POST /api/kiosk/charges` refuses any request from the app (user agent `OpenCareKiosk/`)
+  without a tapped card with a 401, so the demo-patient fallback can't happen here. The web
+  hold demo is unchanged.
+- **WebView.** Opens `<server>/kiosk/charge`. The server defaults to `https://abdulcare.vercel.app`
+  and is changed in Settings (for example your Mac's `http://192.168.1.20:3000`). It uses the
+  default persistent website data store, so the kiosk's pairing cookie survives relaunches. The
+  user agent ends with `OpenCareKiosk/1`.
 - **Looks exactly like the web kiosk.** The WebView is full-bleed with no native chrome: no
   bars, no buttons over the page. The pages' own `viewport-fit` and `env(safe-area-inset-*)`
   rules place content, and the background is the page color (`#f4f5fb`), so there's no flash.
   Link previews, the long-press callout and text selection outside form fields are off. Nothing
-  is restyled natively. The only native UI is Apple's NFC "Ready to Scan" sheet and the hidden
-  settings screen.
-- **Settings** open with a **two-finger long press (about 1.5 s) anywhere** on the kiosk. They
-  are never visible otherwise.
-- **Reading a card.** Two ways start a scan, and both use the same reader:
-  1. **Tap the kiosk's own "Tap here" disc** on `/kiosk` or `/kiosk/charge`. An injected
-     listener (the page itself isn't changed) opens the NFC sheet. After a read, the app opens
-     `<server>/t/<token>` in the WebView, the same page the card's own link opens: it calls
-     `tap(token)` and routes (charge waiting → `/kiosk/charge/card`, otherwise `/kiosk/check`).
-     Holding the disc still runs the web demo shortcut, as on the web.
-  2. **The page asks** through the JS bridge below (`apps/web/lib/native-nfc.ts`), for a
-     "Tap your CareCard" button on the kiosk's own screens.
-- **Token parsing.** The app takes the token from the URI record's `/t/<token>` path (any host;
-  the backend checks the token), or a bare token in a text record, and accepts it only if it
-  matches `^[A-Za-z0-9_-]{10,64}$`. The card format is unchanged.
-- **Simulator.** It has no NFC. In DEBUG builds a scan with no NFC reader asks for a token
-  instead, and Settings → Debug → Simulate scan opens `/t/<token>` directly. Release builds
-  report `nfc_unavailable`. Debug builds also take a `-startPath /some/page` launch argument
-  (`xcrun simctl launch <device> com.opencare.kiosk.dev -startPath /kiosk/charge`).
+  is restyled natively. The only native UI is Apple's NFC sheet and the hidden settings.
+- **Settings** (server, pairing, **Write CareCard**) open with a **two-finger long press (about
+  1.5 s) anywhere**. They are never visible otherwise.
+- **How the reader is opened.** An injected script (the web pages aren't changed) opens it when
+  the tap screen appears on `/kiosk/charge` and when the patient taps the screen's "Tap here"
+  disc, for example after cancelling. After a verified tap the app opens `/t/<token>`, which
+  routes on to the waiting charge exactly as on the web.
+- **Simulator.** It has no NFC. In DEBUG builds the reader asks for a typed token instead, and
+  goes through the same server check. A refused card shows a "Card not accepted" alert there,
+  in place of the NFC sheet's error. Debug builds also take a `-startPath /some/page` launch
+  argument (`xcrun simctl launch <device> com.opencare.kiosk.dev -startPath /kiosk`).
 
 Files: `OpenCareKiosk/KioskModel.swift` (WebView, bridge, settings), `CareCardScanner.swift`
 (Core NFC and token parsing), `ContentView.swift`, `SettingsView.swift`.
@@ -65,14 +73,14 @@ Page → app:
 window.webkit.messageHandlers.carecard.postMessage({ action: "scan", id: "<random id>" });
 ```
 
-The app opens the NFC sheet ("Hold the CareCard near the top of the iPhone") and answers with a
-window event:
+The app opens the NFC sheet ("Tap your card") and answers with a window event. This path
+returns the token without checking it; the page then calls `tap(token)` itself:
 
 ```js
 window.addEventListener("carecard", (e) => {
   // e.detail = { id, token }  on success
   // e.detail = { id, error }  error: "cancelled" | "timeout" | "invalid_card"
-  //                                  | "nfc_unavailable" | "busy" | "failed"
+  //                                  | "rejected" | "nfc_unavailable" | "busy" | "failed"
 });
 ```
 
@@ -96,9 +104,11 @@ const router = useRouter();
 
 ## Security notes
 
-- The app holds no secrets, API keys or tokens. The card token goes through the page's own
-  `tap(token)` call, so the device and session cookies stay httpOnly in the WebView's store and
-  every check stays on the server.
+- The app holds no secrets, API keys or tokens. The card token goes to `POST /api/tap` from inside
+  the page, so the device and session cookies stay httpOnly in the WebView's store and every
+  check (the token's HMAC, the paired device) stays on the server.
+- A card token signs that patient in at a paired kiosk. Treat it like a password: never commit
+  it or post it on the board. The Write CareCard screen doesn't save what you paste.
 - Only the configured server's own pages (main frame, same scheme, host and port) can ask for a
   scan, and replies go only to a page still on that origin. Other sites opened in the WebView get
   nothing.
@@ -133,9 +143,28 @@ newer), and a USB cable.
 7. **Pair the kiosk once.** Long-press the screen with **two fingers** for about 1.5 seconds to
    open Settings, then tap **Pair this kiosk (staff PIN)**. Enter the staff PIN (ask Omar; never commit
    it). The pairing cookie stays after relaunch.
-8. **Test a card.** Open the kiosk start (or start a charge at `/kiosk/charge`), tap the
-   **Tap here** disc at the top of the kiosk screen, and hold the card near the top of the iPhone. The kiosk should open that
-   patient's bill (or the waiting charge) without leaving the app.
+8. **Test a card.** The app opens on the itemized bill. Press **Car accident demo**, then
+   **Charge patient**. The NFC sheet opens by itself; tap the CareCard on the iPhone. The kiosk
+   should show "Billing <patient>", run the discounts down to $310,645.00, and **Send to the
+   community fund** files the claim on that patient's account. If you cancel the sheet, tap the
+   **Tap here** disc to open it again.
+
+### Write John's card
+
+John's CareCard token is the part after `/t/` in the CareCard URL Omar sends you privately. Don't
+commit it or post it anywhere.
+
+1. Get a blank, **unlocked** NFC tag (NTAG213/215/216 sticker or card). A tag that was locked
+   after writing can't be rewritten; use a new one.
+2. In the app, long-press with two fingers to open Settings.
+3. Under **Write CareCard (staff)**, paste the token (pasting the whole URL also works; the app
+   keeps only the token) and tap **Write to card**.
+4. Hold the tag to the iPhone until the sheet says "CareCard written".
+5. Test it: close Settings, start a charge and tap the card. It should say "Billing John Doe".
+
+Note: a card holding a text record no longer opens a web page when tapped on an ordinary iPhone
+(the iOS banner only appears for links). Patients can still open their account at `/user` by
+signing in with their account ID and birth date.
 
 Apps installed this way with a paid account keep working for a year; just press Run again to
 reinstall after changes.
@@ -146,9 +175,9 @@ Run the web app on your Mac (with a local database, never the production `DATABA
 start it on all interfaces, for example
 `npm run dev -w @abdulcare/web -- -H 0.0.0.0`. In the app's Settings set the server to
 `http://<your Mac's IP>:3000` (System Settings → Wi-Fi → Details shows the IP), allow local
-network access when iOS asks, and pair again (pairing is per server). Cards written for
-production still work: the app only takes the token, so a local server accepts them only if
-that token exists in your local database.
+network access when iOS asks, and pair again (pairing is per server). A local server
+accepts a card only if its token exists in your local database (the local seed prints its own
+card URLs; the token is the part after `/t/`).
 
 ### Command-line builds
 
