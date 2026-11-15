@@ -79,6 +79,23 @@ export const pairDevice = (req: PairDeviceRequest) =>
 export const currentDevice = () =>
   LIVE ? get<CurrentDeviceResponse>("/api/devices/me") : mock.currentDevice();
 
+/**
+ * On a phone paired as a kiosk, start a real session for the demo patient without a card
+ * (POST /api/session/demo), so the kiosk flow writes to the real system. Returns false on any
+ * other device, in mock mode, or if the route isn't there, so the caller can use the local demo.
+ */
+export async function startKioskDemoSession(): Promise<boolean> {
+  if (!LIVE) return false;
+  try {
+    const { device } = await currentDevice();
+    if (device?.role !== "kiosk") return false;
+    await post<unknown>("/api/session/demo");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** POST /api/tap: sets the session cookie on a paired device and returns what the tap means. */
 const DEMO_SESSION_KEY = "abdulcare-demo-patient";
 

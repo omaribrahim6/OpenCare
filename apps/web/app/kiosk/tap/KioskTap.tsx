@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { startPatientDemo } from "@/lib/api";
+import { startKioskDemoSession, startPatientDemo } from "@/lib/api";
 
 // The kiosk welcome screen (SPEC §4, screen 1): a rigged character hangs from the
 // scanner disc at the top of the phone, where the NFC antenna is.
@@ -50,7 +50,11 @@ const CHARACTERS: Record<string, string> = {
   trump: "donald-trump",
 };
 
-/** Holding the scanner this long with a finger starts the fictional demo (for presenters). */
+/**
+ * Holding the scanner this long with a finger starts the demo patient (for presenters). On a
+ * paired kiosk it is a real session that goes through the whole system; elsewhere it stays in
+ * this browser with fictional data.
+ */
 const DEMO_HOLD_MS = 1200;
 
 type Floater = { kind: string; style: React.CSSProperties };
@@ -212,7 +216,11 @@ export function KioskTap({ lang, ended, who }: { lang: KioskLang; ended: boolean
     window.clearTimeout(unpoke.current);
     unpoke.current = window.setTimeout(() => setPoked(false), 1800);
     window.clearTimeout(hold.current);
-    hold.current = window.setTimeout(() => {
+    hold.current = window.setTimeout(async () => {
+      if (await startKioskDemoSession()) {
+        router.push("/kiosk/check");
+        return;
+      }
       try {
         startPatientDemo();
         router.push("/kiosk/check?demo=1");
