@@ -8,7 +8,7 @@ import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 /** What a character does while it has the floor. */
-export type Gesture = "explain" | "point" | "wag";
+export type Gesture = "explain" | "present" | "wag";
 
 export interface CastMember {
   id: string;
@@ -34,7 +34,7 @@ export interface CastScene {
   /** The bill reached $0: everyone relaxes, smiles and turns to the reader. */
   setCheer: (on: boolean) => void;
   /** Pointer position in viewport coordinates, or null when it left the stage. */
-  setPointer: (point: { x: number; y: number } | null) => void;
+  setPointer: (present: { x: number; y: number } | null) => void;
   stop: () => void;
 }
 
@@ -250,14 +250,10 @@ export function startCastScene(opts: CastSceneOptions): CastScene {
     const R = f.right;
     if (L && R) {
       const idle = 0.02 * Math.sin(tt * 0.9) * m;
-      if (g === "explain") {
+      if (g !== "wag") {
         // One open hand up, counting off the point; the other relaxed.
         arm(R, a, [0.5, -0.55, 0.55], [0.35, 0.8 + 0.12 * Math.sin(tt * 3.1) * m, 0.6], idle);
         arm(L, a * 0.5, [0.3, -0.85, 0.3], [0.05, -0.4, 1], idle);
-      } else if (g === "point") {
-        // Points across the stage at the bill; the other hand goes to the hip.
-        arm(L, a, [0.95, 0.12, 0.35], [1, 0.16 + 0.05 * Math.sin(tt * 3) * m, 0.3], idle);
-        arm(R, a, [0.6, -0.72, -0.08], [-0.45, -0.5, 0.4], idle);
       } else {
         // A raised hand, making the point.
         arm(R, a, [0.5, 0.05, 0.5], [0.1 + 0.1 * Math.sin(tt * 2.6) * m, 1, 0.35], idle);
@@ -266,9 +262,9 @@ export function startCastScene(opts: CastSceneOptions): CastScene {
     }
 
     const k = f.shock;
-    const smile = { explain: 0.85, point: 0.7, wag: 0.15 }[g];
-    const furrow = { explain: 0, point: 0, wag: 0.9 }[g];
-    const raise = { explain: 0.35, point: 0.55, wag: 0.1 }[g];
+    const smile = { explain: 0.85, present: 0.7, wag: 0.15 }[g];
+    const furrow = { explain: 0, present: 0, wag: 0.9 }[g];
+    const raise = { explain: 0.35, present: 0.55, wag: 0.1 }[g];
     setMorph(f, "Smile", 0.3 * (1 - k) + (smile - 0.3) * a + 0.7 * c + 0.06 * Math.sin(tt * 0.8) * m);
     setMorph(f, "BrowFurrow", furrow * a * (1 - c));
     setMorph(f, "BrowRaise", raise * a + 0.25 * c + 0.85 * k);
