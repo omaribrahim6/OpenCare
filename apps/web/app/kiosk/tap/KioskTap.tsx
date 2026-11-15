@@ -217,8 +217,9 @@ export function KioskTap({ lang, ended, who }: { lang: KioskLang; ended: boolean
     unpoke.current = window.setTimeout(() => setPoked(false), 1800);
     window.clearTimeout(hold.current);
     hold.current = window.setTimeout(async () => {
-      if (await startKioskDemoSession()) {
-        router.push("/kiosk/check");
+      const live = await startKioskDemoSession();
+      if (live) {
+        router.push(live.visitId ? `/kiosk/check?visit=${encodeURIComponent(live.visitId)}` : "/kiosk/check");
         return;
       }
       try {
