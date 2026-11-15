@@ -336,7 +336,8 @@
 }
 
 @media (max-width: 460px) {
-  .ln-nav .ln-nav-staff { display: none; }
+  /* The kiosk is a hospital device, so a phone gets the ledger and the account only. */
+  .ln-nav .ln-nav-staff, .ln-nav .ln-nav-kiosk { display: none; }
   .ln-nav { gap: 0; }
   .ln-nav a:not(.ln-nav-staff) { padding-inline: 7px; font-size: 14px; }
   .ln-brand { gap: 8px; font-size: 17px; }

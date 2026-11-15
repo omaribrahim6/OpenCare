@@ -83,7 +83,10 @@ export default async function Landing() {
         </Link>
         <nav className="ln-nav" aria-label="Main">
           <Link href="/fund">Public ledger</Link>
-          <Link href="/kiosk">Patient portal</Link>
+          <Link href="/kiosk" className="ln-nav-kiosk">
+            Kiosk
+          </Link>
+          <Link href="/user">My account</Link>
           <Link href="/admin" className="ln-nav-staff">
             Staff
           </Link>
@@ -102,8 +105,8 @@ export default async function Landing() {
             <Link href="/fund" className="ln-pill ln-pill-ink">
               View the public ledger
             </Link>
-            <Link href="/kiosk" className="ln-pill ln-pill-glass">
-              Patient portal
+            <Link href="/user" className="ln-pill ln-pill-glass">
+              My account
             </Link>
           </div>
         </section>
