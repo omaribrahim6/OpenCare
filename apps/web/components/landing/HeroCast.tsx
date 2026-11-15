@@ -21,7 +21,7 @@ const SPEAKERS: Speaker[] = [
   {
     id: "abdul",
     name: "Abdul El-Sayed",
-    role: "Physician, former Detroit health director",
+    role: "U.S. Senator-elect, Michigan. Physician and epidemiologist",
     model: "/cast/abdul-el-sayed.glb",
     gesture: "explain",
     quote:
