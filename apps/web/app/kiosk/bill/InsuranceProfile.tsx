@@ -54,8 +54,8 @@ export function InsuranceProfile({ plan, onSave, demo }: { plan: InsurancePlan |
       </section>
       {(demo || !LIVE) && (
         <section className="patient-panel">
-          <h2>Upload a demo plan</h2>
-          <p className="muted">Use a fictional JSON plan. New demo visits use this plan. Existing bills keep the plan used to calculate them.</p>
+          <h2>Upload an insurance plan</h2>
+          <p className="muted">New visits use this plan. Existing bills keep the plan used to calculate them.</p>
           <a href={`data:application/json,${encodeURIComponent(example)}`} download="example-plan.json">Download the plan template</a>
           <label className="patient-upload">
             <span>Choose plan file</span>

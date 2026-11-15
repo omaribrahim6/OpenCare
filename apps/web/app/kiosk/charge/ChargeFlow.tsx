@@ -85,7 +85,6 @@ export function ChargeFlow() {
         <Logo href={null} />
         <span className="kc-who"><Icon name="hospital" size={15} /> Hospital staff</span>
       </div>
-      {!LIVE && <p className="kc-demo"><Icon name="info" size={15} /> Demo · simulated payment</p>}
 
       <section aria-labelledby="kc-title">
         <h1 id="kc-title">Itemized bill</h1>
@@ -93,7 +92,7 @@ export function ChargeFlow() {
 
         <div className="kc-tools">
           <button type="button" className="btn secondary" onClick={loadPreset}>
-            <Icon name="sparkles" size={16} /> Car accident demo
+            <Icon name="sparkles" size={16} /> Car accident
           </button>
           <button type="button" className="btn secondary" onClick={clearBill} disabled={rows.length === 1 && !rows[0].label && !rows[0].amount}>
             Clear

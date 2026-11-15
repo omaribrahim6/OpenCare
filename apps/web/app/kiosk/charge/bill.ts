@@ -53,19 +53,19 @@ export const CHECK_STEPS: CheckStep[] = [
     id: "selfpay",
     title: "Uninsured self-pay discount",
     working: ["Checking for insurance", "No insurance on file", "Applying the uninsured self-pay rate"],
-    detail: "The hospital's rate for patients without insurance (simulated).",
+    detail: "The hospital's rate for patients without insurance.",
   },
   {
     id: "policy",
     title: "Hospital financial assistance policy",
     working: ["Checking charity care", "Screening income against the hospital's policy", "Applying charity care"],
-    detail: "Charity care under the hospital's policy (simulated).",
+    detail: "Charity care under the hospital's policy.",
   },
   {
     id: "discounts",
     title: "Prompt-pay discount",
     working: ["Applying discounts", "Checking self-pay discounts"],
-    detail: "Self-pay discount for paying today (simulated).",
+    detail: "Self-pay discount for paying today.",
   },
 ];
 export const CHECK_STEP_MS = 6000;

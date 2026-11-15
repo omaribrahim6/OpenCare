@@ -157,7 +157,6 @@ export function FundWorkspace({
       )}
       {tab === "about" && <About />}
 
-      <p className="proto-note">HackUMass prototype · fictional people · Nessie sandbox money · Solana devnet receipts</p>
       <dialog ref={donationDialog} className="v-donate-dialog" aria-label="Donate to OpenCare">
         <button type="button" className="v-donate-close v-quiet" aria-label="Close donation form" onClick={() => donationDialog.current?.close()}><Icon name="x" /></button>
         <DonatePanel available={s?.availableCents ?? null} onDonated={setS} />

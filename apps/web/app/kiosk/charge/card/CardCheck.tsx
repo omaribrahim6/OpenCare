@@ -177,7 +177,6 @@ export function CardCheck({ method }: { method: ChargeMethod }) {
     return (
       <main className="page station station-session kc kc-receipt">
         {bar}
-        {!LIVE && <p className="kc-demo"><Icon name="info" size={15} /> Demo · simulated decisions</p>}
         <section aria-labelledby="kc-title">
           <div className="kc-paid kc-asked">
             <Icon name="heart" size={30} />
@@ -220,7 +219,6 @@ export function CardCheck({ method }: { method: ChargeMethod }) {
   return (
     <main className="page station station-session kc kc-card">
       {bar}
-      {!LIVE && <p className="kc-demo"><Icon name="info" size={15} /> Demo · simulated decisions</p>}
       <section className="bw" aria-labelledby="kc-title">
         <p className={`kc-ai-chip${checked ? " is-done" : ""}`} role="status">
           <span className="kc-ai" aria-hidden="true"><Icon name="sparkles" size={15} /></span>
@@ -251,7 +249,7 @@ export function CardCheck({ method }: { method: ChargeMethod }) {
                 <li key={step.id} className="bw-step" data-tone="saved">
                   <span className="bw-icon"><Icon name={ICONS[step.id]} size={18} /></span>
                   <span className="bw-text"><strong>{step.title}</strong><small>{step.detail}</small></span>
-                  <span className="bw-amount">−{money(off[step.id])}<em>simulated</em></span>
+                  <span className="bw-amount">−{money(off[step.id])}</span>
                 </li>
               );
             }
