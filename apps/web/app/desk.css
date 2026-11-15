@@ -3242,7 +3242,7 @@ body:has(.d-public) {
 .d-public .pl-select select {
   appearance: none;
   min-height: 44px;
-  max-width: 230px;
+  max-width: 200px;
   padding: 0 34px 0 36px;
   border: 1px solid var(--oc-line, rgba(23, 26, 43, 0.09));
   border-radius: 999px;
@@ -3479,4 +3479,88 @@ body:has(.d-public) {
   width: 17px;
   height: 17px;
   margin-top: 1px;
+}
+
+/* Public record: the money steps (amounts only) and the declined-requests totals */
+.d-public .pl-steps {
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--oc-line, rgba(23, 26, 43, 0.09));
+  border-radius: 14px;
+}
+.d-public .pl-steps-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.d-public .pl-steps-head small {
+  color: var(--oc-slate, #5c6178);
+  font-size: 12.5px;
+}
+.d-public .pl-steps ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.d-public .pl-steps li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--oc-line, rgba(23, 26, 43, 0.09));
+  font-size: 14px;
+}
+.d-public .pl-steps li:first-child {
+  border-top: 0;
+}
+.d-public .pl-steps b {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.d-public .pl-steps-left {
+  font-weight: 500;
+}
+.d-public .pl-declined {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 24px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--oc-line, rgba(23, 26, 43, 0.09));
+  font-size: 13.5px;
+}
+.d-public .pl-declined > div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.d-public .pl-declined strong {
+  font-size: 20px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.d-public .pl-declined ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.d-public .pl-declined li {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #f6f6fa;
+  color: var(--oc-slate, #5c6178);
+}
+.d-public .pl-declined li b {
+  margin-left: 4px;
+  color: var(--oc-ink, #171a2b);
+  font-weight: 500;
+}
+.d-public .pl-declined p {
+  margin: 0;
 }
