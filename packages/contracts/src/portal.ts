@@ -37,6 +37,26 @@ export interface PortalOverviewResponse {
   bills: Bill[];
   /** Every request to the community fund, newest first. */
   claims: Grant[];
+  /** Masked account the patient pays from, e.g. "Checking ••4821"; null without a linked account. */
+  payFrom?: string | null;
+  /** Receipts for the bills the patient paid themselves, newest first. */
+  receipts?: PortalPaymentReceipt[];
+}
+
+/** What the patient sees after paying the rest of a bill, and keeps on the bill afterwards. */
+export interface PortalPaymentReceipt {
+  visitId: string;
+  amountCents: Cents;
+  /** ISO time the payment posted. */
+  paidAt: string;
+  hospital: string;
+  /** Masked source account, e.g. "Checking ••4821"; null when it wasn't paid from a linked account. */
+  fromAccount: string | null;
+  /** Bank transaction ID (Nessie purchase). */
+  bankTransactionId: string | null;
+  /** Devnet memo receipt; null while it's still being recorded. */
+  solanaSignature: string | null;
+  explorerUrl: string | null;
 }
 
 // POST /api/user/bills/:visitId/pay: the signed-in patient pays what's left on a bill out of pocket
@@ -50,4 +70,6 @@ export interface PortalPayResponse {
   bill: Bill;
   /** What this request paid; 0 when the bill was already paid off. */
   paidCents: Cents;
+  /** Receipt for this bill's payment; null when nothing has been paid on it. */
+  receipt?: PortalPaymentReceipt | null;
 }

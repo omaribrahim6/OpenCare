@@ -263,6 +263,41 @@ export async function payBalanceThroughNessie(
   return purchase._id;
 }
 
+/**
+ * Public devnet receipt for a patient paying the rest of a bill: memo-only, under an opaque hash of
+ * the visit (no patient data). Safe to call again: returns the stored signature when there is one.
+ * Never throws; null when Solana isn't configured or the transaction didn't confirm. Only a confirmed
+ * signature is stored, so the account page never links to a transaction that didn't land.
+ */
+export async function sendPatientPaymentReceipt(
+  deps: PaymentsDeps,
+  input: { visitId: string; amountCents: number },
+): Promise<string | null> {
+  try {
+    const done = await getLink(deps.db, "patient_payment", input.visitId);
+    if (done?.signature) return done.signature;
+    if (!deps.solana) return null;
+    const memo = `${memoFor("oc_pp", patientPaymentKey(input.visitId))}:${input.amountCents}`;
+    const { signature, status } = await sendReceipt(deps.solana, { memo, lamports: 0 });
+    if (status !== "confirmed") return null;
+    await saveLink(deps.db, { kind: "patient_payment", ref: input.visitId, signature, amountCents: input.amountCents });
+    return signature;
+  } catch (err) {
+    deps.log?.(`patient payment receipt for ${input.visitId}: ${(err as Error).message}`);
+    return null;
+  }
+}
+
+/** Patient payment links for these visits, by visit ID (Nessie purchase and Solana signature). */
+export async function patientPaymentLinks(db: Db, visitIds: string[]): Promise<Map<string, RailLink>> {
+  if (visitIds.length === 0) return new Map();
+  const { rows } = await db.query<RailLinkRow>(
+    "select * from rail_links where kind = 'patient_payment' and ref = any($1::text[])",
+    [visitIds],
+  );
+  return new Map(rows.map((r) => [r.ref, toLink(r)]));
+}
+
 // ---------------------------------------------------------------------------
 // Payment plans: a recurring Nessie bill instead of "pay it all now"
 // ---------------------------------------------------------------------------
