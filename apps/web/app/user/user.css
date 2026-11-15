@@ -1,0 +1,220 @@
+/* /user: the patient's own account. Mobile first (375 px iPhone), built from the admin's pieces
+   (d-card, d-pill, d-btn, the d-login sign-in card) and the OpenCare tokens in opencare.css. */
+
+.u-portal {
+  /* The admin's variables live on .desk; the portal sets the same ones for the d- pieces. */
+  --d-teal: #4750d3;
+  --d-teal-deep: #2d37bf;
+  --d-line: #e5e5ee;
+  --d-tile: #f8f8fb;
+  --d-text: #151627;
+  --d-text-2: #535465;
+  --d-muted: #9092a2;
+  min-height: 100dvh;
+  color: var(--oc-ink);
+}
+
+.u-center {
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+}
+.u-muted { color: var(--oc-slate); }
+.u-error { display: grid; gap: 14px; justify-items: center; max-width: 360px; text-align: center; }
+
+/* ------------------------------------------------------------ Sign in */
+
+.u-login { background: transparent; }
+.u-login .d-login-card { max-width: 420px; }
+.u-login-card { width: min(100%, 300px); margin: 4px 0 2px; }
+.u-login input[type="date"] { min-height: 44px; }
+.u-wide { width: 100%; justify-content: center; min-height: 46px; }
+.u-link {
+  border: 0;
+  background: none;
+  color: var(--oc-iris);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 6px;
+}
+
+/* ------------------------------------------------------------ Top bar */
+
+.u-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  padding-top: max(12px, env(safe-area-inset-top));
+  background: rgba(244, 245, 251, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--oc-line);
+}
+.u-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.u-brand svg { width: 24px; height: 24px; }
+.u-signout { height: 38px; font-size: 14px; }
+
+/* ------------------------------------------------------------ Layout */
+
+.u-main {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 18px 16px calc(32px + env(safe-area-inset-bottom));
+}
+
+.u-hello { display: grid; gap: 18px; }
+.u-hello h1 { margin: 2px 0 6px; font-size: 34px; line-height: 1.1; }
+.u-hello p { margin: 0; }
+.u-card-wrap { width: 100%; max-width: 360px; justify-self: center; }
+
+/* ------------------------------------------------------------ Summary tiles */
+
+.u-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.u-tile {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: var(--oc-shadow);
+}
+.u-tile.strong { background: var(--oc-ink); color: #fff; border-color: var(--oc-ink); }
+.u-tile-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--oc-iris-soft);
+  color: var(--oc-iris);
+}
+.u-tile.strong .u-tile-icon { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.u-tile-label { font-size: 13px; color: var(--oc-slate); }
+.u-tile.strong .u-tile-label { color: rgba(255, 255, 255, 0.72); }
+.u-tile-num {
+  font-size: 21px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------ Sections and rows */
+
+.u-section { padding: 16px; }
+.u-section .d-card-head h2 { font-size: 19px; }
+.u-empty { margin: 0; color: var(--oc-slate); font-size: 15px; }
+.u-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.u-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  padding: 14px 0;
+  border-top: 1px solid var(--oc-line);
+}
+.u-row:first-child { border-top: 0; padding-top: 4px; }
+.u-row-main, .u-row-side { display: grid; gap: 4px; min-width: 0; }
+.u-row-main strong { font-size: 15px; overflow-wrap: anywhere; }
+.u-row-main .u-muted { font-size: 13px; }
+.u-row-side { justify-items: end; text-align: right; }
+.u-row-side strong { font-variant-numeric: tabular-nums; font-size: 15px; }
+.u-row-side .u-muted { font-size: 12px; }
+.u-row-side .d-pill { height: 26px; font-size: 12px; padding: 0 10px; white-space: nowrap; }
+.u-row-foot {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 12px;
+  font-size: 13px;
+  color: var(--oc-slate);
+}
+.u-row-foot a { display: inline-flex; align-items: center; gap: 4px; color: var(--oc-iris); text-decoration: none; }
+
+/* A bill opens to show how it came down, then the itemized charges. */
+.u-bill { grid-column: 1 / -1; }
+.u-bill summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  list-style: none;
+  cursor: pointer;
+}
+.u-bill summary::-webkit-details-marker { display: none; }
+.u-bill summary .u-row-side .u-muted::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-3px) rotate(45deg);
+  opacity: 0.5;
+  transition: transform 0.15s ease;
+}
+.u-bill[open] summary .u-row-side .u-muted::after { transform: translateY(0) rotate(-135deg); }
+
+.u-steps, .u-items {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  border-radius: 14px;
+  background: var(--d-tile);
+  font-size: 14px;
+}
+.u-steps li, .u-items li { display: flex; justify-content: space-between; gap: 12px; }
+.u-steps li span:first-child, .u-items li span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.u-steps-total { padding-top: 8px; border-top: 1px solid var(--oc-line); font-weight: 500; }
+.u-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.u-sub { margin: 14px 0 0; font-size: 13px; color: var(--oc-slate); }
+.u-items { background: transparent; padding: 4px 0 0; color: var(--oc-slate); }
+
+/* ------------------------------------------------------------ Profile */
+
+.u-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; margin: 0; }
+.u-facts dt { font-size: 13px; color: var(--oc-slate); }
+.u-facts dd { margin: 2px 0 0; font-size: 15px; overflow-wrap: anywhere; }
+.u-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.02em; }
+.u-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--oc-slate);
+}
+
+/* ------------------------------------------------------------ Wider screens */
+
+@media (min-width: 720px) {
+  .u-main { padding: 28px 24px 48px; gap: 20px; }
+  .u-hello { grid-template-columns: minmax(0, 1fr) 340px; align-items: center; }
+  .u-hello h1 { font-size: 44px; }
+  .u-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .u-tile-num { font-size: 24px; }
+  .u-section { padding: 22px; }
+}
