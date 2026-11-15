@@ -153,102 +153,6 @@
 .kc-final { border-bottom: 0; font-weight: 700; font-size: 18px; }
 .kc-final b { font-size: 22px; }
 
-/* Scan to pay (patient): full screen, the reader at the top edge over the NFC antenna. */
-body:has(.kc-scan) { background: linear-gradient(180deg, #dbe8ff, #f3f7ff 55%, #fff); }
-.kc-scan {
-  min-height: 100svh;
-  max-width: 520px;
-  margin: 0 auto;
-  padding: 0 calc(22px + env(safe-area-inset-right, 0px)) calc(28px + env(safe-area-inset-bottom, 0px)) calc(22px + env(safe-area-inset-left, 0px));
-  -webkit-tap-highlight-color: transparent;
-}
-.kc-pay { display: flex; flex-direction: column; align-items: center; text-align: center; }
-.kc-disc {
-  --d: clamp(132px, 42vw, 188px);
-  position: relative;
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: var(--d);
-  height: var(--d);
-  margin: max(10px, calc(env(safe-area-inset-top, 0px) - 6px)) 0 calc(var(--d) * 0.3);
-  border: 0;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 40%, #fff, var(--kc-soft));
-  box-shadow: 0 14px 40px #075deb33, inset 0 0 0 2px #b9cff3;
-  color: var(--kc-blue);
-  cursor: default;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-}
-.kc-disc svg, .kc-disc .kc-spin { position: relative; z-index: 1; }
-.kc-disc svg { transform: rotate(-90deg); }
-.kc-ring {
-  position: absolute;
-  inset: -2px;
-  border-radius: 50%;
-  border: 2px solid #8fb0ea;
-  animation: kc-pulse 2.4s ease-out infinite;
-}
-.kc-ring + .kc-ring { animation-delay: 1.2s; }
-@keyframes kc-pulse { from { transform: scale(1); opacity: 0.9; } to { transform: scale(1.5); opacity: 0; } }
-.kc-fill {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(var(--kc-blue) var(--p, 0%), transparent 0);
-  -webkit-mask: radial-gradient(circle, transparent 61%, #000 62%);
-  mask: radial-gradient(circle, transparent 61%, #000 62%);
-  opacity: 0;
-}
-.kc-disc.is-holding .kc-fill { opacity: 1; animation: kc-fill 1.2s linear forwards; }
-.kc-disc.is-paying .kc-ring { animation: none; opacity: 0; }
-@property --p { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
-@keyframes kc-fill { to { --p: 100%; } }
-.kc-pay h1 {
-  max-width: 17ch;
-  margin: 0;
-  font-size: clamp(26px, 7.4vw, 34px);
-  font-weight: 650;
-  letter-spacing: -0.035em;
-  line-height: 1.15;
-}
-.kc-hl { color: var(--kc-blue); }
-.kc-up {
-  display: inline-block;
-  width: 0.9em;
-  height: 0.9em;
-  margin-left: 0.15em;
-  vertical-align: -0.1em;
-  fill: none;
-  stroke: var(--kc-blue);
-  stroke-width: 2.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  animation: kc-bob 1.6s ease-in-out infinite;
-}
-@keyframes kc-bob { 50% { transform: translateY(-5px); } }
-.kc-nfc { max-width: 30ch; margin: 12px 0 0; color: var(--kc-muted); font-size: 15px; }
-.kc-due {
-  display: grid;
-  gap: 2px;
-  width: 100%;
-  margin-top: 28px;
-  padding: 16px 18px;
-  border-radius: 20px;
-  background: #fff;
-  border: 1px solid var(--kc-line);
-}
-.kc-due span { color: var(--kc-muted); font-weight: 600; font-size: 14px; }
-.kc-due strong {
-  font-size: clamp(32px, 10vw, 46px);
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  font-variant-numeric: tabular-nums;
-}
-
 /* Receipt */
 .kc-paid { display: flex; gap: 12px; align-items: center; margin: 14px 0 16px; color: var(--kc-saved); }
 .kc-paid h1 { margin: 0; color: var(--kc-ink); font-size: clamp(26px, 7vw, 34px); font-variant-numeric: tabular-nums; }
@@ -264,16 +168,6 @@ body:has(.kc-scan) { background: linear-gradient(180deg, #dbe8ff, #f3f7ff 55%, #
 @media (max-width: 380px) {
   .kc-line { grid-template-columns: minmax(0, 1fr) 128px 28px; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .kc-ring, .kc-up { animation: none; }
-  .kc-ring { opacity: 0; }
-}
-
-/* The patient's bill under the reader, before the scan. */
-.kc-billcard { margin-top: 26px; text-align: left; }
-.kc-billcard h2 { margin: 0 0 8px; font-size: 17px; font-weight: 650; }
-.kc-scan .kc-skip { margin-top: 16px; }
-
 /* The card page: checking, then pay or ask the fund. */
 .kc-card .bw-balance { margin-top: 4px; }
 .kc-card .bw-balance strong { font-size: clamp(34px, 10.5vw, 50px); }

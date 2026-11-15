@@ -356,6 +356,27 @@ body:has(.kt) {
 .kt-headline .up svg { width: 56%; height: 56%; stroke: #fff; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 @keyframes kt-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.14em); } }
 
+/* /kiosk/charge: the amount the patient is asked to pay, under the headline. */
+.kt-due {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  margin: clamp(14px, 2.6svh, 24px) 0 0;
+  animation: kt-word 0.9s var(--ease-out) 0.9s both;
+}
+.kt-due span { color: rgb(var(--v-rgb) / 0.8); font-size: 15px; font-weight: 600; letter-spacing: 0.02em; }
+.kt-due strong {
+  font-family: var(--display);
+  font-size: clamp(34px, 10vw, 48px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
 .kt-ended {
   position: relative;
   z-index: 4;
