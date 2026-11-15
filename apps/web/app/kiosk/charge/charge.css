@@ -368,3 +368,7 @@
 }
 .kc-track svg { flex: none; margin-top: 3px; color: var(--kc-blue); }
 .kc-track a { color: var(--kc-blue); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; word-break: break-all; }
+
+/* Whose account the kiosk charge bills (the CareCard that was tapped). */
+.kc-billing { display: flex; align-items: center; gap: 6px; margin: 2px 0 6px; color: var(--kc-ink); font-weight: 450; }
+.kc-billing svg { color: var(--kc-blue); }
