@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { TapResult } from "@abdulcare/contracts";
+import { CARD_PATH, loadPending } from "@/app/kiosk/charge/pending";
 import { tap } from "@/lib/api";
 import { formatCents } from "@/lib/mock";
 
@@ -26,9 +27,12 @@ export function TapLanding({ token }: { token: string }) {
     started.current = true;
     tap(token)
       .then((result) => {
-        // A kiosk tap walks the bill step by step (SPEC §4, screen 2).
-        if (result.kind === "session") router.replace("/kiosk/check");
-        else setState({ phase: "done", result });
+        // A tap while staff have a charge waiting finishes that charge as this patient; otherwise
+        // the kiosk walks the patient's bill step by step (SPEC §4, screen 2).
+        if (result.kind === "session") {
+          const waiting = loadPending();
+          router.replace(waiting && !waiting.outcome ? CARD_PATH : "/kiosk/check");
+        } else setState({ phase: "done", result });
       })
       .catch(() => setState({ phase: "error" }));
   }, [router, token]);
