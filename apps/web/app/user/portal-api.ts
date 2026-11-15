@@ -40,3 +40,44 @@ export const payBalance = (visitId: string, amountCents: number) =>
     method: "POST",
     body: JSON.stringify({ amountCents } satisfies PortalPayRequest),
   });
+
+// Linked rails: monthly payment plans (a recurring Nessie bill) and queue proofs (Merkle proofs
+// against the day's devnet anchor).
+
+export interface PlanOption {
+  months: number;
+  monthlyCents: number;
+}
+
+export interface PaymentPlanView {
+  months: number;
+  monthlyCents: number;
+  totalCents: number;
+  firstDue: string;
+  incomeShare: number | null;
+}
+
+export const getPlan = (visitId: string) =>
+  call<{ plan: PaymentPlanView | null; suggestion: { months: number; monthlyCents: number; affordableMonthlyCents: number | null; options: PlanOption[] } }>(
+    `/api/user/bills/${encodeURIComponent(visitId)}/plan`,
+  );
+
+export const startPlan = (visitId: string, months: number) =>
+  call<{ plan: PaymentPlanView }>(`/api/user/bills/${encodeURIComponent(visitId)}/plan`, {
+    method: "POST",
+    body: JSON.stringify({ months }),
+  });
+
+export interface QueueProof {
+  grantId: string;
+  day: string;
+  leafHash: string;
+  proof: string[];
+  root: string;
+  verified: boolean;
+  rank: number;
+  outOf: number;
+  explorerUrl: string | null;
+}
+
+export const getProofs = () => call<{ proofs: QueueProof[] }>("/api/user/proof");
