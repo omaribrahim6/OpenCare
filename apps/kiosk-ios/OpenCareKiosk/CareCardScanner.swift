@@ -1,5 +1,14 @@
 import CoreNFC
 import Foundation
+import os
+
+private let kioskLogger = Logger(subsystem: "com.opencare.kiosk", category: "carecard")
+
+/// Kiosk diagnostics: to the unified log (Xcode console) and stdout (devicectl --console).
+enum kioskLog {
+    static func notice(_ message: String) { kioskLogger.notice("\(message)"); print("[kiosk] \(message)") }
+    static func error(_ message: String) { kioskLogger.error("\(message)"); print("[kiosk] ERROR \(message)") }
+}
 
 /// Why a scan ended without a token. The raw value is what the web page receives as `error`.
 enum ScanError: String, Error {
@@ -70,6 +79,15 @@ enum NFCCopy {
 ///
 /// `verify` runs while the sheet is still open: pass nil to accept the token, or a message to show
 /// in the sheet as an error. So a card the server rejects never leaves the tap screen.
+/// Ends a session showing `message`. invalidate(errorMessage:) is refused by some iOS versions
+/// ("Session does not support invalidation with error"), which left the sheet without feedback,
+/// so the message goes in alertMessage and the sheet closes a moment later.
+func closeSession(_ session: NFCNDEFReaderSession, showing message: String) {
+    kioskLog.notice("NFC sheet closing with: \(message)")
+    session.alertMessage = message
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { session.invalidate() }
+}
+
 final class CareCardScanner: NSObject, NFCNDEFReaderSessionDelegate {
     typealias Verify = (_ token: String, _ done: @escaping (_ errorMessage: String?) -> Void) -> Void
 
@@ -104,8 +122,10 @@ final class CareCardScanner: NSObject, NFCNDEFReaderSessionDelegate {
 
     func readerSession(_ session: NFCNDEFReaderSession, didDetectNDEFs messages: [NFCNDEFMessage]) {
         guard !verifying else { return }
+        let records = messages.flatMap(\.records)
+        kioskLog.notice("NFC read \(records.count) record(s): \(records.map { "tnf=\($0.typeNameFormat.rawValue) type=\(String(decoding: $0.type, as: UTF8.self)) bytes=\($0.payload.count)" }.joined(separator: ", "))")
         guard let token = CareCardToken.from(messages: messages) else {
-            session.invalidate(errorMessage: NFCCopy.notACareCard)
+            closeSession(session, showing: NFCCopy.notACareCard)
             return finish(.failure(.invalidCard))
         }
         verifying = true
@@ -113,7 +133,7 @@ final class CareCardScanner: NSObject, NFCNDEFReaderSessionDelegate {
         (verify ?? { _, done in done(nil) })(token) { [weak self] errorMessage in
             guard let self, self.completion != nil else { return }
             if let errorMessage {
-                session.invalidate(errorMessage: errorMessage)
+                closeSession(session, showing: errorMessage)
                 self.finish(.failure(.rejected))
             } else {
                 session.alertMessage = NFCCopy.accepted
@@ -124,6 +144,7 @@ final class CareCardScanner: NSObject, NFCNDEFReaderSessionDelegate {
     }
 
     func readerSession(_ session: NFCNDEFReaderSession, didInvalidateWithError error: Error) {
+        kioskLog.notice("NFC read session ended: \(error.localizedDescription)")
         // Also called after our own invalidate(); finish() already ran then.
         guard completion != nil else { return }
         switch (error as? NFCReaderError)?.code {
@@ -174,7 +195,7 @@ final class CareCardWriter: NSObject, NFCNDEFReaderSessionDelegate {
     }
 
     private func fail(_ session: NFCNDEFReaderSession, _ why: String) {
-        session.invalidate(errorMessage: why)
+        closeSession(session, showing: why)
         finish(.failure(.failed(why)))
     }
 

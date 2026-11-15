@@ -220,7 +220,10 @@ final class KioskModel: NSObject, ObservableObject {
     /// POST /api/tap from inside the page: the server checks the card's HMAC and, on this paired
     /// kiosk, starts that patient's session. nil on success, else the message for the NFC sheet.
     private func tapInPage(token: String, _ done: @escaping (String?) -> Void) {
-        guard pageIsOnServer else { return done("Couldn't check the card. Try again.") }
+        guard pageIsOnServer else {
+            kioskLog.error("tap refused: page \(self.webView.url?.absoluteString ?? "-") is not on \(self.server.absoluteString)")
+            return done("Couldn't check the card. Try again.")
+        }
         let script = """
         const r = await fetch('/api/tap', { method: 'POST', credentials: 'same-origin',
           headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) });
@@ -229,6 +232,7 @@ final class KioskModel: NSObject, ObservableObject {
         return (result && result.kind) || 'error';
         """
         webView.callAsyncJavaScript(script, arguments: ["token": token], in: nil, in: .page) { result in
+            kioskLog.notice("POST /api/tap on \(self.webView.url?.absoluteString ?? "-") -> \(String(describing: result))")
             switch result {
             case .success(let kind as String):
                 switch kind {
