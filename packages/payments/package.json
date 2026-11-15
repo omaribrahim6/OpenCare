@@ -16,6 +16,8 @@
     "nessie:check": "tsx scripts/nessie-check.ts",
     "payments:smoke": "tsx scripts/live-smoke.ts",
     "history:seed": "tsx scripts/history-seed.ts",
+    "rails:smoke": "tsx scripts/rails-smoke.ts",
+    "rails:seed": "tsx scripts/rails-seed.ts",
     "receipts:backfill": "tsx scripts/history-seed.ts --backfill-only"
   },
   "dependencies": {
