@@ -234,6 +234,38 @@
 
 /* ------------------------------------------------------------ Wider screens */
 
+/* Phones: the shared site menu (SiteNav) gets its own row under the logo and Sign out, so the
+   bar never runs wider than the screen. */
+@media (max-width: 719px) {
+  .u-bar { flex-wrap: wrap; row-gap: 8px; }
+  .u-bar .site-brand { order: 1; }
+  .u-bar .u-signout { order: 2; height: 34px; padding-inline: 12px; }
+  .u-bar .site-nav {
+    order: 3;
+    flex: 1 0 100%;
+    justify-content: center;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .u-bar .site-nav::-webkit-scrollbar { display: none; }
+
+  /* The signed-out and loading screens use the shared SiteHeader: same idea, logo above menu. */
+  .site-bar:has(~ .u-login),
+  .site-bar:has(~ .u-portal) {
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 16px 4px;
+  }
+  .site-bar ~ .u-login { min-height: 0; padding-top: 4px; }
+  .site-bar:has(~ .u-login) .site-nav,
+  .site-bar:has(~ .u-portal) .site-nav {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+}
+
 @media (min-width: 720px) {
   .u-main { padding: 28px 24px 48px; gap: 20px; }
   .u-hello { grid-template-columns: minmax(0, 1fr) 340px; align-items: center; }
