@@ -7,7 +7,9 @@
 
 import { assessGrant, getDb, kioskChargePatient, recordKioskCharge } from "@abdulcare/core";
 import { optionalSessionPatient, requireDevice } from "@/app/api/_lib/auth";
-import { billEngine, depositIncomeCents, needEngine } from "@/app/api/_lib/deps";
+import { billEngine, depositIncomeCents, needEngine, payments } from "@/app/api/_lib/deps";
+import { linkVisitRails } from "@abdulcare/payments";
+import { after } from "next/server";
 import { ok, readJson, route } from "@/app/api/_lib/http";
 
 export const maxDuration = 30;
@@ -33,6 +35,17 @@ export const POST = route(async (req: Request) => {
     } catch (err) {
       console.error("[api] need assessment deferred:", err);
     }
+  }
+  // Linked rails, after the response: the hospital bill appears on the patient's Nessie account.
+  const visitId = charge.visitId;
+  if (visitId) {
+    after(async () => {
+      try {
+        await linkVisitRails(payments(), visitId);
+      } catch (err) {
+        console.error("[api] Nessie bill mirror deferred:", (err as Error).message);
+      }
+    });
   }
   return ok({ charge: { ...charge, billedVia: tapped ? "carecard" : "demo_patient" } }, 201);
 });
