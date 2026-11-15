@@ -398,3 +398,96 @@ body:has(.kt) {
   }
   .kt-floaters, .kt-streams .trail, .kt-streams .comet, .kt-fx .ripple, .kt-fx .sweep, .kt-fx .burst { display: none; }
 }
+
+/* ------------------------------------------------------------ OpenCare look
+   The same soft-lit stage as the landing page: lilac, sky and a peach glow with film grain, one
+   glass reader, light Lexend type. The streams, floating shapes, dot grid and waves are off; the
+   slow drifting light and the character carry the screen. Layout and the 3D scene are unchanged. */
+
+html:has(.kt) { background: #e7e9fb; }
+body:has(.kt) {
+  background:
+    radial-gradient(70% 46% at 12% 6%, #d6d0fa, transparent 72%),
+    radial-gradient(64% 40% at 92% 96%, #ffd2bb, transparent 72%),
+    radial-gradient(80% 50% at 60% 34%, #cfe1ff, transparent 78%),
+    #e7e9fb fixed;
+}
+
+.kt {
+  --violet: #4d55d4;
+  --violet-hi: #7a80e6;
+  --violet-soft: #eeeffc;
+  --ink: #171a2b;
+  --slate: #5c6178;
+  --v-rgb: 77 85 212;
+  --ring-rgb: 214 208 250;
+  --rose-rgb: 255 210 187;
+  --sky-rgb: 207 225 255;
+  --scrim-rgb: 244 245 251;
+}
+
+.kt-grid, .kt-streams, .kt-floaters, .kt-wave, .kt-fx .orbit, .kt-fx .sweep { display: none; }
+.kt-blob { opacity: 0.55; }
+.kt-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.3;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.kt-edge {
+  background:
+    radial-gradient(50% 75% at 50% 0%, rgb(255 255 255 / 0.7), transparent 75%),
+    linear-gradient(90deg, transparent 20%, rgb(var(--v-rgb) / 0.55) 50%, transparent 80%) top / 100% 2px no-repeat;
+}
+.kt-fg {
+  background: linear-gradient(180deg,
+    rgb(var(--scrim-rgb) / 0) 0%,
+    rgb(var(--scrim-rgb) / 0.7) 30%,
+    rgb(var(--scrim-rgb) / 0.94) 52%,
+    rgb(var(--scrim-rgb)) 68%);
+}
+
+/* The reader: one frosted disc. */
+.kt-fx .ring-outer { border-color: rgb(255 255 255 / 0.7); }
+.kt-fx .halo { background: radial-gradient(closest-side, rgb(255 255 255 / 0.95), rgb(255 255 255 / 0.35) 60%, transparent 100%); }
+.kt-fx .ripple { border: 1px solid rgb(var(--v-rgb) / 0.28); }
+.kt-fx .burst { border-width: 2px; }
+.kt-core {
+  border: 1px solid rgb(255 255 255 / 0.9);
+  background: rgb(255 255 255 / 0.86);
+  box-shadow:
+    0 calc(var(--r) * 0.22) calc(var(--r) * 0.5) calc(var(--r) * -0.2) rgb(54 60 130 / 0.5),
+    inset 0 0 0 1px rgb(var(--v-rgb) / 0.08);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25);
+  backdrop-filter: blur(22px) saturate(1.25);
+  animation: kt-core-in 1s var(--ease-out) both;
+}
+.kt-nfc { stroke: var(--ink); stroke-width: 2.8; }
+.kt-label {
+  color: var(--slate);
+  font-size: max(14px, calc(var(--r) * 0.15));
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 0;
+}
+
+/* Type: light and close-set, as on the landing page. */
+.kt-headline { font-weight: 350; letter-spacing: -0.04em; line-height: 1.06; font-variation-settings: normal; }
+.kt:lang(ar) .kt-headline { font-weight: 450; }
+@keyframes kt-word { from { opacity: 0; } to { opacity: 1; } }
+.kt-headline .hl {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+  color: var(--violet);
+  animation: kt-word 0.9s var(--ease-out) both;
+  animation-delay: calc(0.5s + var(--i) * 60ms);
+}
+.kt-headline .up { background: var(--ink); box-shadow: none; }
+.kt-due span { color: var(--slate); font-size: 15px; font-weight: 400; letter-spacing: 0; }
+.kt-due strong { font-weight: 350; letter-spacing: -0.045em; }
+.kt-ended { color: var(--violet); font-weight: 400; }
