@@ -1,28 +1,16 @@
 import SwiftUI
 import WebKit
 
+/// The kiosk site, full-bleed with no native chrome. The only native UI is Apple's NFC sheet and
+/// the settings screen behind a two-finger long press (plus a screen if the server can't be reached).
 struct ContentView: View {
     @StateObject private var model = KioskModel()
 
     var body: some View {
         WebViewContainer(webView: model.webView)
-            .ignoresSafeArea(.container, edges: .bottom)
+            .ignoresSafeArea()
+            .background(Color(KioskModel.pageBackground).ignoresSafeArea())
             .overlay { if let error = model.loadError { LoadErrorView(message: error, model: model) } }
-            // Top right, below the page header: clear of the kiosk screens' own buttons.
-            .overlay(alignment: .topTrailing) {
-                if model.showsCardButton { CareCardButton(model: model).padding(.top, 72).padding(.trailing, 12) }
-            }
-            .overlay(alignment: .top) {
-                if let toast = model.toast {
-                    Text(toast)
-                        .font(.callout.weight(.medium))
-                        .padding(.horizontal, 16).padding(.vertical, 10)
-                        .background(.regularMaterial, in: Capsule())
-                        .padding(.top, 8)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
-            }
-            .animation(.easeOut(duration: 0.2), value: model.toast)
             .sheet(isPresented: $model.showSettings) { SettingsView(model: model) }
             .alert("Simulate a CareCard scan", isPresented: $model.simulatePrompt) {
                 TextField("Card token or /t/ link", text: $model.simulateText)
@@ -34,29 +22,6 @@ struct ContentView: View {
                 Text("This device has no NFC (debug build). Enter a CareCard token.")
             }
             .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
-    }
-}
-
-/// Tap: read a CareCard. Long-press: settings, reload, back to the kiosk start.
-/// Shown on the kiosk tap screens only (/kiosk and /kiosk/charge).
-private struct CareCardButton: View {
-    @ObservedObject var model: KioskModel
-
-    var body: some View {
-        Button { model.nativeTap() } label: {
-            Image(systemName: "wave.3.right.circle.fill")
-                .font(.system(size: 26))
-                .symbolRenderingMode(.hierarchical)
-                .frame(width: 46, height: 46)
-                .background(.ultraThinMaterial, in: Circle())
-        }
-        .accessibilityLabel("Tap your CareCard")
-        .contextMenu {
-            Button { model.nativeTap() } label: { Label("Read a CareCard", systemImage: "wave.3.right") }
-            Button { model.open(path: KioskModel.startPath) } label: { Label("Kiosk start", systemImage: "house") }
-            Button { model.reload() } label: { Label("Reload", systemImage: "arrow.clockwise") }
-            Button { model.showSettings = true } label: { Label("Settings", systemImage: "gearshape") }
-        }
     }
 }
 
@@ -77,7 +42,7 @@ private struct LoadErrorView: View {
         }
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .background(Color(KioskModel.pageBackground))
     }
 }
 

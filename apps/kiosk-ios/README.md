@@ -27,13 +27,20 @@ OpenCareKiosk app ──► token ──► WKWebView (kiosk site)
   changed in the app's settings (for example your Mac's `http://192.168.1.20:3000`). It uses the
   default persistent website data store, so the kiosk's pairing and session cookies survive
   relaunches. The user agent ends with `OpenCareKiosk/1`.
+- **Looks exactly like the web kiosk.** The WebView is full-bleed with no native chrome: no
+  bars, no buttons over the page. The pages' own `viewport-fit` and `env(safe-area-inset-*)`
+  rules place content, and the background is the page color (`#f4f5fb`), so there's no flash.
+  Link previews, the long-press callout and text selection outside form fields are off. Nothing
+  is restyled natively. The only native UI is Apple's NFC "Ready to Scan" sheet and the hidden
+  settings screen.
+- **Settings** open with a **two-finger long press (about 1.5 s) anywhere** on the kiosk. They
+  are never visible otherwise.
 - **Reading a card.** Two ways start a scan, and both use the same reader:
-  1. **The floating button** (top right, shown only on the kiosk tap screens `/kiosk` and
-     `/kiosk/charge`). It reads the card, then opens `<server>/t/<token>`
-     in the WebView. That page is the same one the card's own link opens: it calls `tap(token)`
-     and routes (charge waiting → `/kiosk/charge/card`, otherwise `/kiosk/check`). This works with
-     today's web app, no web changes needed. Long-press the button for Settings, Reload and
-     Kiosk start.
+  1. **Tap the kiosk's own "Tap here" disc** on `/kiosk` or `/kiosk/charge`. An injected
+     listener (the page itself isn't changed) opens the NFC sheet. After a read, the app opens
+     `<server>/t/<token>` in the WebView, the same page the card's own link opens: it calls
+     `tap(token)` and routes (charge waiting → `/kiosk/charge/card`, otherwise `/kiosk/check`).
+     Holding the disc still runs the web demo shortcut, as on the web.
   2. **The page asks** through the JS bridge below (`apps/web/lib/native-nfc.ts`), for a
      "Tap your CareCard" button on the kiosk's own screens.
 - **Token parsing.** The app takes the token from the URI record's `/t/<token>` path (any host;
@@ -123,11 +130,11 @@ newer), and a USB cable.
 6. **Trust the developer** if the app won't open ("Untrusted Developer"): on the iPhone go to
    Settings → General → VPN & Device Management → your developer account → **Trust**. Then
    open **OpenCare Kiosk** again.
-7. **Pair the kiosk once.** On the kiosk start screen, long-press the round button at the top right →
-   **Settings** → **Pair this kiosk (staff PIN)**. Enter the staff PIN (ask Omar; never commit
+7. **Pair the kiosk once.** Long-press the screen with **two fingers** for about 1.5 seconds to
+   open Settings, then tap **Pair this kiosk (staff PIN)**. Enter the staff PIN (ask Omar; never commit
    it). The pairing cookie stays after relaunch.
-8. **Test a card.** Open the kiosk start (or start a charge at `/kiosk/charge`), tap the round
-   CareCard button at the top right, and hold the card near the top of the iPhone. The kiosk should open that
+8. **Test a card.** Open the kiosk start (or start a charge at `/kiosk/charge`), tap the
+   **Tap here** disc at the top of the kiosk screen, and hold the card near the top of the iPhone. The kiosk should open that
    patient's bill (or the waiting charge) without leaving the app.
 
 Apps installed this way with a paid account keep working for a year; just press Run again to

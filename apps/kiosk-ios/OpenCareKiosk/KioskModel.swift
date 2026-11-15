@@ -12,7 +12,6 @@ final class KioskModel: NSObject, ObservableObject {
 
     /// Origin the kiosk loads, e.g. https://abdulcare.vercel.app or http://192.168.1.20:3000.
     @Published private(set) var server: URL
-    @Published var toast: String?
     @Published var loadError: String?
     @Published var showSettings = false
     @Published var simulatePrompt = false
@@ -23,11 +22,32 @@ final class KioskModel: NSObject, ObservableObject {
     let webView: WKWebView
     private let scanner = CareCardScanner()
     private var simulateCompletion: ((Result<String, ScanError>) -> Void)?
-    private var toastTask: Task<Void, Never>?
     private var urlObservation: NSKeyValueObservation?
 
-    /// Kiosk screens where a patient taps a card (the floating reader button shows only there).
+    /// Kiosk screens where a patient taps a card: tapping their "Tap here" disc opens the reader.
     static let tapScreens: Set<String> = ["/kiosk", "/kiosk/charge"]
+    /// The page background (globals.css --bg), shown before the first paint so there is no flash.
+    static let pageBackground = UIColor(red: 0xf4 / 255, green: 0xf5 / 255, blue: 0xfb / 255, alpha: 1)
+
+    /// Injected at document end. Keeps WebView extras Safari doesn't show off the UI (long-press
+    /// callout, text selection outside form fields), and turns a tap on the kiosk tap screen's
+    /// own "Tap here" disc (.kt-core) into a native scan. The page itself is not changed.
+    private static let pageScript = """
+    (() => {
+      const style = document.createElement('style');
+      style.textContent = `
+        html, body { -webkit-touch-callout: none; }
+        body *:not(input):not(textarea):not(select):not([contenteditable]) { -webkit-user-select: none; user-select: none; }
+      `;
+      document.documentElement.appendChild(style);
+      document.addEventListener('click', (e) => {
+        const p = location.pathname, path = p.length > 1 && p.endsWith('/') ? p.slice(0, -1) : p;
+        if (path !== '/kiosk' && path !== '/kiosk/charge') return;
+        if (!(e.target instanceof Element) || !e.target.closest('.kt-core')) return;
+        window.webkit.messageHandlers.carecard.postMessage({ action: 'tap' });
+      }, true);
+    })();
+    """
 
     override init() {
         let saved = UserDefaults.standard.string(forKey: Self.serverKey)
@@ -38,6 +58,8 @@ final class KioskModel: NSObject, ObservableObject {
         config.websiteDataStore = .default()
         config.applicationNameForUserAgent = "Version/17.0 Mobile/15E148 Safari/604.1 \(Self.userAgentSuffix)"
         config.allowsInlineMediaPlayback = true
+        config.userContentController.addUserScript(
+            WKUserScript(source: Self.pageScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         webView = WKWebView(frame: .zero, configuration: config)
         super.init()
 
@@ -45,6 +67,20 @@ final class KioskModel: NSObject, ObservableObject {
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = false
+        webView.allowsLinkPreview = false
+        // Settings stay hidden: a two-finger long press anywhere opens them. It never blocks the page.
+        let settingsGesture = UILongPressGestureRecognizer(target: self, action: #selector(openSettings(_:)))
+        settingsGesture.numberOfTouchesRequired = 2
+        settingsGesture.minimumPressDuration = 1.5
+        settingsGesture.cancelsTouchesInView = false
+        settingsGesture.delegate = self
+        webView.addGestureRecognizer(settingsGesture)
+        // Full-bleed like mobile Safari: the page's own viewport-fit / env(safe-area-inset-*) rules
+        // place content; the web view only paints the page background until the first frame.
+        webView.isOpaque = false
+        webView.backgroundColor = Self.pageBackground
+        webView.scrollView.backgroundColor = Self.pageBackground
+        webView.underPageBackgroundColor = Self.pageBackground
         urlObservation = webView.observe(\.url, options: [.new]) { [weak self] webView, _ in
             let path = webView.url?.path ?? ""
             Task { @MainActor in self?.currentPath = path }
@@ -106,10 +142,6 @@ final class KioskModel: NSObject, ObservableObject {
             && (port ?? defaultPort) == (server.port ?? defaultPort)
     }
 
-    var showsCardButton: Bool {
-        loadError == nil && pageIsOnServer && Self.tapScreens.contains(currentPath)
-    }
-
     private var pageIsOnServer: Bool {
         guard let url = webView.url else { return false }
         return isServerOrigin(scheme: url.scheme, host: url.host, port: url.port)
@@ -144,24 +176,15 @@ final class KioskModel: NSObject, ObservableObject {
             guard let self else { return }
             switch result {
             case .success(let token): self.openTap(token: token)
-            case .failure(let error): if let message = error.message { self.show(message) }
+            case .failure: break // The NFC sheet already told the patient.
             }
         }
     }
 
     /// Opens the card's tap page on this kiosk's server, as if the card's own link was opened.
     func openTap(token: String) {
-        guard CareCardToken.isValid(token) else { return show(ScanError.invalidCard.message!) }
+        guard CareCardToken.isValid(token) else { return }
         open(path: "/t/\(token)")
-    }
-
-    func show(_ message: String) {
-        toast = message
-        toastTask?.cancel()
-        toastTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(3))
-            if !Task.isCancelled { self?.toast = nil }
-        }
     }
 
     // MARK: Bridge
@@ -170,9 +193,16 @@ final class KioskModel: NSObject, ObservableObject {
         let origin = message.frameInfo.securityOrigin
         guard message.name == "carecard", message.frameInfo.isMainFrame,
               isServerOrigin(scheme: origin.protocol, host: origin.host, port: origin.port == 0 ? nil : origin.port),
-              let body = message.body as? [String: Any], body["action"] as? String == "scan",
-              let id = body["id"] as? String, !id.isEmpty, id.count <= 64 else { return }
-        scan { [weak self] result in self?.reply(id: id, result) }
+              let body = message.body as? [String: Any] else { return }
+        switch body["action"] as? String {
+        case "tap" where Self.tapScreens.contains(currentPath):
+            nativeTap()
+        case "scan":
+            guard let id = body["id"] as? String, !id.isEmpty, id.count <= 64 else { return }
+            scan { [weak self] result in self?.reply(id: id, result) }
+        default:
+            return
+        }
     }
 
     /// Sends the scan result to the page as a `carecard` CustomEvent: `{id, token}` or `{id, error}`.
@@ -186,6 +216,19 @@ final class KioskModel: NSObject, ObservableObject {
         webView.callAsyncJavaScript(
             "window.dispatchEvent(new CustomEvent('carecard', { detail }));",
             arguments: ["detail": detail], in: nil, in: .page, completionHandler: nil)
+    }
+}
+
+// MARK: - Hidden settings gesture
+
+extension KioskModel: UIGestureRecognizerDelegate {
+    @objc fileprivate func openSettings(_ gesture: UILongPressGestureRecognizer) {
+        if gesture.state == .began { showSettings = true }
+    }
+
+    nonisolated func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                                       shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        true
     }
 }
 
@@ -222,7 +265,6 @@ extension KioskModel: WKNavigationDelegate, WKUIDelegate {
 
     func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String,
                  initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping @MainActor () -> Void) {
-        show(message)
         completionHandler()
     }
 }

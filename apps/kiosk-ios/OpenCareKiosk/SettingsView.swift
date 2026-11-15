@@ -53,8 +53,6 @@ struct SettingsView: View {
                         if let token = CareCardToken.from(text: debugToken) {
                             model.openTap(token: token)
                             dismiss()
-                        } else {
-                            model.show(ScanError.invalidCard.message!)
                         }
                     }
                 } header: {
@@ -63,6 +61,11 @@ struct SettingsView: View {
                     Text("Debug builds only. Opens /t/<token> as if that card was read.")
                 }
                 #endif
+
+                Section {
+                    Text("Open these settings any time with a two-finger long press on the kiosk.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
 
                 Section("About") {
                     LabeledContent("User agent", value: KioskModel.userAgentSuffix)
