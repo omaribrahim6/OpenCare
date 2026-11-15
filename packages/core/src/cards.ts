@@ -62,6 +62,14 @@ export async function resolveTap(
   return { result: { kind: "intake", patient, plan: await getInsurancePlan(db, patient.id) }, sessionSecret };
 }
 
+/**
+ * Start a patient session on a device without a card tap (the kiosk demo). The caller decides who
+ * may do this; the returned secret goes in the SESSION_COOKIE exactly as after a tap.
+ */
+export async function startPatientSession(db: Db, deviceId: string, patientId: string): Promise<string> {
+  return startSession(db, deviceId, patientId);
+}
+
 async function startSession(db: Db, deviceId: string, patientId: string): Promise<string> {
   const secret = newSecret();
   await db.transaction(async (tx) => {
