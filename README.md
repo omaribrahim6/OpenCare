@@ -1,8 +1,8 @@
-# AbdulCare — Care for All
+# OpenCare — Care for All
 
 > Tap your card. Understand your bill. Get help paying for care.
 
-AbdulCare is an AI-assisted healthcare access kiosk built at HackUMass XIV. A patient taps an NFC **CareCard** on a clinic kiosk. AbdulCare finds or scans a medical bill and explains it in plain language, and the patient requests help from a community care fund. Once a human reviewer approves the grant, a second tap at the provider pays the bill through Capital One's Nessie API and records a privacy-safe public receipt on Solana devnet.
+OpenCare is an AI-assisted healthcare access kiosk built at HackUMass XIV. A patient taps an NFC **CareCard** on a clinic kiosk. OpenCare finds or scans a medical bill and explains it in plain language, and the patient requests help from a community care fund. Once a human reviewer approves the grant, a second tap at the provider pays the bill through Capital One's Nessie API and records a privacy-safe public receipt on Solana devnet.
 
 **Built with:** Next.js on Vercel · TypeScript · Gemini API · Tiger Data (Postgres + TimescaleDB) · Capital One Nessie · Solana devnet · NFC (NTAG) · 3D printing
 

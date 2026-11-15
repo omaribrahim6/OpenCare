@@ -1,5 +1,5 @@
 {
-  "name": "AbdulCare kiosk",
+  "name": "OpenCare kiosk",
   "short_name": "CareCard",
   "start_url": "/kiosk",
   "scope": "/",
