@@ -5,27 +5,27 @@
   padding: clamp(20px, 5vw, 32px);
   border: 1px solid #fff;
   border-radius: 28px;
-  background: linear-gradient(145deg, #f8fcfd 0%, #f1f8fb 42%, #eaf6f0 100%);
-  box-shadow: 0 12px 40px #2d5b6620, 0 1px 3px #2d5b6614;
+  background: linear-gradient(145deg, #f9f9fc 0%, #f2f3fa 42%, #eaf6f0 100%);
+  box-shadow: 0 12px 40px #3b3e6320, 0 1px 3px #3b3e6314;
   color: #202829;
   line-height: 1.5;
 }
 
 body:has(.station) {
-  background: linear-gradient(125deg, #a9cbdb, #b8d7dc 62%, #c9dfd4);
+  background: linear-gradient(125deg, #b2b4d2, #bec0d6 62%, #c9dfd4);
 }
 
 .station h1 {
   margin: 20px 0 6px;
   font-size: clamp(29px, 5.8vw, 37px);
-  font-weight: 550;
+  font-weight: 450;
   letter-spacing: -.048em;
   line-height: 1.14;
 }
 
 .station h2 {
   font-size: 19px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .station .muted {
@@ -45,7 +45,7 @@ body:has(.station) {
 
 .station-bar .logo {
   color: #202829;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .station-bar .logo-mark {
@@ -78,7 +78,7 @@ body:has(.station) {
 }
 
 .station-tap .station-message {
-  color: #365d50;
+  color: #40425b;
   font-size: 14px;
 }
 
@@ -106,14 +106,14 @@ body:has(.station) {
   aspect-ratio: 1;
   margin: 0 auto;
   border-radius: 50%;
-  background: radial-gradient(circle, #d9edee, #edf8f5 62%, transparent 71%);
-  color: #285c56;
+  background: radial-gradient(circle, #dddeea, #efeff6 62%, transparent 71%);
+  color: #353759;
 }
 
 .station .rings span {
   position: absolute;
   inset: 5%;
-  border: 1px solid #a1ccbe;
+  border: 1px solid #a9abc5;
   border-radius: 50%;
 }
 
@@ -131,18 +131,18 @@ body:has(.station) {
 }
 
 .station .steps li {
-  border-top: 3px solid #c8dadc;
+  border-top: 3px solid #cbccd8;
   padding-top: 7px;
   color: #536465;
   font-size: 12px;
 }
 
-.station .steps li.done { border-color: #7bbcae; }
+.station .steps li.done { border-color: #8a8db3; }
 
 .station .steps li[aria-current="step"] {
   color: #202829;
-  font-weight: 650;
-  border-color: #2e554e;
+  font-weight: 500;
+  border-color: #383952;
 }
 
 .station .card {
@@ -187,8 +187,8 @@ body:has(.station) {
 }
 
 .station .btn:not(.secondary, .btn-lg, .btn-danger) {
-  background: #25292b;
-  border-color: #25292b;
+  background: #26262a;
+  border-color: #26262a;
   color: #fff;
 }
 
@@ -203,8 +203,8 @@ body:has(.station) {
   padding: 2px 8px;
   border-radius: 6px;
   font-size: 12px;
-  background: #daecf5;
-  color: #234959;
+  background: #dedff1;
+  color: #303255;
 }
 
 .station .badge.bad {
@@ -213,7 +213,7 @@ body:has(.station) {
 }
 
 .station label {
-  font-weight: 550;
+  font-weight: 450;
 }
 
 .station input:not([type="radio"], [type="checkbox"]),
@@ -225,12 +225,12 @@ body:has(.station) {
   padding: 10px 12px;
   border: 1px solid #d0dedc;
   border-radius: 10px;
-  background: #f7fbfc;
+  background: #f8f8fb;
   font: inherit;
   color: #202829;
 }
 
-.station input[type="radio"] { accent-color: #285c56; }
+.station input[type="radio"] { accent-color: #353759; }
 
 @media (max-width: 520px) {
   .station {
@@ -263,7 +263,7 @@ body:has(.station) {
 .station .tap-rings .ring {
   position: absolute;
   inset: 0;
-  border: 1px solid #9ccfc2;
+  border: 1px solid #a5a7c6;
   background: #e3f3ed;
   box-shadow: inset 0 0 0 14px #f2faf7;
 }
@@ -272,8 +272,8 @@ body:has(.station) {
   position: relative;
   width: 55%;
   aspect-ratio: 1;
-  border: 1px solid #a9d4c8;
-  color: #285c56;
+  border: 1px solid #b1b2cc;
+  color: #353759;
 }
 
 .station .tap-rings svg {
@@ -282,27 +282,27 @@ body:has(.station) {
 }
 
 body:has(.station) {
-  background: linear-gradient(168deg, #d4e5ff, #e8eef8 72%, #f6f8fb);
+  background: linear-gradient(168deg, #dadcf9, #eaebf6 72%, #f7f7fa);
 }
 .station {
-  background: linear-gradient(150deg, #f5f5f9, #ebf1fa);
+  background: linear-gradient(150deg, #f5f5f9, #edeef8);
   box-shadow: 0 12px 40px #45367524, 0 1px 3px #4536751a;
 }
 .station .rings {
-  color: #075deb;
-  background: radial-gradient(circle, #d9e9ff, #ebf2fd 64%, transparent 71%);
+  color: #4750d3;
+  background: radial-gradient(circle, #dee0fa, #eeeefa 64%, transparent 71%);
 }
-.station .rings span { border-color: #9ab8ea; }
+.station .rings span { border-color: #a8abdc; }
 .station .tap-rings .ring {
-  border-color: #9ab8e8;
-  background: #eaf2ff;
-  box-shadow: inset 0 0 0 14px #f1f6ff;
+  border-color: #a8abda;
+  background: #edeefc;
+  box-shadow: inset 0 0 0 14px #f3f4fd;
 }
-.station .tap-rings .core { border-color: #a6c1ed; color: #075deb; }
-.station .steps li { border-color: #d7dfec; }
-.station .steps li.done { border-color: #a3c0ef; }
-.station .steps li[aria-current="step"] { border-color: #5b8bd8; }
-.station .btn:not(.secondary, .btn-lg, .btn-danger) { background: #075deb; border-color: #075deb; }
+.station .tap-rings .core { border-color: #b2b6e1; color: #4750d3; }
+.station .steps li { border-color: #dbdce8; }
+.station .steps li.done { border-color: #b0b4e2; }
+.station .steps li[aria-current="step"] { border-color: #7a7fc6; }
+.station .btn:not(.secondary, .btn-lg, .btn-danger) { background: #4750d3; border-color: #4750d3; }
 
 /* Revision 6: the patient's bill shrinking step by step */
 .card.bill-total { display: flex !important; flex-direction: column; gap: 4px; align-items: flex-start; }
@@ -313,7 +313,7 @@ body:has(.station) {
 .bill-step { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line, #e3e1dc); }
 .bill-step span { display: flex; flex-direction: column; min-width: 0; }
 .bill-step small { color: var(--muted, #5c5f5e); font-size: 0.85rem; }
-.bill-step em { font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bill-step em { font-style: normal; font-weight: 550; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bill-step.pending em, .bill-step.pending strong { color: var(--muted, #5c5f5e); }
 .bill-step.pending em::after { content: " pending"; font-weight: 400; font-size: 0.85rem; }
 .bill-step.total { border-bottom: 0; padding-top: 14px; }
@@ -331,7 +331,7 @@ body:has(.portal-screen) { background: #f1f4f3; }
   background: #fff;
   border: 1px solid #dce6e2;
   border-radius: 20px;
-  box-shadow: 0 8px 32px #2442380c;
+  box-shadow: 0 8px 32px #2b2c3f0c;
 }
 
 .portal-intro { display: grid; gap: 8px; }

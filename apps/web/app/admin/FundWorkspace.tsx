@@ -16,12 +16,12 @@ type FundTab = "overview" | "ledger" | "about";
 
 const EVENT: Record<string, { label: string; icon: IconName; bg: string; fg: string; sign: string }> = {
   donation: { label: "Donation", icon: "heart", bg: "var(--mint-soft)", fg: "#2a7a5f", sign: "+" },
-  reservation: { label: "Reserved for a grant", icon: "lock", bg: "#eaf2ff", fg: "#0549bd", sign: "" },
+  reservation: { label: "Reserved for a grant", icon: "lock", bg: "#edeefc", fg: "#2d37bf", sign: "" },
   release: { label: "Reservation released", icon: "refresh", bg: "#f0f1f0", fg: "#5d625f", sign: "" },
   payout: { label: "Paid to hospital", icon: "store", bg: "var(--rose-soft)", fg: "#a5513f", sign: "−" },
-  pending: { label: "Approved, paying", icon: "clock", bg: "#eaf2ff", fg: "#0549bd", sign: "−" },
+  pending: { label: "Approved, paying", icon: "clock", bg: "#edeefc", fg: "#2d37bf", sign: "−" },
   declined: { label: "Request declined", icon: "xCircle", bg: "#f0f1f0", fg: "#5d625f", sign: "" },
-  receipt: { label: "Receipt", icon: "receipt", bg: "var(--sky-soft)", fg: "#3b6c9a", sign: "" },
+  receipt: { label: "Receipt", icon: "receipt", bg: "var(--sky-soft)", fg: "#545898", sign: "" },
 };
 
 const WEIGHT_COLORS = ["var(--mint)", "var(--sky)", "var(--lilac)", "var(--rose)", "var(--sand)", "#dadddb"];

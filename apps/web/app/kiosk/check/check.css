@@ -1,9 +1,9 @@
 /* Stepped bill check after a kiosk tap (/kiosk/check). Classes are prefixed bw-. */
 
 .bw {
-  --violet: #075deb;
-  --violet-soft: #eaf2ff;
-  --ink: #111c2b;
+  --violet: #4750d3;
+  --violet-soft: #edeefc;
+  --ink: #151627;
   --muted: #5d5a70;
   --saved: #1f7a52;
   --v-rgb: 101 77 199;
@@ -17,7 +17,7 @@
   padding: 5px 10px;
   border-radius: 999px;
   background: var(--violet-soft);
-  color: #194d9b;
+  color: #373e99;
   font-size: 13px;
 }
 
@@ -30,14 +30,14 @@
   gap: 4px;
   padding: 18px 20px;
   border-radius: 22px;
-  background: linear-gradient(150deg, #ffffff, #f3f7ff);
+  background: linear-gradient(150deg, #ffffff, #f5f5fd);
   border: 1px solid rgb(var(--v-rgb) / 0.18);
   box-shadow: 0 10px 30px rgb(var(--v-rgb) / 0.12);
 }
-.bw-balance span { color: var(--muted); font-size: 14px; font-weight: 550; }
+.bw-balance span { color: var(--muted); font-size: 14px; font-weight: 450; }
 .bw-balance strong {
   font-size: clamp(42px, 13vw, 58px);
-  font-weight: 700;
+  font-weight: 550;
   letter-spacing: -0.04em;
   line-height: 1.05;
   color: var(--ink);
@@ -45,7 +45,7 @@
 }
 .bw-balance small { color: var(--muted); font-size: 14px; min-height: 1.2em; }
 .bw-meter { height: 8px; border-radius: 999px; background: rgb(var(--v-rgb) / 0.12); overflow: hidden; margin: 6px 0 2px; }
-.bw-meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #5a9aff, var(--violet)); transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+.bw-meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7d84e3, var(--violet)); transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
 
 /* Steps */
 .bw-steps { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 10px; }
@@ -74,13 +74,13 @@
 .bw-step[data-tone="skip"] .bw-icon { background: #efeff3; color: #77748a; }
 .bw-step[data-tone="wait"] .bw-icon { background: #fbf2e1; color: #9a6618; }
 .bw-text { display: grid; gap: 2px; min-width: 0; }
-.bw-text strong { font-size: 16px; font-weight: 650; line-height: 1.25; }
+.bw-text strong { font-size: 16px; font-weight: 500; line-height: 1.25; }
 .bw-text small { color: var(--muted); font-size: 13.5px; line-height: 1.35; }
-.bw-amount { display: grid; justify-items: end; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bw-amount { display: grid; justify-items: end; font-weight: 550; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bw-step[data-tone="saved"] .bw-amount { color: var(--saved); }
 .bw-step[data-tone="skip"] .bw-amount,
-.bw-step[data-tone="wait"] .bw-amount { color: var(--muted); font-weight: 550; font-size: 14px; }
-.bw-amount em { font-style: normal; font-weight: 500; font-size: 11px; color: var(--muted); }
+.bw-step[data-tone="wait"] .bw-amount { color: var(--muted); font-weight: 450; font-size: 14px; }
+.bw-amount em { font-style: normal; font-weight: 450; font-size: 11px; color: var(--muted); }
 
 .bw-spin { position: relative; }
 .bw-spin::after {
@@ -109,12 +109,12 @@
 .bw-panel h2 { margin: 0 0 4px; color: var(--ink); }
 .bw-panel p { margin: 0; color: var(--muted); }
 .bw-done { color: var(--saved); }
-.bw-ask { display: grid; gap: 4px; background: linear-gradient(150deg, #ffffff, #f3f7ff); }
+.bw-ask { display: grid; gap: 4px; background: linear-gradient(150deg, #ffffff, #f5f5fd); }
 .bw-ask .btn { margin-top: 8px; background: var(--violet); border-color: var(--violet); }
 .bw-explain { display: grid; gap: 10px; padding: 0 4px; color: var(--muted); }
 .bw-explain p { margin: 0; }
 .bw-explain .btn { justify-self: start; }
-.bw-link { display: inline-flex; align-items: center; gap: 4px; justify-self: start; color: #194d9b; font-weight: 600; }
+.bw-link { display: inline-flex; align-items: center; gap: 4px; justify-self: start; color: #373e99; font-weight: 500; }
 
 @media (prefers-reduced-motion: reduce) {
   .bw-step, .bw-result { animation: none; }

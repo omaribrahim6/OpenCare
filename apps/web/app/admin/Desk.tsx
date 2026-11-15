@@ -679,7 +679,7 @@ function NextUp({
         onCancel={() => setConfirm(null)}
         onConfirm={() => decide("approve")}
       >
-        <p style={{ color: "#4b5567" }}>
+        <p style={{ color: "#535465" }}>
           {g.visit
               ? `This pays ${usd(cents)} from the community care fund to ${g.provider.name} now, toward ${name}'s bill. It can't be undone.`
               : `This reserves ${usd(cents)} for ${name}, payable only to ${g.provider.name}. The amount and recipient can't be changed afterward.`}{" "}
@@ -695,7 +695,7 @@ function NextUp({
         onCancel={() => setConfirm(null)}
         onConfirm={() => decide("reject")}
       >
-        <p style={{ color: "#4b5567" }}>{name} will see that the request wasn&apos;t approved. No money is reserved.</p>
+        <p style={{ color: "#535465" }}>{name} will see that the request wasn&apos;t approved. No money is reserved.</p>
       </ConfirmDialog>
     </section>
   );
