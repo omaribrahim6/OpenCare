@@ -10,7 +10,7 @@ export default function PublicLedgerPage() {
   return (
     <main className="d-public">
       <header className="d-public-bar">
-        <Logo />
+        <Logo compact />
         <nav className="oc-nav" aria-label="Main">
           <Link href="/">Home</Link>
           <Link href="/kiosk">Patient portal</Link>
