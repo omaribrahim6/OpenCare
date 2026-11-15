@@ -9,6 +9,7 @@ import { decideGrant } from "@/lib/api";
 import { cleanName, shortDate, stepLabel, usd } from "@/lib/format";
 import type { Grant, QueueItem } from "@/lib/types";
 import { CATEGORY_LABEL, INSURANCE_LABEL, SUSPICIOUS_FIELD_LABEL } from "@/lib/types";
+import { BankCheck, RefundToFund } from "./LinkedRailsPanel";
 
 /** One request in full: why it ranks where it does, the patient's profile, the bill, and the decision. */
 export function CaseDrawer({
@@ -202,6 +203,8 @@ export function CaseDrawer({
             </div>
           </section>
 
+          {grant.visit && <BankCheck grantId={grant.id} />}
+
           <section className="dr-sec">
             <h3>Profile on file</h3>
             <dl className="dr-kv">
@@ -330,6 +333,9 @@ export function CaseDrawer({
                   : `Approved for ${usd(g.approvedCents)}. The amount and recipient are now fixed.`}
               {g.receipt?.nessiePaymentId && <small> Nessie payment {g.receipt.nessiePaymentId}</small>}
             </div>
+          )}
+          {g.status === "paid" && (
+            <RefundToFund grant={g} />
           )}
         </footer>
       </aside>
