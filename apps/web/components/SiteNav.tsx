@@ -2,11 +2,12 @@ import Link from "next/link";
 import { Icon } from "./Icon";
 import { LogoWordmark } from "./Logo";
 
-export type SitePage = "home" | "ledger" | "account";
+export type SitePage = "home" | "ledger" | "proof" | "account";
 
 const LINKS: { page: SitePage; href: string; label: string }[] = [
   { page: "home", href: "/", label: "Home" },
   { page: "ledger", href: "/fund", label: "Public ledger" },
+  { page: "proof", href: "/proof", label: "Verify" },
   { page: "account", href: "/user", label: "My account" },
 ];
 
