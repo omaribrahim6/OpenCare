@@ -3567,3 +3567,11 @@ body:has(.d-public) {
 .d-public .pl-declined p {
   margin: 0;
 }
+
+/* Queue count on the current (dark) nav item: plain white number, no white box. */
+.desk .d-nav [aria-current="page"] .d-count {
+  border: 0;
+  background: transparent;
+  color: #fff;
+  box-shadow: none;
+}
