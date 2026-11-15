@@ -1,13 +1,8 @@
-import type { Metadata, Viewport } from "next";
-import { PaidReceipt } from "./PaidReceipt";
-import "../charge.css";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Payment received" };
-export const viewport: Viewport = { themeColor: "#eaf2ff" };
-
-// The page a card scan opens. Both the presenter's hold on the reader
-// (?via=hold) and the NFC scan land here, so the scan can simply open this URL.
+// The card scan used to open /kiosk/charge/paid. It now opens /kiosk/charge/card, which checks the
+// bill before anything is paid; keep old links and NFC tags working.
 export default async function PaidPage({ searchParams }: { searchParams: Promise<{ via?: string }> }) {
   const { via } = await searchParams;
-  return <PaidReceipt method={via === "hold" ? "hold" : "nfc"} />;
+  redirect(via === "hold" ? "/kiosk/charge/card?via=hold" : "/kiosk/charge/card");
 }
