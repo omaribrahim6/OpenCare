@@ -1,0 +1,16 @@
+[toolchain]
+anchor_version = "0.31.1"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.devnet]
+opencare_fund = "Gj8AgKfuH1u546FCNMhwAp32ExxNcXCuU5EtdeMBLbmn"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/opencare-treasury.json"
+
+[scripts]
+test = "echo 'TypeScript tests live in packages/payments'"
