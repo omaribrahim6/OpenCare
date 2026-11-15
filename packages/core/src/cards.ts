@@ -29,7 +29,8 @@ export async function revokeCard(db: Db, token: string): Promise<void> {
   await db.query("update card_tokens set status = 'revoked' where token_hash = $1", [tokenHash(token)]);
 }
 
-async function patientForToken(db: Db, token: string): Promise<PatientSummary | null> {
+/** The patient an active card token belongs to, or null. Also used by the patient portal sign-in. */
+export async function patientForCardToken(db: Db, token: string): Promise<PatientSummary | null> {
   if (!/^[A-Za-z0-9_-]{10,64}$/.test(token)) return null;
   const { rows } = await db.query<{ id: string; display_name: string }>(
     `select p.id, p.display_name
@@ -52,7 +53,7 @@ export async function resolveTap(
   // Reviewer laptops and unpaired phones never see patient data from a tap.
   if (!device || device.role === "reviewer") return { result: { kind: "unpaired_device" } };
 
-  const patient = await patientForToken(db, token);
+  const patient = await patientForCardToken(db, token);
   if (!patient) return { result: { kind: "unknown_card" } };
 
   const sessionSecret = await startSession(db, device.id, patient.id);
