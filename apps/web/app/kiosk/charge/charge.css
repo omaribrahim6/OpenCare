@@ -372,3 +372,9 @@
 /* Whose account the kiosk charge bills (the CareCard that was tapped). */
 .kc-billing { display: flex; align-items: center; gap: 6px; margin: 2px 0 6px; color: var(--kc-ink); font-weight: 450; }
 .kc-billing svg { color: var(--kc-blue); }
+
+/* /kiosk/charge runs full-bleed on iPhone (viewport-fit=cover): keep the staff bill clear of the
+   notch and Dynamic Island. */
+@media (max-width: 520px) {
+  .station.kc-build { padding-top: calc(18px + env(safe-area-inset-top, 0px)); }
+}

@@ -491,3 +491,48 @@ body:has(.kt) {
 .kt-due span { color: var(--slate); font-size: 15px; font-weight: 400; letter-spacing: 0; }
 .kt-due strong { font-weight: 350; letter-spacing: -0.045em; }
 .kt-ended { color: var(--violet); font-weight: 400; }
+
+/* ------------------------------------------------------------ pay prompt (/kiosk/charge)
+   The patient's "Tap your CareCard" screen fits one iPhone screen with no scrolling, also in the
+   kiosk iPhone app. The page runs full-bleed (viewport-fit=cover), so the reader is padded clear
+   of the notch and Dynamic Island, and the colour behind them is the page's own (#f4f5fb, the
+   app's web view colour and the theme colour). */
+html:has(.kt-pay),
+body:has(.kt-pay) {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background-color: #f4f5fb;
+}
+body:has(.kt-pay) {
+  min-height: 0;
+  background:
+    radial-gradient(70% 46% at 12% 6%, #d6d0fa, transparent 72%),
+    radial-gradient(64% 40% at 92% 96%, #ffd2bb, transparent 72%),
+    radial-gradient(80% 50% at 60% 34%, #cfe1ff, transparent 78%),
+    #f4f5fb;
+}
+.kt-pay {
+  /* A little smaller than /kiosk so reader, character, headline and amount fit one screen. */
+  --r: clamp(54px, min(20vw, 9dvh), 96px);
+  touch-action: manipulation;
+}
+.kt-pay .kt-main {
+  box-sizing: border-box;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  justify-content: center;
+  padding-top: calc(var(--safe-t) + 16px);
+  padding-bottom: calc(var(--safe-b) + 20px);
+}
+.kt-pay .kt-zone {
+  flex: none;
+  padding-top: 0;
+  /* The reader plus room for the character hanging under it. */
+  min-height: calc(var(--r) * 5.2);
+}
+.kt-pay .kt-headline { font-size: clamp(32px, 9vw, 44px); }
+.kt-pay .kt-due { margin-top: clamp(10px, 2dvh, 20px); }
+.kt-pay .kt-ended { min-height: 0; margin: 0; }
+.kt-pay .kt-ended:empty { display: none; }
