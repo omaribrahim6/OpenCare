@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { Icon, type IconName } from "@/components/Icon";
+import { GoldCareCard } from "@/components/desk/GoldCareCard";
 import { shortDate, usd, usdCompact, usdParts } from "@/lib/format";
 import type { FundSummary } from "@/lib/types";
 
@@ -197,11 +198,7 @@ export function VioletOverview({
           <h2 className="g-title">Community fund</h2>
           <button className="v-quiet" onClick={showDonation}><Icon name="plus" /> Donate</button>
         </div>
-        <div className="v-care-card" aria-label="Available to grant">
-          <span className="v-card-chip"><Icon name="tap" /></span>
-          <div><strong>OpenCare</strong><span>Community care fund</span></div>
-          <Icon className="v-card-heart" name="heart" />
-        </div>
+        <GoldCareCard />
         <div className="v-fund-stat">
           <span className="v-stat-icon"><Icon name="wallet" /></span>
           <div><small>Available to grant</small><strong title={summary ? usd(summary.availableCents) : undefined}>{summary ? overviewUsd(summary.availableCents) : "—"}</strong></div>
