@@ -85,9 +85,6 @@ export function DeskShell({
           </button>
         </nav>
 
-        <nav className="d-nav" aria-label="Staff tools">
-          <Link href="/kiosk"><Icon name="tap" /> Patient</Link>
-        </nav>
 
       </aside>
 

@@ -12,8 +12,9 @@ export default function PublicLedgerPage() {
       <header className="d-public-bar">
         <Logo compact />
         <nav className="oc-nav" aria-label="Main">
-          <Link href="/">Home</Link>
-          <Link href="/kiosk">Patient portal</Link>
+          <Link href="/fund" aria-current="page">
+            Public ledger
+          </Link>
           <Link href="/user">My account</Link>
           <Link href="/admin" className="oc-nav-staff">
             Staff
