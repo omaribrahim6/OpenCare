@@ -9,6 +9,7 @@ import type { FundSummary, LedgerEntry, TopDonorsResponse } from "@abdulcare/con
 import { getDb, getFundSummary, listLedger, listTopDonors } from "@abdulcare/core";
 import { scrub } from "@/lib/display";
 import { BillStage } from "@/components/landing/BillStage";
+import { DonateButton } from "@/components/donate/DonateButton";
 import { HeroCast } from "@/components/landing/HeroCast";
 import { DONOR_KIND_LABEL, DonorMark, logoIdForName } from "@/components/landing/DonorMark";
 import { SiteHeader } from "@/components/SiteNav";
@@ -89,7 +90,8 @@ export default async function Landing() {
               receipt.
             </p>
             <div className="ln-actions">
-              <Link href="/fund" className="ln-pill ln-pill-ink">
+              <DonateButton className="ln-pill ln-pill-ink" />
+              <Link href="/fund" className="ln-pill ln-pill-glass">
                 View the public ledger
               </Link>
               <Link href="/user" className="ln-pill ln-pill-glass">
