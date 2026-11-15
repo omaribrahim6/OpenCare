@@ -3,9 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { startKioskDemoSession, startPatientDemo } from "@/lib/api";
+import { isKioskApp } from "@/lib/native-nfc";
 
 // The kiosk welcome screen (SPEC §4, screen 1): a rigged character hangs from the
-// scanner disc at the top of the phone, where the NFC antenna is.
+// scanner disc, which sits near the phone's NFC antenna.
 
 export type KioskLang = "en" | "es" | "ar";
 
@@ -19,24 +20,24 @@ const COPY: Record<KioskLang, {
 }> = {
   en: {
     dir: "ltr",
-    title: "Touch your CareCard to the top of the phone",
-    head: ["Touch your CareCard to the ", "top", " of the phone"],
+    title: "Tap your CareCard",
+    head: ["Tap your ", "CareCard", ""],
     tapHere: "Tap here",
     useCard: "Use your card",
     ended: "Your session has ended.",
   },
   es: {
     dir: "ltr",
-    title: "Toque la parte superior del teléfono con su CareCard",
-    head: ["Toque la ", "parte superior", " del teléfono con su CareCard"],
+    title: "Toque su CareCard",
+    head: ["Toque su ", "CareCard", ""],
     tapHere: "Toque aquí",
     useCard: "Use su tarjeta",
     ended: "Su sesión terminó.",
   },
   ar: {
     dir: "rtl",
-    title: "ضع بطاقة CareCard على أعلى الهاتف",
-    head: ["ضع بطاقة CareCard على ", "أعلى الهاتف", ""],
+    title: "المس بطاقة CareCard",
+    head: ["المس ", "بطاقة CareCard", ""],
     tapHere: "المس هنا",
     useCard: "استخدم بطاقتك",
     ended: "انتهت جلستك.",
@@ -53,7 +54,8 @@ const CHARACTERS: Record<string, string> = {
 /**
  * Holding the scanner this long with a finger starts the demo patient (for presenters). On a
  * paired kiosk it is a real session that goes through the whole system; elsewhere it stays in
- * this browser with fictional data.
+ * this browser with fictional data. Off in the kiosk iPhone app, where only a real card tap
+ * continues (the app opens its NFC reader by itself).
  */
 const DEMO_HOLD_MS = 1200;
 
@@ -225,7 +227,7 @@ export function KioskTap({
     return () => window.clearTimeout(timer);
   }, [showEnded]);
 
-  // A finger on the glass does nothing for NFC, so say so. Holding it starts the demo.
+  // A finger on the glass does nothing for NFC, so say so. Holding it starts the demo (web only).
   const hold = useRef(0);
   const unpoke = useRef(0);
   const onPointerDown = () => {
@@ -236,6 +238,7 @@ export function KioskTap({
     window.clearTimeout(unpoke.current);
     unpoke.current = window.setTimeout(() => setPoked(false), 1800);
     window.clearTimeout(hold.current);
+    if (isKioskApp()) return;
     hold.current = window.setTimeout(async () => {
       if (onHold) return onHold();
       const live = await startKioskDemoSession();
@@ -267,7 +270,7 @@ export function KioskTap({
   return (
     <div
       ref={root}
-      className={`kt${scene === "in" ? " is-model-in" : ""}${scene === "none" ? " is-no3d" : ""}`}
+      className={`kt${amountCents !== undefined ? " kt-pay" : ""}${scene === "in" ? " is-model-in" : ""}${scene === "none" ? " is-no3d" : ""}`}
       lang={lang}
       dir={t.dir}
     >
@@ -330,9 +333,6 @@ export function KioskTap({
         <h1 className="kt-headline" ref={headline} aria-label={t.title}>
           {words(pre)}
           <span className="w hl" style={{ "--i": i++ } as React.CSSProperties}>{hl}</span>
-          <span className="w up" style={{ "--i": i++ } as React.CSSProperties} aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" /></svg>
-          </span>
           {words(post)}
         </h1>
         {amountCents !== undefined && (
