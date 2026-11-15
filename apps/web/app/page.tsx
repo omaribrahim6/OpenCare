@@ -83,9 +83,6 @@ export default async function Landing() {
         </Link>
         <nav className="ln-nav" aria-label="Main">
           <Link href="/fund">Public ledger</Link>
-          <Link href="/kiosk" className="ln-nav-kiosk">
-            Kiosk
-          </Link>
           <Link href="/user">My account</Link>
           <Link href="/admin" className="ln-nav-staff">
             Staff
