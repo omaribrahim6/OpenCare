@@ -17,6 +17,7 @@
 // (core's fallback engine and an offline model client), whatever the environment says.
 
 import { join } from "node:path";
+import { clearDemoData } from "./demo-reset";
 import { createNeedEngine, estimateMonthlyIncomeCents, ModelUnavailableError, type ModelClient } from "@abdulcare/ai";
 import {
   assessGrant,
@@ -106,7 +107,8 @@ async function reset(db: Db) {
   // Bills a rehearsal paid were marked completed in Nessie; reopen them so the kiosk finds them again.
   const { rows: paidBills } = await db.query<{ nessie_id: string }>(
     `select d.nessie_id from grants g join documents d on d.id = g.document_id
-      where g.status in ('payment_pending', 'paid') and d.source = 'nessie_bill'`,
+      where not starts_with(g.patient_id, 'pat_hist_')
+       and g.status in ('payment_pending', 'paid') and d.source = 'nessie_bill'`,
   );
   const alexBill = process.env.NESSIE_DEMO_BILL_ID;
   const toReopen = new Set([...paidBills.map((r) => r.nessie_id), ...(alexBill ? [alexBill] : [])]);
@@ -122,39 +124,14 @@ async function reset(db: Db) {
     }
   }
 
-  const counts = await db.transaction(async (tx) => {
-    const del = async (table: string) => (await tx.query(`delete from ${table} returning 1`)).rows.length;
-    const out = {
-      approvals: await del("grant_approvals"),
-      assessments: await del("need_assessments"),
-      briefs: await del("decision_briefs"),
-      rankings: await del("queue_rankings"),
-      attempts: await del("payment_attempts"),
-      grants: await del("grants"),
-      documents: await del("documents"),
-      billEvents: await del("bill_events"),
-      applications: await del("policy_applications"),
-      visits: await del("visits"),
-      donations: await del("donations"),
-      fundEvents: await del("fund_events"),
-    };
-    await tx.query("update fund set total_cents = 0, reserved_cents = 0, paid_cents = 0 where id = 'community'");
-    await tx.query("update sessions set ended_at = now() where ended_at is null");
-    return out;
-  });
-  console.log(
-    `  Deleted ${counts.visits} visits (${counts.billEvents} bill events, ${counts.applications} policy applications), ` +
-      `${counts.grants} requests, ${counts.briefs} briefs, ${counts.documents} documents, ${counts.approvals} approvals, ` +
-      `${counts.attempts} payout attempts, ${counts.donations} donations, ${counts.fundEvents} fund events. ` +
-      `Fund set to $0 and sessions ended.`,
-
-  );
+  await clearDemoData(db);
+  console.log("Reset rehearsal data and preserved the historical ledger.");
 }
 
 // --- Demo data ---
 
 async function seedDonations(db: Db) {
-  const { rows } = await db.query<{ n: number }>("select count(*)::int as n from donations");
+  const { rows } = await db.query<{ n: number }>("select count(*)::int as n from donations where not starts_with(id, 'don_hist_')");
   if (rows[0].n > 0) {
     console.log(`  Donations: ${rows[0].n} already recorded, leaving them`);
     return;
