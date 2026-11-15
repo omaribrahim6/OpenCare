@@ -274,3 +274,13 @@
   .u-tile-num { font-size: 24px; }
   .u-section { padding: 22px; }
 }
+
+/* Linked rails: monthly plans and queue proofs */
+.u-plan { margin-top: 12px; }
+.u-plan-title { margin: 0 0 8px; font-weight: 450; }
+.u-plan-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.u-plan-options [data-suggested="true"] { border-color: var(--oc-iris, #4d55d4); color: var(--oc-iris, #4d55d4); }
+.u-plan-note { margin: 8px 0 0; font-size: 0.9rem; }
+.u-plan-on { margin: 12px 0 0; padding: 10px 14px; border-radius: 14px; background: var(--oc-iris-soft, #eeeffc); color: var(--oc-ink, #171a2b); }
+.u-proof-item p { margin: 0 0 6px; line-height: 1.5; }
+.u-proof-item a { color: var(--oc-iris, #4d55d4); }

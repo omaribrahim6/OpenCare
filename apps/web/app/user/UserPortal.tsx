@@ -10,6 +10,7 @@ import { SiteHeader, SiteNav } from "@/components/SiteNav";
 import { STATUS_LABEL } from "@/components/StatusBadge";
 import { cleanName, firstName, shortDate, stepLabel, usd } from "@/lib/format";
 import { PortalError, getOverview, payBalance, signIn, signOut } from "./portal-api";
+import { PlanOffer, QueueProofs } from "./LinkedRails";
 
 type State =
   | { kind: "loading" }
@@ -315,11 +316,14 @@ function Dashboard({
                     You have <strong>{usd(outOfPocket(bill))}</strong> still to pay out of pocket.
                   </p>
                   <PayButton visitId={bill.visit.id} amountCents={outOfPocket(bill)} onPaid={refresh} />
+                  <PlanOffer visitId={bill.visit.id} />
                 </li>
               ))}
             </ul>
           </section>
         )}
+
+        <QueueProofs />
 
         <section className="d-card u-section" aria-labelledby="u-claims">
           <div className="d-card-head">
@@ -490,7 +494,7 @@ function BillRow({ bill: b, canPay, onPaid }: { bill: Bill; canPay: boolean; onP
   );
 }
 
-/** Pay what's left on a bill out of pocket (simulated). Asks once before paying. */
+/** Pay what's left on a bill from the patient's checking (Nessie). Asks once before paying. */
 function PayButton({ visitId, amountCents, onPaid }: { visitId: string; amountCents: number; onPaid: () => void }) {
   const [step, setStep] = useState<"idle" | "confirm" | "paying" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
