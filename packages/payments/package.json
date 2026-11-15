@@ -2,7 +2,7 @@
   "name": "@abdulcare/payments",
   "version": "0.1.0",
   "private": true,
-  "description": "AbdulCare payments: Capital One Nessie (bills, deposits, payouts, card donations) and Solana devnet receipts. Server-only.",
+  "description": "OpenCare payments: Capital One Nessie (bills, deposits, payouts, card donations) and Solana devnet receipts. Server-only.",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {

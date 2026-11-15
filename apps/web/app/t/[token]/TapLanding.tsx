@@ -64,7 +64,7 @@ export function TapLanding({ token }: { token: string }) {
         <TapRings size={132} />
         <h1>Tap at a participating kiosk</h1>
         <p className="muted">
-          This is an AbdulCare CareCard. To use it, tap it on the kiosk phone at a participating clinic or pharmacy. No
+          This is an OpenCare CareCard. To use it, tap it on the kiosk phone at a participating clinic or pharmacy. No
           information is shown on this device.
         </p>
       </main>

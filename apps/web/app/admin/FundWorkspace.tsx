@@ -68,7 +68,7 @@ export function FundWorkspace({ initialTab, onLedger }: { initialTab: FundTab; o
     ], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
     link.href = url;
-    link.download = "abdulcare-public-ledger.csv";
+    link.download = "opencare-public-ledger.csv";
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -124,7 +124,7 @@ export function FundWorkspace({ initialTab, onLedger }: { initialTab: FundTab; o
       {tab === "about" && <About />}
 
       <p className="proto-note">HackUMass prototype · fictional people · Nessie sandbox money · Solana devnet receipts</p>
-      <dialog ref={donationDialog} className="v-donate-dialog" aria-label="Donate to AbdulCare">
+      <dialog ref={donationDialog} className="v-donate-dialog" aria-label="Donate to OpenCare">
         <button type="button" className="v-donate-close v-quiet" aria-label="Close donation form" onClick={() => donationDialog.current?.close()}><Icon name="x" /></button>
         <DonatePanel available={s?.availableCents ?? null} onDonated={setS} />
       </dialog>
@@ -293,7 +293,7 @@ const HOW = "/admin/how";
 function About() {
   const steps = [
     ["journey-01-tap-carecard", "Tap the CareCard", "At a participating clinic kiosk. No app, password or smartphone; the patient's profile is on file."],
-    ["journey-02-pick-a-bill", "Pick a bill", "AbdulCare finds medical bills in the linked bank account and explains each one in plain words, with read-aloud."],
+    ["journey-02-pick-a-bill", "Pick a bill", "OpenCare finds medical bills in the linked bank account and explains each one in plain words, with read-aloud."],
     ["journey-03-caseworker-decides", "A caseworker decides", "Requests are ranked by need. A caseworker reviews each one in private and approves or declines it."],
     ["journey-04-provider-is-paid", "The provider is paid", "At the counter, the patient taps again and staff confirm. The fund pays the provider and records a public receipt."],
   ];

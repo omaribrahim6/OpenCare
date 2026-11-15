@@ -199,7 +199,7 @@ export function VioletOverview({
         </div>
         <div className="v-care-card" aria-label="Available to grant">
           <span className="v-card-chip"><Icon name="tap" /></span>
-          <div><strong>AbdulCare</strong><span>Community care fund</span></div>
+          <div><strong>OpenCare</strong><span>Community care fund</span></div>
           <Icon className="v-card-heart" name="heart" />
         </div>
         <div className="v-fund-stat">

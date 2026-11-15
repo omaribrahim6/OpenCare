@@ -340,7 +340,7 @@ export async function revealIdentity(
 
 function fundPayer(): LedgerCase["payer"] {
   return {
-    name: "AbdulCare community care fund",
+    name: "OpenCare community care fund",
     nessieAccountId: process.env.NESSIE_FUND_ACCOUNT_ID || null,
     treasuryAddress: process.env.NEXT_PUBLIC_TREASURY_ADDRESS || null,
   };

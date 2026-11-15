@@ -69,7 +69,7 @@ const STEPS: Step[] = [
       href: "https://docs.house.gov/meetings/GO/GO00/20220329/114542/HHRG-117-GO00-Transcript-20220329.pdf",
     },
     plain:
-      "Hospitals have their own assistance policies. AbdulCare checks every one and prepares the applications. Here, charity care takes 80% off.",
+      "Hospitals have their own assistance policies. OpenCare checks every one and prepares the applications. Here, charity care takes 80% off.",
   },
   {
     key: "fund",

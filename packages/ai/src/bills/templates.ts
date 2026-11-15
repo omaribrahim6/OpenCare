@@ -24,7 +24,7 @@ export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   other_medical: "medical",
 };
 
-export const SIMULATED_FOOTER = "Prepared from the patient's TrumpCare profile. Submission and the hospital's decision are simulated.";
+export const SIMULATED_FOOTER = "Prepared from the patient's OpenCare profile. Submission and the hospital's decision are simulated.";
 
 export const BILL_DISCLAIMER =
   "Prototype with fictional data. Insurance and hospital decisions shown here are simulated. This is not medical, legal or financial advice.";
@@ -61,7 +61,7 @@ export function applicationTemplate(input: ApplicationTextInput): ApplicationTex
     `Visit: ${input.visitDate}, ${CATEGORY_LABELS[input.category]} care`,
     `Balance this application asks about: ${usd(input.balanceCents)}`,
     "",
-    "Applicant information (from the TrumpCare profile):",
+    "Applicant information (from the OpenCare profile):",
     `- Household size: ${p.householdSize ?? "not on file"}`,
     `- Monthly household income: ${p.monthlyIncomeCents == null ? "not on file" : usd(p.monthlyIncomeCents)}`,
     `- Insurance: ${p.insurance ?? "not on file"}`,
