@@ -9,7 +9,7 @@
 // becomes $2,160 after insurance and $432 after charity care.
 
 import { join } from "node:path";
-import { createPgDb, issueCard, recordDonation, setInsurancePlan, setPatientProfile, type Db } from "../src";
+import { createPgDb, issueCard, recordDonation, setInsurancePlan, setPatientAccount, setPatientProfile, type Db } from "../src";
 import type { HospitalPolicy, InsurancePlan, LineItem, PatientProfile } from "@abdulcare/contracts";
 
 try {
@@ -19,7 +19,7 @@ try {
 }
 
 // Need profiles are set at enrollment (SPEC §3). All fictional; incomes are monthly, in cents.
-// Only the first two get physical CareCards; the others fill the ranked queue.
+// Jordan, Alex and John get physical CareCards; the others fill the ranked queue.
 const PATIENTS: {
   id: string;
   name: string;
@@ -27,6 +27,8 @@ const PATIENTS: {
   nessieAccount?: string;
   profile: PatientProfile;
   plan?: InsurancePlan;
+  /** Patient portal (/user) sign-in: the account ID printed on the card, and the birth date. */
+  account?: { accountCode: string; birthDate: string };
 }[] = [
   {
     // The demo patient (SPEC §2 MVP scenario): household of 3 on $2,500/month (about 113% of the
@@ -73,6 +75,16 @@ const PATIENTS: {
     card: false,
     nessieAccount: process.env.NESSIE_PATIENT4_ACCOUNT_ID,
     profile: { householdSize: 2, monthlyIncomeCents: null, insurance: "uninsured" },
+  },
+  {
+    // The portal demo patient: his 3D-printed CareCard reads otc7-jd4-rx19. Household of 4 on
+    // $650/month (about 24% of the poverty guideline), uninsured, no prior grants: a new emergency
+    // request scores 90/100 on the need formula with no special-casing.
+    id: "pat_demo_john",
+    name: "John Doe (fictional)",
+    card: true,
+    profile: { householdSize: 4, monthlyIncomeCents: 65_000, insurance: "uninsured" },
+    account: { accountCode: "otc7-jd4-rx19", birthDate: "1999-01-01" },
   },
 ];
 
@@ -191,6 +203,7 @@ async function seed(db: Db) {
     );
     await setPatientProfile(db, p.id, p.profile);
     await setInsurancePlan(db, p.id, p.plan ?? null);
+    if (p.account) await setPatientAccount(db, p.id, p.account);
   }
   for (const pr of PROVIDERS) {
     await db.query(
