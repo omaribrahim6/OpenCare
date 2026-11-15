@@ -324,7 +324,7 @@ function ClaimRow({ grant: g }: { grant: Grant }) {
           {paid > 0 && <span>Paid to {g.provider.name}{g.paidAt ? ` on ${shortDate(g.paidAt)}` : ""}</span>}
           {g.receipt?.explorerUrl && (
             <a href={g.receipt.explorerUrl} target="_blank" rel="noreferrer">
-              Devnet receipt <Icon name="external" size={13} />
+              Solana receipt <Icon name="external" size={13} />
             </a>
           )}
         </div>

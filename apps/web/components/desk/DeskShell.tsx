@@ -89,7 +89,6 @@ export function DeskShell({
           <Link href="/kiosk"><Icon name="tap" /> Patient</Link>
         </nav>
 
-        <p className="d-side-foot">Prototype. Fictional patients, Nessie sandbox money and Solana devnet receipts.</p>
       </aside>
 
       <div className="d-main">

@@ -116,7 +116,7 @@ export function CaseDrawer({
                   <li key={`${s.label}-${i}`}>
                     <span>
                       {stepLabel(s.label)}
-                      {s.simulated ? " · simulated" : ""}
+                      
                     </span>
                     <strong>{usd(s.balanceCents)}</strong>
                   </li>

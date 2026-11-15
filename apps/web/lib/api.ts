@@ -36,6 +36,7 @@ import type {
 } from "@abdulcare/contracts";
 import * as mock from "./mock";
 import * as mock6 from "./mock-rev6";
+import { scrub } from "./display";
 
 export const LIVE = process.env.NEXT_PUBLIC_API_MODE === "live";
 
@@ -62,7 +63,7 @@ async function call<T>(method: "GET" | "POST", path: string, body?: unknown): Pr
     const err = (data as ApiError | null)?.error;
     throw new ApiRequestError(res.status, err?.code ?? "internal", err?.message ?? `Request failed (${res.status})`);
   }
-  return data as T;
+  return scrub(data as T);
 }
 
 const get = <T>(path: string) => call<T>("GET", path);

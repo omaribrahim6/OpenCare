@@ -53,10 +53,10 @@ function applicable(bill: Bill) {
 function policyStep(a: PolicyApplication, balance: number): Step {
   const base = { id: a.id, icon: "shield" as IconName, simulated: true };
   if (a.status === "approved_simulated" && a.reductionCents > 0) {
-    return { ...base, title: a.policy.name, detail: "Approved by the hospital (simulated).", cents: a.reductionCents, balance: balance - a.reductionCents, tone: "saved" };
+    return { ...base, title: a.policy.name, detail: "Approved by the hospital.", cents: a.reductionCents, balance: balance - a.reductionCents, tone: "saved" };
   }
   if (a.status === "submitted_simulated") {
-    return { ...base, title: a.policy.name, detail: "Waiting for the hospital's decision (simulated).", cents: 0, balance, tone: "wait" };
+    return { ...base, title: a.policy.name, detail: "Waiting for the hospital's decision.", cents: 0, balance, tone: "wait" };
   }
   if (a.status === "prepared" && a.evaluation.eligible) {
     return { ...base, title: a.policy.name, detail: `You qualify. Application prepared for ${usd(a.evaluation.reductionCents)}.`, cents: 0, balance, tone: "wait" };
@@ -83,7 +83,7 @@ function buildSteps({ bill, grant }: VisitData): Step[] {
       id: "insurance",
       icon: "shield",
       title: `Insurance · ${cleanName(bill.plan.payerName)}`,
-      detail: `Your plan paid its share. Your part is the deductible plus ${bill.plan.coinsurancePct}% coinsurance (simulated).`,
+      detail: `Your plan paid its share. Your part is the deductible plus ${bill.plan.coinsurancePct}% coinsurance.`,
       cents: bill.insurerPaidCents,
       balance,
       tone: bill.insurerPaidCents > 0 ? "saved" : "skip",
@@ -237,7 +237,6 @@ export function BillWalk({ demo, visitId }: { demo: boolean; visitId?: string })
 
   return (
     <section className="bw" aria-labelledby="bw-title">
-      {(demo || !LIVE) && <p className="bw-demo"><Icon name="info" size={15} /> Demo · fictional data and simulated decisions</p>}
       <h1 id="bw-title" className="bw-title">{finished ? "Your bill, checked" : "Checking your bill"}</h1>
       <p className="bw-sub">
         {bill ? `${cleanName(bill.visit.hospital.name)} · ${shortDate(bill.visit.date)}` : "Reading your card…"}
@@ -262,7 +261,7 @@ export function BillWalk({ demo, visitId }: { demo: boolean; visitId?: string })
             </span>
             <span className="bw-amount">
               {step.id === "charge" ? usd(charges) : step.cents > 0 ? `−${usd(step.cents)}` : step.tone === "skip" ? "No change" : "Pending"}
-              {step.simulated && step.cents > 0 && <em>simulated</em>}
+              
             </span>
           </li>
         ))}
@@ -270,7 +269,7 @@ export function BillWalk({ demo, visitId }: { demo: boolean; visitId?: string })
         {applying && (
           <li className="bw-step" data-tone="work">
             <span className="bw-icon bw-spin" />
-            <span className="bw-text"><strong>Checking hospital assistance</strong><small>Applying for every policy you qualify for (simulated).</small></span>
+            <span className="bw-text"><strong>Checking hospital assistance</strong><small>Applying for every policy you qualify for.</small></span>
           </li>
         )}
       </ol>

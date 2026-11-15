@@ -221,7 +221,7 @@ export function BillStage() {
         <div className="ln-bill ln-glass" ref={billRef}>
           <p className="ln-bill-head">
             <strong>Valley General Hospital</strong>
-            <span>Demo bill from a fictional hospital</span>
+            <span>Itemized emergency bill</span>
           </p>
           <dl className="ln-bill-lines">
             {CHARGES.map((c) => (

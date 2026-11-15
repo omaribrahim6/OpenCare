@@ -68,7 +68,6 @@ export function BillView({ visitId, showInsurance, demo }: { visitId?: string; s
   const selected = state.visits.find(({ bill }) => bill.visit.id === visitId);
   return (
     <div className="patient-workspace">
-      {(demo || !LIVE) && <p className="patient-demo muted"><Icon name="info" size={15} /> Demo · fictional data and simulated requests</p>}
       {showInsurance ? (
         <InsuranceProfile demo={demo} plan={state.plan} onSave={() => void load(true)} />
       ) : selected ? (
@@ -191,7 +190,7 @@ function VisitBill({ data, refresh, demo }: { data: VisitData; refresh: () => Pr
               </li>
             ))}
           </ul>
-          <p className="muted">Apply for all eligible policies in one step. The hospital decisions are simulated.</p>
+          <p className="muted">Apply for all eligible policies in one step.</p>
           <button type="button" className="btn" disabled={applying} onClick={async () => {
             setApplying(true);
             setError(null);
@@ -211,7 +210,7 @@ function VisitBill({ data, refresh, demo }: { data: VisitData; refresh: () => Pr
         </section>
       )}
 
-      {pendingPolicy && <p className="patient-panel" role="status">Hospital assistance is pending a simulated decision.</p>}
+      {pendingPolicy && <p className="patient-panel" role="status">Hospital assistance is pending the hospital's decision.</p>}
 
       {!canApply && !pendingPolicy && !grant && bill.remainingCents > 0 && (
         <section className="patient-panel patient-action">
@@ -234,7 +233,7 @@ function VisitBill({ data, refresh, demo }: { data: VisitData; refresh: () => Pr
             {receipt?.nessiePaymentId && <p className="muted">Payment reference {receipt.nessiePaymentId}</p>}
             {receipt?.solanaSignature && (LIVE && !demo ? (
               <a href={receipt.explorerUrl ?? explorerTx(receipt.solanaSignature)} target="_blank" rel="noreferrer">View public receipt</a>
-            ) : <p className="muted">Demo receipt recorded</p>)}
+            ) : <p className="muted">Receipt recorded</p>)}
           </div>
         </section>
       )}
