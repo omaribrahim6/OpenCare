@@ -215,3 +215,77 @@
 .kc-checkout .kc-total strong { font-size: clamp(24px, 7vw, 32px); }
 .kc-checkout .kc-primary { margin-top: 0; }
 .kc-checkout .kc-hint { margin: 0; }
+
+/* ------------------------------------------------------------ OpenCare look
+   Same language as the landing page: ink pill for the main action, soft white cards, light
+   numerals, iris as the only accent. */
+
+.kc {
+  --kc-blue: #4d55d4;
+  --kc-soft: #eeeffc;
+  --kc-ink: #171a2b;
+  --kc-muted: #5c6178;
+  --kc-line: rgba(23, 26, 43, 0.1);
+  --kc-saved: #171a2b;
+}
+.station.kc h1 { font-size: clamp(28px, 8vw, 36px); font-weight: 350; letter-spacing: -0.04em; line-height: 1.1; }
+.kc-who { font-weight: 400; }
+.kc-demo { color: var(--kc-muted); }
+
+.kc .kc-primary {
+  min-height: 56px;
+  border: 1px solid var(--kc-ink);
+  border-radius: 999px;
+  background: var(--kc-ink);
+  font-weight: 450;
+}
+.kc .kc-primary:hover:not(:disabled) { border-color: var(--kc-blue); background: var(--kc-blue); }
+.kc-skip, .kc-add { color: var(--kc-blue); font-weight: 450; }
+.kc .kc-line input { border-radius: 14px; }
+.kc-remove:hover { background: #f4f5fb; }
+
+.kc-total, .kc-summary {
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 26px;
+  background: #fff;
+  box-shadow: 0 30px 60px -44px rgba(54, 60, 130, 0.4);
+}
+.kc-total { padding: 18px 22px; }
+.kc-total span { font-weight: 400; }
+.kc-total strong { font-weight: 350; letter-spacing: -0.045em; }
+.kc-summary { padding: 6px 22px; }
+.kc-summary details, .kc-row { border-bottom-color: rgba(23, 26, 43, 0.09); }
+.kc-summary summary { font-weight: 450; }
+.kc-summary b { font-weight: 450; letter-spacing: -0.02em; }
+.kc-subtle { font-weight: 400; }
+.kc-final { font-weight: 450; }
+.kc-final b { font-size: 26px; font-weight: 350; letter-spacing: -0.04em; }
+
+/* Receipt */
+.kc-paid, .kc-asked { color: var(--kc-blue); }
+.kc-sent { border-radius: 16px; background: #f4f5fb; }
+.kc-sent.is-sent { background: var(--kc-soft); color: var(--kc-blue); }
+
+/* The card page */
+.kc-card .bw-balance strong { font-size: clamp(42px, 13vw, 58px); }
+.kc .kc-fund h2 { font-weight: 450; letter-spacing: -0.02em; }
+.kc .kc-fund-btn {
+  min-height: 50px;
+  border: 1px solid var(--kc-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--kc-ink);
+  font-weight: 450;
+}
+.kc .kc-fund-btn:hover:not(:disabled) { background: #f4f5fb; }
+.kc-fund-btn .kc-spin { border-color: rgba(23, 26, 43, 0.2); border-top-color: var(--kc-ink); }
+@keyframes kc-in { from { opacity: 0; } to { opacity: 1; } }
+
+.kc-checkout {
+  border-top: 1px solid rgba(23, 26, 43, 0.09);
+  border-radius: 0 0 32px 32px;
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+.kc-checkout .kc-total { box-shadow: none; border-color: rgba(23, 26, 43, 0.09); }

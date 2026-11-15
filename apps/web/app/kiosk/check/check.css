@@ -122,3 +122,78 @@
 }
 
 .bw-demo { padding: 0; border: 0; border-radius: 0; background: transparent; }
+
+/* ------------------------------------------------------------ OpenCare look
+   The bill walk in the landing page's language: a frosted balance card with a light numeral, the
+   steps as rows in one soft card, and each payer in its own tint (sky, lilac, peach). */
+
+.bw {
+  --violet: #4d55d4;
+  --violet-soft: #eeeffc;
+  --ink: #171a2b;
+  --muted: #5c6178;
+  --saved: #171a2b;
+  --v-rgb: 77 85 212;
+  --line: rgba(23, 26, 43, 0.09);
+}
+.station .bw h1, .station .bw-title { font-weight: 350; letter-spacing: -0.04em; }
+.bw-demo { color: var(--muted); }
+
+.bw-balance {
+  gap: 2px;
+  padding: 22px 22px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 24px 48px -28px rgba(54, 60, 130, 0.45);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25);
+  backdrop-filter: blur(22px) saturate(1.25);
+}
+.bw-balance span { font-weight: 400; }
+.bw-balance strong { font-size: clamp(44px, 13.5vw, 62px); font-weight: 350; letter-spacing: -0.05em; line-height: 1; }
+.bw-meter { height: 10px; margin: 12px 0 4px; background: rgba(23, 26, 43, 0.08); }
+.bw-meter i { background: linear-gradient(90deg, #7ea6f4, #a497ee 55%, #f7a37c); }
+
+/* Steps: rows in one card, divided by hairlines. */
+.bw-steps {
+  gap: 0;
+  padding: 4px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 26px;
+  background: #fff;
+  box-shadow: 0 30px 60px -44px rgba(54, 60, 130, 0.4);
+}
+.bw-step {
+  grid-template-columns: 42px 1fr auto;
+  padding: 14px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+}
+.bw-step:first-child { border-top: 0; }
+@keyframes bw-in { from { opacity: 0; } to { opacity: 1; } }
+.bw-icon { width: 42px; height: 42px; border-radius: 14px; background: #f4f5fb; color: var(--muted); }
+.bw-step[data-tone="saved"] .bw-icon { background: #e4edff; color: #3f5fae; }
+.bw-step[data-tone="saved"]:nth-child(3) .bw-icon { background: #ebe7fd; color: #5b4bb3; }
+.bw-step[data-tone="saved"]:nth-child(4) .bw-icon { background: #ffe6d9; color: #b05a2f; }
+.bw-step[data-tone="work"] .bw-icon { background: var(--violet-soft); }
+.bw-text strong { font-size: 15.5px; font-weight: 450; letter-spacing: -0.01em; }
+.bw-text small { font-size: 13.5px; }
+.bw-amount { font-weight: 450; letter-spacing: -0.02em; }
+.bw-step[data-tone="saved"] .bw-amount { color: var(--ink); }
+.bw-amount em { font-weight: 400; letter-spacing: 0; }
+
+/* Result panels */
+.bw-panel {
+  padding: 20px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 26px;
+  background: #fff;
+  box-shadow: 0 30px 60px -44px rgba(54, 60, 130, 0.4);
+}
+.bw-panel h2 { font-weight: 450; letter-spacing: -0.02em; }
+.bw-ask { background: #fff; }
+.bw-ask .btn { border-radius: 999px; background: var(--ink); border-color: var(--ink); }
+.bw-done { color: var(--violet); }
+.bw-link { color: var(--violet); font-weight: 450; }
