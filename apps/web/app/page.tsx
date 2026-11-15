@@ -9,6 +9,7 @@ import type { FundSummary, LedgerEntry, TopDonorsResponse } from "@abdulcare/con
 import { getDb, getFundSummary, listLedger, listTopDonors } from "@abdulcare/core";
 import { scrub } from "@/lib/display";
 import { BillStage } from "@/components/landing/BillStage";
+import { HeroCast } from "@/components/landing/HeroCast";
 import { DONOR_KIND_LABEL, DonorMark, logoIdForName } from "@/components/landing/DonorMark";
 import { LogoWordmark } from "@/components/Logo";
 import { cleanName, usd, usdCompact } from "@/lib/format";
@@ -92,20 +93,22 @@ export default async function Landing() {
 
       <main>
         <section className="ln-hero" aria-labelledby="ln-title">
-          <h1 id="ln-title">One hospital bill. Every source of help. A public receipt for every dollar.</h1>
-          <p className="ln-lede">
-            OpenCare runs a hospital bill through the patient&rsquo;s insurance, then every assistance policy the
-            hospital offers, then a community fund paid for by hospitals, public programs and donors. A person approves
-            every grant, and every claim and donation is published with the patient&rsquo;s identity removed.
-          </p>
-          <div className="ln-actions">
-            <Link href="/fund" className="ln-pill ln-pill-ink">
-              View the public ledger
-            </Link>
-            <Link href="/user" className="ln-pill ln-pill-glass">
-              My account
-            </Link>
+          <div className="ln-hero-copy">
+            <h1 id="ln-title">Take a hospital bill down to $0.</h1>
+            <p className="ln-lede">
+              Insurance, the hospital&rsquo;s own assistance, then a community fund. Every dollar gets a public
+              receipt.
+            </p>
+            <div className="ln-actions">
+              <Link href="/fund" className="ln-pill ln-pill-ink">
+                View the public ledger
+              </Link>
+              <Link href="/user" className="ln-pill ln-pill-glass">
+                My account
+              </Link>
+            </div>
           </div>
+          <HeroCast />
         </section>
 
         <BillStage />
