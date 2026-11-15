@@ -1,10 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, IBM_Plex_Sans_Arabic } from "next/font/google";
+import { kioskFonts } from "./tap/fonts";
 import { KioskTap, type KioskLang } from "./tap/KioskTap";
 import "./tap/tap.css";
-
-const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-kiosk-display", display: "swap" });
-const arabic = IBM_Plex_Sans_Arabic({ subsets: ["arabic"], weight: ["600", "700"], variable: "--font-kiosk-arabic", display: "swap" });
 
 // Added to the Home Screen, the kiosk runs full screen with the background behind the status bar.
 export const metadata: Metadata = {
@@ -28,7 +25,7 @@ export default async function KioskPage({
 }) {
   const { ended, lang, who } = await searchParams;
   return (
-    <div className={`${display.variable} ${arabic.variable}`}>
+    <div className={kioskFonts}>
       <KioskTap
         lang={LANGS.includes(lang as KioskLang) ? (lang as KioskLang) : "en"}
         ended={Boolean(ended)}
