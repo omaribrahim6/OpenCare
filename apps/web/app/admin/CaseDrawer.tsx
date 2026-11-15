@@ -23,17 +23,14 @@ export function CaseDrawer({
   onDecided: (g: Grant) => void;
 }) {
   const [grant, setGrant] = useState<Grant>(item.grant);
-  // Nessie settles whole dollars only. A grant left half-approved under the old two-approval rule keeps its first amount.
+  // Approvals take exact cents (the payout moves the whole-dollar part; records keep the cents).
+  // A grant left half-approved under the old two-approval rule keeps its first amount.
   const firstApproval = grant.approvals[0]?.approvedCents;
-  const [amount, setAmount] = useState(
-    String(
-      Math.floor(
-        (grant.awaitingSecondApproval && firstApproval
-          ? firstApproval
-          : (item.brief?.suggestedCents ?? item.remainingCents ?? grant.requestedCents)) / 100,
-      ),
-    ),
-  );
+  const startCents =
+    grant.awaitingSecondApproval && firstApproval
+      ? firstApproval
+      : (item.brief?.suggestedCents ?? item.remainingCents ?? grant.requestedCents);
+  const [amount, setAmount] = useState(startCents % 100 === 0 ? String(startCents / 100) : (startCents / 100).toFixed(2));
   const [confirm, setConfirm] = useState<"approve" | "reject" | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,10 +48,10 @@ export function CaseDrawer({
   const a = item.assessment;
   const g = grant;
   const pending = g.status === "pending_review";
-  const cents = Number(amount || 0) * 100;
+  const cents = Math.round(Number(amount || 0) * 100);
   // Revision 6: approval pays at most the visit's remaining balance (the request amount for older grants).
   const maxCents = item.remainingCents ?? g.requestedCents;
-  const amountValid = /^\d+$/.test(amount) && cents >= 100 && cents <= maxCents;
+  const amountValid = /^\d+(\.\d{1,2})?$/.test(amount) && cents >= 100 && cents <= maxCents;
   const brief = item.brief;
   const name = cleanName(g.patient.displayName);
   const topKey = [...a.factors].filter((f) => f.maxPoints > 0).sort((x, y) => y.points - x.points)[0]?.key;
@@ -277,13 +274,18 @@ export function CaseDrawer({
                   </strong>
                 </div>
                 <label>
-                  <small>Amount, whole dollars</small>
+                  <small>Amount</small>
                   <span className="dr-amount">
                     <span>$</span>
                     <input
-                      inputMode="numeric"
+                      inputMode="decimal"
                       value={amount}
-                      onChange={(e) => setAmount(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      onChange={(e) => {
+                        // Digits and one decimal point with up to two places.
+                        const v = e.target.value.replace(/[^\d.]/g, "");
+                        const [whole, frac] = v.split(".");
+                        setAmount((frac === undefined ? whole : `${whole}.${frac.slice(0, 2)}`).slice(0, 10));
+                      }}
                       aria-invalid={!amountValid}
                       disabled={busy || g.awaitingSecondApproval}
                     />
@@ -297,7 +299,7 @@ export function CaseDrawer({
                 </p>
               ) : !amountValid ? (
                 <p className="dr-hint" style={{ color: "#c2412f" }}>
-                  Enter whole dollars from $1 up to the {usd(maxCents)} remaining.
+                  Enter an amount from $1.00 up to the {usd(maxCents)} remaining.
                 </p>
               ) : null}
               {error && (
