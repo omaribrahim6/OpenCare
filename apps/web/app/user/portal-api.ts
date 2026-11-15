@@ -58,7 +58,7 @@ export interface PaymentPlanView {
 }
 
 export const getPlan = (visitId: string) =>
-  call<{ plan: PaymentPlanView | null; suggestion: { months: number; monthlyCents: number; affordableMonthlyCents: number | null; options: PlanOption[] } }>(
+  call<{ available: boolean; plan: PaymentPlanView | null; suggestion: { months: number; monthlyCents: number; affordableMonthlyCents: number | null; options: PlanOption[] } }>(
     `/api/user/bills/${encodeURIComponent(visitId)}/plan`,
   );
 

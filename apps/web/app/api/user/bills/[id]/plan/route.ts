@@ -15,10 +15,12 @@ export const GET = route(async (_req: Request, { params }: IdParams) => {
   const db = getDb();
   const patient = await requirePortalPatient(db, await readPortalCookie());
   const bill = await getBill(db, id, { patientId: patient.id });
-  const { profile } = await getPatientWithProfile(db, patient.id);
+  const { profile, nessieAccountId } = await getPatientWithProfile(db, patient.id);
   const plan = await getPaymentPlan(db, id);
   const months = suggestPlanMonths(bill.remainingCents, profile.monthlyIncomeCents);
   return ok({
+    // A plan is a recurring bill on the patient's own bank account; without one, don't offer it.
+    available: Boolean(nessieAccountId),
     plan,
     suggestion: {
       months,
