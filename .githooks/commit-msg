@@ -4,6 +4,12 @@
 # Enabled by `git config core.hooksPath .githooks` (tools/preflight and the Claude Code hook set it).
 # Also used by tools/preflight to check commits already on a branch.
 
+# HackUMass final submission: 9:00 AM EST, Nov 15 2026. Any commit after that disqualifies the team.
+if [ "$(date -u +%s)" -ge 1794751200 ]; then
+  echo "commit-msg: REFUSED. Code freeze: no commits after 9:00 AM EST (HackUMass final deadline)." >&2
+  exit 1
+fi
+
 msg_file="$1"
 subject="$(head -n 1 "$msg_file" | tr -d '\r')"
 
