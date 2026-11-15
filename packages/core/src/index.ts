@@ -20,3 +20,4 @@ export * from "./triage";
 export * from "./donors";
 export * from "./kiosk-demo";
 export * from "./portal";
+export * from "./kiosk-charge";
