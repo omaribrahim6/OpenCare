@@ -8,6 +8,7 @@ import type {
   CreateDonationRequest,
   CreateGrantRequest,
   CurrentDeviceResponse,
+  CurrentPatientResponse,
   DemoSessionResponse,
   CreateVisitRequest,
   DocumentResponse,
@@ -274,5 +275,19 @@ export async function sendKioskCharge(req: KioskChargeRequest): Promise<KioskCha
       if (error.status === 404 || error.status === 405) return { sent: false, reason: "unavailable" };
     }
     return { sent: false, reason: "failed" };
+  }
+}
+
+/**
+ * The name of the patient whose CareCard was tapped on this kiosk (GET /api/patients/me), for the
+ * kiosk charge's "Billing <name>" line. Null with no patient session, in mock mode, or on error.
+ */
+export async function kioskPatientName(): Promise<string | null> {
+  if (!LIVE) return null;
+  try {
+    const { patient } = await get<CurrentPatientResponse>("/api/patients/me");
+    return patient?.displayName ?? null;
+  } catch {
+    return null;
   }
 }

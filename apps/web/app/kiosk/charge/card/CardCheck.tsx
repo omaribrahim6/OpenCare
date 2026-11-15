@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Icon, type IconName } from "@/components/Icon";
 import { Logo } from "@/components/Logo";
-import { LIVE, sendKioskCharge, type KioskChargeResult } from "@/lib/api";
+import { kioskPatientName, LIVE, sendKioskCharge, type KioskChargeResult } from "@/lib/api";
 import { CHECK_MESSAGE_MS, CHECK_STEP_MS, CHECK_STEPS, discountsFor, money, total, type ChargeMethod } from "../bill";
 import { clearPending, demoCharge, loadPending, savePending, type ChargeOutcome, type PendingCharge } from "../pending";
 import { Summary } from "../Summary";
@@ -73,6 +73,7 @@ export function CardCheck({ method }: { method: ChargeMethod }) {
   const [working, setWorking] = useState(-1); // the step loading now
   const [landed, setLanded] = useState(0); // steps finished
   const [message, setMessage] = useState(0);
+  const [billing, setBilling] = useState<string | null>(null);
   const started = useRef(false);
   const alive = useRef(true);
   const choices = useRef<HTMLDivElement>(null);
@@ -116,6 +117,13 @@ export function CardCheck({ method }: { method: ChargeMethod }) {
     const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     choices.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "end" });
   }, [phase]);
+
+  // Whose account this is: the patient whose CareCard was tapped on the kiosk.
+  useEffect(() => {
+    let live = true;
+    void kioskPatientName().then((name) => { if (live) setBilling(name); });
+    return () => { live = false; };
+  }, []);
 
   // Rotate the loading messages of the step in progress.
   useEffect(() => {
@@ -219,6 +227,7 @@ export function CardCheck({ method }: { method: ChargeMethod }) {
           {checked ? "AI checked your bill" : "AI is checking your bill"}
         </p>
         <h1 id="kc-title">{checked ? "Your bill, checked" : "Checking your bill"}</h1>
+        {billing && <p className="kc-billing"><Icon name="user" size={15} /> Billing {billing}</p>}
         <p className="muted kc-sub">{checked ? "Here's what's left after every discount." : "CareCard read. AI is finding every discount for you."}</p>
 
         <div className="bw-balance">
