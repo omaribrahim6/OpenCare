@@ -6,6 +6,7 @@
 import type { PortalPayRequest, PortalPayResponse } from "@abdulcare/contracts";
 import { CoreError, getBill, getDb, payPatientBalance, requirePortalPatient } from "@abdulcare/core";
 import { linkVisitRails, payBalanceThroughNessie } from "@abdulcare/payments";
+import { after } from "next/server";
 import { payments } from "@/app/api/_lib/deps";
 import { ok, readJson, route, type IdParams } from "@/app/api/_lib/http";
 import { readPortalCookie } from "../../../portal-cookie";
@@ -34,10 +35,14 @@ export const POST = route(async (req: Request, { params }: IdParams) => {
     }
   }
   const result = await payPatientBalance(db, { patientId: patient.id, visitId: id, amountCents: body.amountCents, nessiePurchaseId });
-  try {
-    await linkVisitRails(payments(), id);
-  } catch {
-    // Banking not configured: the bill mirror catches up next time.
-  }
+  // After the response, so the pay button never waits on it: close the bill on the patient's
+  // Nessie account. Banking not configured or slow: the mirror catches up next time.
+  after(async () => {
+    try {
+      await linkVisitRails(payments(), id);
+    } catch (err) {
+      console.error("[api] Nessie bill mirror deferred:", (err as Error).message);
+    }
+  });
   return ok<PortalPayResponse>(result);
 });
