@@ -74,7 +74,7 @@ export function PublicLedger({ ledger }: { ledger: LedgerResponse | null }) {
   return (
     <section className="g-card" aria-label="Ledger">
       {t && (
-        <dl className="lc-summary">
+        <dl className="lc-summary pl-summary">
           <div><dt>Donated</dt><dd>{usd(t.donatedCents)}</dd></div>
           <div><dt>Paid to hospitals</dt><dd>{usd(t.paidCents)}</dd></div>
           <div><dt>Cost of care reviewed</dt><dd>{usd(t.careCostCents)}</dd></div>
