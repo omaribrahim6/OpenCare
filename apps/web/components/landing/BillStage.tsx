@@ -62,7 +62,7 @@ const STEPS: Step[] = [
     label: "After hospital assistance",
     owesCents: 43_200,
     line: { label: "Charity care, 80% off", cents: 172_800 },
-    who: { name: "Alexandria Ocasio-Cortez", model: "/cast/alexandria-ocasio-cortez.glb", gesture: "point" },
+    who: { name: "Alexandria Ocasio-Cortez", model: "/cast/alexandria-ocasio-cortez.glb", gesture: "present" },
     quote: "Every single person who enters Elmhurst Hospital gets treated regardless of their ability to afford care.",
     source: {
       label: "House hearing",
