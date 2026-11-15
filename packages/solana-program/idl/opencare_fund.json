@@ -1,0 +1,968 @@
+{
+  "address": "Gj8AgKfuH1u546FCNMhwAp32ExxNcXCuU5EtdeMBLbmn",
+  "metadata": {
+    "name": "opencare_fund",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "OpenCare community fund rules on Solana devnet"
+  },
+  "instructions": [
+    {
+      "name": "approve_grant",
+      "docs": [
+        "A caseworker approved `amount_cents` for the case whose opaque reference hashes to `case_hash`.",
+        "The grant account can only be created once, so a case can never be approved twice."
+      ],
+      "discriminator": [
+        136,
+        14,
+        10,
+        104,
+        90,
+        218,
+        100,
+        95
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "hospital",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  115,
+                  112,
+                  105,
+                  116,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hospital.wallet",
+                "account": "Hospital"
+              }
+            ]
+          }
+        },
+        {
+          "name": "grant",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  114,
+                  97,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "case_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "case_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "amount_cents",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "attest_hospital",
+      "docs": [
+        "Attest that `wallet` is a verified hospital whose Nessie merchant ID hashes to `merchant_hash`."
+      ],
+      "discriminator": [
+        118,
+        98,
+        62,
+        246,
+        196,
+        160,
+        120,
+        90
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "hospital",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  115,
+                  112,
+                  105,
+                  116,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wallet"
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "merchant_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "decline_grant",
+      "docs": [
+        "A caseworker declined the case. Recorded once, like an approval, with no amount."
+      ],
+      "discriminator": [
+        9,
+        87,
+        62,
+        223,
+        153,
+        248,
+        250,
+        195
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "hospital",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  115,
+                  112,
+                  105,
+                  116,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hospital.wallet",
+                "account": "Hospital"
+              }
+            ]
+          }
+        },
+        {
+          "name": "grant",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  114,
+                  97,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "case_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "case_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "docs": [
+        "One-time setup. The signer becomes the fund's authority (the caseworker desk's key)."
+      ],
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "max_grant_cents",
+          "type": "u64"
+        },
+        {
+          "name": "rules_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "mark_paid",
+      "docs": [
+        "The approved grant was paid in Nessie. Records the hash of the Nessie purchase ID, once."
+      ],
+      "discriminator": [
+        51,
+        120,
+        9,
+        160,
+        70,
+        29,
+        18,
+        205
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "grant",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  114,
+                  97,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "grant.case_hash",
+                "account": "Grant"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "nessie_payment_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "paid_cents",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_hospital_active",
+      "docs": [
+        "Withdraw or restore a hospital's attestation."
+      ],
+      "discriminator": [
+        126,
+        150,
+        72,
+        52,
+        173,
+        134,
+        43,
+        89
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "hospital",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  104,
+                  111,
+                  115,
+                  112,
+                  105,
+                  116,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hospital.wallet",
+                "account": "Hospital"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "active",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "set_rules",
+      "docs": [
+        "Publish a new version of the fund's rules."
+      ],
+      "discriminator": [
+        66,
+        148,
+        196,
+        43,
+        232,
+        210,
+        174,
+        169
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "max_grant_cents",
+          "type": "u64"
+        },
+        {
+          "name": "rules_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
+    },
+    {
+      "name": "Grant",
+      "discriminator": [
+        161,
+        166,
+        11,
+        205,
+        204,
+        135,
+        205,
+        54
+      ]
+    },
+    {
+      "name": "Hospital",
+      "discriminator": [
+        150,
+        59,
+        177,
+        217,
+        93,
+        234,
+        181,
+        75
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "GrantDecided",
+      "discriminator": [
+        159,
+        28,
+        40,
+        21,
+        17,
+        70,
+        158,
+        100
+      ]
+    },
+    {
+      "name": "GrantPaid",
+      "discriminator": [
+        223,
+        43,
+        38,
+        64,
+        15,
+        248,
+        45,
+        52
+      ]
+    },
+    {
+      "name": "HospitalAttested",
+      "discriminator": [
+        251,
+        199,
+        52,
+        11,
+        165,
+        180,
+        74,
+        245
+      ]
+    },
+    {
+      "name": "RulesSet",
+      "discriminator": [
+        202,
+        104,
+        215,
+        176,
+        23,
+        71,
+        106,
+        72
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Only the fund's authority can do this"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidAmount",
+      "msg": "Amount must be more than zero"
+    },
+    {
+      "code": 6002,
+      "name": "OverMaxGrant",
+      "msg": "Amount is over the fund's largest grant"
+    },
+    {
+      "code": 6003,
+      "name": "HospitalNotAttested",
+      "msg": "This hospital is not attested"
+    },
+    {
+      "code": 6004,
+      "name": "NotApproved",
+      "msg": "Only an approved grant can be marked paid"
+    },
+    {
+      "code": 6005,
+      "name": "Overflow",
+      "msg": "Number overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "Config",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "max_grant_cents",
+            "type": "u64"
+          },
+          {
+            "name": "rules_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "rules_version",
+            "type": "u32"
+          },
+          {
+            "name": "grants_approved",
+            "type": "u64"
+          },
+          {
+            "name": "grants_declined",
+            "type": "u64"
+          },
+          {
+            "name": "cents_approved",
+            "type": "u64"
+          },
+          {
+            "name": "cents_paid",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Grant",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "case_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "hospital",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount_cents",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "rules_version",
+            "type": "u32"
+          },
+          {
+            "name": "decided_at",
+            "type": "i64"
+          },
+          {
+            "name": "paid_at",
+            "type": "i64"
+          },
+          {
+            "name": "nessie_payment_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GrantDecided",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "case_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "hospital",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount_cents",
+            "type": "u64"
+          },
+          {
+            "name": "approved",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GrantPaid",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "case_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "nessie_payment_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "paid_cents",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Hospital",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "merchant_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "active",
+            "type": "bool"
+          },
+          {
+            "name": "attested_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HospitalAttested",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "merchant_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "active",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RulesSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "max_grant_cents",
+            "type": "u64"
+          },
+          {
+            "name": "rules_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "rules_version",
+            "type": "u32"
+          }
+        ]
+      }
+    }
+  ]
+}
