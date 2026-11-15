@@ -1,0 +1,131 @@
+/* Donate button sheet (components/donate). Classes are prefixed dn-; the sheet is portalled to
+   <body>, so it uses the OpenCare tokens from opencare.css directly. */
+
+.dn-sheet {
+  width: min(440px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  overflow: auto;
+  border: 0;
+  border-radius: 22px;
+  background: #fff;
+  color: var(--oc-ink, #171a2b);
+  font-family: var(--font-ui), system-ui, sans-serif;
+  box-shadow: 0 30px 80px -20px rgba(23, 26, 43, 0.45);
+}
+.dn-sheet::backdrop { background: rgba(17, 19, 36, 0.42); backdrop-filter: blur(3px); }
+.dn-sheet[open] { animation: dn-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes dn-in { from { opacity: 0; transform: translateY(14px) scale(0.98); } }
+
+.dn-body { display: grid; gap: 14px; padding: 26px 24px 22px; }
+.dn-head { display: flex; justify-content: space-between; align-items: center; }
+.dn-heart {
+  display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
+  background: var(--oc-iris-soft, #eeeffc); color: var(--oc-iris, #4d55d4);
+}
+.dn-x {
+  display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%;
+  background: transparent; color: var(--oc-slate, #5c6178); cursor: pointer;
+}
+.dn-x:hover:not(:disabled) { background: var(--oc-iris-soft, #eeeffc); }
+.dn-title { margin: 0; font-size: 24px; font-weight: 400; letter-spacing: -0.03em; line-height: 1.2; }
+.dn-muted { margin: 0; color: var(--oc-slate, #5c6178); font-size: 14.5px; line-height: 1.5; }
+.dn-kicker { margin: 0; color: var(--oc-slate, #5c6178); font-size: 14px; }
+
+.dn-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 2px; }
+.dn-chip {
+  min-height: 48px; border: 1px solid var(--oc-line, rgba(23, 26, 43, 0.09)); border-radius: 14px;
+  background: #fff; color: var(--oc-ink, #171a2b); font: inherit; font-size: 17px; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.dn-chip:hover:not(:disabled) { border-color: var(--oc-iris, #4d55d4); }
+.dn-chip[aria-pressed="true"] { border-color: var(--oc-ink, #171a2b); background: var(--oc-ink, #171a2b); color: #fff; }
+
+.dn-custom { display: grid; gap: 6px; }
+.dn-custom-label { font-size: 13px; color: var(--oc-slate, #5c6178); }
+.dn-custom-field {
+  display: flex; align-items: center; gap: 6px; min-height: 52px; padding: 0 16px;
+  border: 1px solid var(--oc-line, rgba(23, 26, 43, 0.09)); border-radius: 14px; font-size: 22px;
+}
+.dn-custom-field:focus-within { border-color: var(--oc-iris, #4d55d4); box-shadow: 0 0 0 3px var(--oc-iris-soft, #eeeffc); }
+.dn-custom-field input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: inherit;
+  font: inherit; font-variant-numeric: tabular-nums;
+}
+.dn-custom.is-bad .dn-custom-field { border-color: #b42318; }
+.dn-hint { margin: -6px 0 0; font-size: 13px; color: var(--oc-slate, #5c6178); }
+.dn-hint.is-bad { color: #b42318; }
+
+.dn-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; margin-top: 4px; }
+.dn-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px;
+  padding: 0 18px; border: 1px solid var(--oc-line, rgba(23, 26, 43, 0.12)); border-radius: 999px;
+  background: #fff; color: var(--oc-ink, #171a2b); font: inherit; font-size: 15.5px; cursor: pointer;
+}
+.dn-btn:hover:not(:disabled) { border-color: var(--oc-ink, #171a2b); }
+.dn-btn:disabled { opacity: 0.45; cursor: default; }
+.dn-btn-ink { border-color: var(--oc-ink, #171a2b); background: var(--oc-ink, #171a2b); color: #fff; }
+.dn-btn-ink:hover:not(:disabled) { border-color: var(--oc-iris, #4d55d4); background: var(--oc-iris, #4d55d4); }
+.dn-spin {
+  width: 15px; height: 15px; border: 2px solid rgba(255, 255, 255, 0.35); border-top-color: #fff;
+  border-radius: 50%; animation: dn-spin 0.8s linear infinite;
+}
+@keyframes dn-spin { to { transform: rotate(360deg); } }
+
+/* Donation sent */
+.dn-check {
+  display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%;
+  background: #e3f5ea; color: #1d7a46; animation: dn-pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes dn-pop { from { transform: scale(0.4); opacity: 0; } }
+.dn-amount { margin: -6px 0 0; font-size: 40px; font-weight: 400; letter-spacing: -0.04em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.dn-to { margin-top: -8px; }
+.dn-facts { display: grid; margin: 0; border-top: 1px solid var(--oc-line, rgba(23, 26, 43, 0.09)); }
+.dn-facts > div {
+  display: flex; justify-content: space-between; gap: 16px; padding: 11px 0;
+  border-bottom: 1px solid var(--oc-line, rgba(23, 26, 43, 0.09)); font-size: 14px;
+}
+.dn-facts dt { color: var(--oc-slate, #5c6178); flex: none; }
+.dn-facts dd { margin: 0; text-align: right; font-weight: 500; overflow-wrap: anywhere; }
+.dn-mono { font-family: var(--font-mono, ui-monospace), ui-monospace, monospace; font-size: 13px; }
+.dn-chain-link { display: inline-flex; align-items: center; gap: 4px; color: var(--oc-iris, #4d55d4); text-decoration: none; }
+.dn-chain-link:hover { text-decoration: underline; }
+.dn-pending { display: inline-flex; align-items: center; gap: 7px; color: var(--oc-slate, #5c6178); font-weight: 400; }
+.dn-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--oc-iris, #4d55d4); animation: dn-pulse 1.2s ease-in-out infinite; }
+@keyframes dn-pulse { 50% { opacity: 0.25; } }
+.dn-note { display: flex; gap: 8px; align-items: flex-start; margin: 0; font-size: 13px; color: var(--oc-slate, #5c6178); line-height: 1.45; }
+.dn-note svg { flex: none; margin-top: 2px; }
+
+/* Solana receipt */
+.dn-chain-head { display: flex; gap: 12px; align-items: center; }
+.dn-chain-mark {
+  display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 12px;
+  background: linear-gradient(135deg, #9945ff, #14f195); color: #fff;
+}
+.dn-chain-title { margin: 2px 0 0; font-size: 17px; font-weight: 500; letter-spacing: -0.01em; line-height: 1.3; }
+.dn-chain-amount { margin: 2px 0 0; font-size: 36px; font-weight: 400; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.dn-ok { display: inline-flex; align-items: center; gap: 5px; color: #1d7a46; }
+.dn-sig { display: grid; gap: 6px; padding: 12px 14px; border-radius: 14px; background: var(--oc-mist, #f4f5fb); }
+.dn-sig span { font-size: 12.5px; color: var(--oc-slate, #5c6178); }
+.dn-sig code { font-family: var(--font-mono, ui-monospace), ui-monospace, monospace; font-size: 12.5px; line-height: 1.5; overflow-wrap: anywhere; }
+.dn-verify { margin: 0; font-size: 13px; color: var(--oc-slate, #5c6178); line-height: 1.5; }
+.dn-verify a { color: var(--oc-iris, #4d55d4); }
+
+@media (max-width: 520px) {
+  /* A bottom sheet on phones. */
+  .dn-sheet { width: 100vw; max-width: 100vw; margin: auto 0 0; border-radius: 22px 22px 0 0; }
+  .dn-body { padding-bottom: calc(22px + env(safe-area-inset-bottom)); }
+  .dn-presets { grid-template-columns: repeat(2, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dn-sheet[open], .dn-check, .dn-pulse, .dn-spin { animation: none; }
+}
+@media print {
+  /* Print only the open sheet: the Solana receipt (or the donation receipt). */
+  body:has(.dn-sheet[open]) > :not(.dn-sheet) { display: none !important; }
+  .dn-sheet { position: static; width: 100%; max-width: 560px; max-height: none; margin: 0 auto; box-shadow: none; overflow: visible; }
+  .dn-sheet::backdrop { display: none; }
+  .dn-actions, .dn-x { display: none; }
+}
+
+.dn-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
