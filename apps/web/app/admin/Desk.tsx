@@ -573,12 +573,12 @@ function NextUp({
   const pos = ranked.findIndex((it) => it.grant.id === item.grant.id);
   const g = item.grant;
   const name = cleanName(g.patient.displayName);
-  // Same default as the case drawer: the brief's suggestion (the full remaining balance), in whole dollars for Nessie.
+  // Same default as the case drawer: the brief's suggestion (the full remaining balance), in exact cents.
   const firstApproval = g.approvals[0]?.approvedCents;
   const cents =
     g.awaitingSecondApproval && firstApproval
       ? firstApproval
-      : Math.floor((item.brief?.suggestedCents ?? item.remainingCents ?? g.requestedCents) / 100) * 100;
+      : (item.brief?.suggestedCents ?? item.remainingCents ?? g.requestedCents);
   const why = item.brief?.reasons[0] ?? item.insight?.summary ?? item.rationale;
   const flags = [
     ...(item.suspiciousContent ? ["Suspicious text in the request"] : []),
