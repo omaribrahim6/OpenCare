@@ -203,9 +203,8 @@ export default async function Landing() {
                       <span className="ln-row-name">
                         <strong>{cleanName(c.hospital ?? "Hospital")}</strong>
                         <small>
-                          {c.category ? CATEGORY_LABEL[c.category] : "Visit"}
-                          {c.region ? `, ${c.region}` : ""},{" "}
-                          {new Date(c.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          {c.category ? CATEGORY_LABEL[c.category] : "Visit"},{" "}
+                          {new Date(c.at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
                         </small>
                       </span>
                       <span className="ln-claim-num">
