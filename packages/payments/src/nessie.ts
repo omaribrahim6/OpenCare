@@ -306,4 +306,67 @@ export class NessieClient {
       description: input.description,
     });
   }
+
+  // Bills: amount changes (the patient's hospital bill shrinks as each payer posts)
+
+  /** Change a bill's amount, status or nickname. Safe to repeat with the same values. */
+  updateBill(
+    billId: string,
+    input: { amountCents?: number; status?: NessieBillStatus; nickname?: string },
+  ): Promise<unknown> {
+    const body: Record<string, unknown> = {};
+    if (input.amountCents !== undefined) body.payment_amount = wholeDollars(input.amountCents);
+    if (input.status !== undefined) body.status = input.status;
+    if (input.nickname !== undefined) body.nickname = input.nickname;
+    return this.request("PUT", `/bills/${encodeURIComponent(billId)}`, body);
+  }
+
+  // Transfers between accounts (fund sub-accounts, hospital contributions, donors, refunds)
+
+  listTransfers(accountId: string): Promise<NessieTransfer[]> {
+    return this.request("GET", `/accounts/${encodeURIComponent(accountId)}/transfers`);
+  }
+
+  async createTransfer(
+    payerAccountId: string,
+    input: { payeeAccountId: string; amountCents: number; description: string; date?: string },
+  ): Promise<NessieTransfer> {
+    return this.request("POST", `/accounts/${encodeURIComponent(payerAccountId)}/transfers`, {
+      medium: "balance",
+      payee_id: input.payeeAccountId,
+      amount: wholeDollars(input.amountCents),
+      transaction_date: input.date ?? nessieDate(),
+      status: "completed",
+      description: input.description,
+    });
+  }
+
+  // Withdrawals (the bank-side record of money leaving an account, e.g. a refund being returned)
+
+  listWithdrawals(accountId: string): Promise<NessieWithdrawal[]> {
+    return this.request("GET", `/accounts/${encodeURIComponent(accountId)}/withdrawals`);
+  }
+}
+
+export interface NessieTransfer {
+  _id: string;
+  type?: string;
+  transaction_date?: string;
+  status: string;
+  medium: "balance" | "rewards";
+  payer_id: string;
+  payee_id: string;
+  /** Dollars. */
+  amount: number;
+  description?: string;
+}
+
+export interface NessieWithdrawal {
+  _id: string;
+  transaction_date?: string;
+  status: string;
+  medium: "balance" | "rewards";
+  /** Dollars. */
+  amount: number;
+  description?: string;
 }
