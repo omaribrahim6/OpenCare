@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon, SolanaMark, type IconName } from "@/components/Icon";
 import { FundOverview } from "./FundOverview";
 import { DonatePanel } from "@/components/site/DonatePanel";
@@ -41,7 +41,6 @@ export function FundWorkspace({
 }) {
   const ledgerOnly = initialTab === "ledger";
   const donationDialog = useRef<HTMLDialogElement>(null);
-  const [search, setSearch] = useState("");
   const [tab, setTab] = useState<FundTab>(initialTab);
   const [s, setS] = useState<FundSummary | null>(null);
   const [ledger, setLedger] = useState<LedgerResponse | null>(null);
@@ -125,13 +124,7 @@ export function FundWorkspace({
 
       {tab === "overview" && <FundOverview summary={s} queue={queue} onLedger={() => onLedger?.()} onViewQueue={onViewQueue} onOpenRequest={onOpenRequest} />}
       {tab === "ledger" && (
-        <>
-          <label className="d-ledger-search">
-            Search the public ledger
-            <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} />
-          </label>
-          <LedgerTable ledger={ledger} search={search} />
-        </>
+        <LedgerResults ledger={ledger} />
       )}
       {tab === "about" && <About />}
 
@@ -154,66 +147,144 @@ const DONOR_KIND_LABEL: Record<string, string> = {
   individual: "Individual",
 };
 
-function LedgerTable({ ledger, search }: { ledger: LedgerResponse | null; search: string }) {
-  const term = search.trim().toLowerCase();
-  const entries = (ledger?.entries ?? []).filter(
-    (e) =>
-      !term ||
-      [EVENT[e.kind]?.label, e.reference, e.solanaSignature, e.hospital, e.summary, e.donorLabel, e.region]
-        .some((value) => value?.toLowerCase().includes(term)),
-  );
-  return <LedgerResults key={term} ledger={ledger} entries={entries} />;
+type LedgerFilter = "all" | "donation" | "payout" | "approval" | "declined";
+type LedgerRange = "all" | "7" | "30" | "90";
+
+const FILTERS: [LedgerFilter, string][] = [
+  ["all", "All"],
+  ["donation", "Donations"],
+  ["payout", "Payouts"],
+  ["approval", "Approvals"],
+  ["declined", "Declined"],
+];
+const RANGES: [LedgerRange, string][] = [
+  ["all", "All time"],
+  ["7", "Last 7 days"],
+  ["30", "Last 30 days"],
+  ["90", "Last 90 days"],
+];
+const longDate = (t: number) => new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+const shortRef = (ref: string) => (ref.length > 11 ? ref.slice(0, 11) : ref);
+
+function matchesFilter(e: LedgerEntry, f: LedgerFilter) {
+  if (f === "all") return true;
+  if (f === "approval") return e.kind === "pending";
+  return e.kind === f;
 }
 
-type LedgerFilter = "all" | "donation" | "payout" | "declined";
-
-function LedgerResults({ ledger, entries }: { ledger: LedgerResponse | null; entries: LedgerEntry[] }) {
+/** The ledger: totals, a toolbar (search, event type, date range), and every event; a row opens its full record. */
+function LedgerResults({ ledger }: { ledger: LedgerResponse | null }) {
+  const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<LedgerFilter>("all");
+  const [range, setRange] = useState<LedgerRange>("all");
+  const [desc, setDesc] = useState(true);
   const [open, setOpen] = useState<string | null>(null);
   const [limit, setLimit] = useState(60);
-  const rows = entries.filter((e) => filter === "all" || e.kind === filter || (filter === "payout" && e.kind === "pending"));
+  const term = search.trim().toLowerCase();
+  const since = range === "all" ? 0 : Date.now() - Number(range) * 86_400_000;
+  const rows = useMemo(
+    () =>
+      (ledger?.entries ?? [])
+        .filter((e) => matchesFilter(e, filter))
+        .filter((e) => new Date(e.at).getTime() >= since)
+        .filter(
+          (e) =>
+            !term ||
+            [EVENT[e.kind]?.label, e.reference, e.solanaSignature, e.hospital, e.summary, e.donorLabel, e.region, e.category && CATEGORY_LABEL[e.category]]
+              .some((v) => v?.toLowerCase().includes(term)),
+        )
+        .sort((a, b) => (new Date(b.at).getTime() - new Date(a.at).getTime()) * (desc ? 1 : -1)),
+    [ledger, filter, since, term, desc],
+  );
+  const times = rows.map((e) => new Date(e.at).getTime());
+  const span = times.length ? `${longDate(Math.min(...times))} – ${longDate(Math.max(...times))}` : "No events";
+  const rangeLabel = range === "all" ? span : `${longDate(since)} – ${longDate(Date.now())}`;
   const t = ledger?.totals;
+  const tiles: [IconName, string, React.ReactNode][] = t
+    ? [
+        ["heart", "Total donated", usd(t.donatedCents)],
+        ["store", "Paid to hospitals / providers", usd(t.paidCents)],
+        ["layers", "Cost of care reviewed", usd(t.careCostCents)],
+        ["bill", "Cases decided", <>{t.cases.toLocaleString()} <small>({t.declined} declined)</small></>],
+      ]
+    : [];
+
   return (
-    <section className="g-card" aria-label="Ledger">
+    <section className={`lg${open ? " lg-docked" : ""}`} aria-label="Ledger">
       {t && (
-        <dl className="lc-summary">
-          <div><dt>Donated</dt><dd>{usd(t.donatedCents)}</dd></div>
-          <div><dt>Paid to hospitals</dt><dd>{usd(t.paidCents)}</dd></div>
-          <div><dt>Cost of care reviewed</dt><dd>{usd(t.careCostCents)}</dd></div>
-          <div><dt>Cases decided</dt><dd>{t.cases.toLocaleString()} <small>({t.declined} declined)</small></dd></div>
+        <dl className="lg-tiles">
+          {tiles.map(([icon, label, value]) => (
+            <div key={label}>
+              <span className="lg-tile-icon">
+                <Icon name={icon} />
+              </span>
+              <span>
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </span>
+            </div>
+          ))}
         </dl>
       )}
-      <div className="g-head lc-filter-row" style={{ marginBottom: 18, alignItems: "center" }}>
-        <p className="g-sub" style={{ margin: 0 }}>
-          {rows.length.toLocaleString()} events · select any row for the full record
-        </p>
-        <div className="tabs" role="tablist" aria-label="Filter">
-          {(
-            [
-              ["all", "All"],
-              ["donation", "Donations"],
-              ["payout", "Payouts"],
-              ["declined", "Declined"],
-            ] as const
-          ).map(([f, label]) => (
-            <button key={f} role="tab" aria-selected={filter === f} onClick={() => setFilter(f)}>
+
+      <div className="lg-toolbar">
+        <label className="lg-search">
+          <Icon name="search" />
+          <span className="sr-only">Search the ledger</span>
+          <input
+            type="search"
+            value={search}
+            placeholder="Search by case ID, diagnosis, provider, or donor…"
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setLimit(60);
+            }}
+          />
+        </label>
+        <div className="lg-chips" role="group" aria-label="Event type">
+          <span>Event type</span>
+          {FILTERS.map(([f, label]) => (
+            <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}>
               {label}
             </button>
           ))}
         </div>
+        <label className="lg-range">
+          <Icon name="calendar" />
+          <span>
+            <small>Date range</small>
+            <b>{rangeLabel}</b>
+          </span>
+          <select value={range} onChange={(e) => setRange(e.target.value as LedgerRange)} aria-label="Date range">
+            {RANGES.map(([r, label]) => (
+              <option key={r} value={r}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <Icon name="chevronDown" />
+        </label>
       </div>
-      <div className="table-wrap" style={{ background: "#fff" }}>
-        <table className="table ledger-table">
+
+      <p className="lg-count">
+        {rows.length.toLocaleString()} {rows.length === 1 ? "event" : "events"} · {span}
+      </p>
+
+      <div className="lg-table-wrap">
+        <table className="lg-table">
           <thead>
             <tr>
               <th scope="col">Event</th>
-              <th scope="col">Details</th>
+              <th scope="col">Case ID</th>
+              <th scope="col">Summary / Details</th>
               <th scope="col" className="right">Cost of care</th>
-              <th scope="col">Date</th>
-              <th scope="col">Solana receipt</th>
-              <th scope="col" className="right">
-                Amount
+              <th scope="col" aria-sort={desc ? "descending" : "ascending"}>
+                <button type="button" className="lg-sort" onClick={() => setDesc((d) => !d)}>
+                  Date <span aria-hidden="true">{desc ? "↓" : "↑"}</span>
+                </button>
               </th>
+              <th scope="col">Receipt / Verification</th>
+              <th scope="col" className="right">Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -222,53 +293,52 @@ function LedgerResults({ ledger, entries }: { ledger: LedgerResponse | null; ent
               const [w, c] = usdParts(e.amountCents);
               const isCase = e.kind !== "donation";
               return (
-                <tr
-                  key={`${e.reference}-${i}`}
-                  className="lc-clickable"
-                  onClick={() => setOpen(e.reference)}
-                >
+                <tr key={`${e.reference}-${i}`} className={open === e.reference ? "on" : undefined} onClick={() => setOpen(e.reference)}>
                   <td>
-                    <span className="ev">
-                      <span className="act-icon" style={{ "--bg-c": m.bg, "--fg-c": m.fg } as React.CSSProperties}>
+                    <span className="lg-event">
+                      <span className="lg-event-icon" style={{ "--bg-c": m.bg, "--fg-c": m.fg } as React.CSSProperties}>
                         <Icon name={m.icon} />
                       </span>
                       {m.label}
                     </span>
                   </td>
-                  <td className="lc-detail">
-                    {isCase ? (
-                      <button type="button" className="lc-link" onClick={(ev) => { ev.stopPropagation(); setOpen(e.reference); }}>
-                        <strong>{e.summary}</strong>
-                        <small className="muted">
-                          {e.hospital} · {e.category ? CATEGORY_LABEL[e.category] : ""}{e.needScore != null ? ` · need ${e.needScore}/100` : ""} · <span className="mono">{e.reference}</span>
-                        </small>
-                      </button>
-                    ) : (
-                      <button type="button" className="lc-link" onClick={(ev) => { ev.stopPropagation(); setOpen(e.reference); }}>
-                        <strong>{e.donorLabel ?? "Anonymous donor"}</strong>
-                        <small className="muted">
-                          {e.donorKind ? `${DONOR_KIND_LABEL[e.donorKind]} · ` : ""}{e.purpose ? `${e.purpose} · ` : ""}<span className="mono">{e.reference}</span>
-                        </small>
-                      </button>
-                    )}
+                  <td>{isCase ? <span className="lg-ref" title={e.reference}>{shortRef(e.reference)}</span> : <span className="lg-dash">—</span>}</td>
+                  <td className="lg-detail">
+                    <button
+                      type="button"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        setOpen(e.reference);
+                      }}
+                    >
+                      <strong>{isCase ? e.summary : (e.donorLabel ?? "Anonymous donor")}</strong>
+                      <small>
+                        {isCase
+                          ? `${e.hospital ?? ""}${e.category ? ` · ${CATEGORY_LABEL[e.category]}` : ""}`
+                          : `${e.donorKind ? DONOR_KIND_LABEL[e.donorKind] : "Donor"} · ${e.reference}`}
+                      </small>
+                    </button>
                   </td>
-                  <td className="right num muted">{e.chargesCents != null ? usd(e.chargesCents) : "—"}</td>
-                  <td>
-                    {new Date(e.at).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </td>
+                  <td className="right num">{e.chargesCents != null ? usd(e.chargesCents) : <span className="lg-dash">—</span>}</td>
+                  <td className="lg-date">{longDate(new Date(e.at).getTime())}</td>
                   <td>
                     {e.solanaSignature ? (
-                      <a className="sig" href={explorerTx(e.solanaSignature)} target="_blank" rel="noreferrer" onClick={(ev) => ev.stopPropagation()}>
-                        <SolanaMark size={12} />
-                        {shortSig(e.solanaSignature)}
-                      </a>
+                      <span className="lg-receipt">
+                        <a href={explorerTx(e.solanaSignature)} target="_blank" rel="noreferrer" onClick={(ev) => ev.stopPropagation()}>
+                          <Icon name="receipt" />
+                          {shortSig(e.solanaSignature)}
+                        </a>
+                        <span className="lg-verified">
+                          <Icon name="check" /> Verified
+                        </span>
+                      </span>
                     ) : (
-                      <span className="chip chip-warn chip-dot">Pending</span>
+                      <span className="lg-pending">Pending</span>
                     )}
                   </td>
-                  <td className="right num">
+                  <td className="right num lg-amount">
                     {e.kind === "declined" ? (
-                      <span className="muted">$0</span>
+                      "$0.00"
                     ) : (
                       <>
                         {m.sign}
@@ -282,8 +352,8 @@ function LedgerResults({ ledger, entries }: { ledger: LedgerResponse | null; ent
             })}
             {ledger && rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="muted">
-                  Nothing here yet.
+                <td colSpan={7} className="lg-empty">
+                  Nothing matches.
                 </td>
               </tr>
             )}
@@ -291,11 +361,13 @@ function LedgerResults({ ledger, entries }: { ledger: LedgerResponse | null; ent
         </table>
       </div>
       {rows.length > limit && (
-        <div style={{ textAlign: "center", marginTop: 14 }}>
-          <button className="v-outline" onClick={() => setLimit((n) => n + 100)}>Show more</button>
+        <div className="lg-more">
+          <button className="v-outline" onClick={() => setLimit((n) => n + 100)}>
+            Show more
+          </button>
         </div>
       )}
-      {open && <LedgerCaseDrawer reference={open} onClose={() => setOpen(null)} />}
+      {open && <LedgerCaseDrawer key={open} reference={open} onClose={() => setOpen(null)} />}
     </section>
   );
 }
