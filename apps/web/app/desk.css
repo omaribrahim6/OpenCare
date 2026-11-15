@@ -2761,11 +2761,11 @@ body:has(.d-public) {
 }
 :is(.desk, .d-public) .lg-tiles dd {
   margin: 3px 0 0;
-  font-size: clamp(17px, 1.6vw, 22px);
+  font-size: clamp(15px, 1.35vw, 21px);
   font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 :is(.desk, .d-public) .lg-tiles dd small {
   color: var(--d-text-2, #536070);
@@ -3043,17 +3043,20 @@ body:has(.d-public) {
 }
 
 /* The case panel docks on the right; on wide screens the table makes room for it. */
-@media (min-width: 1200px) {
+/* Below 1800px it overlays the table with a light dim instead, so nothing gets squeezed. */
+@media (min-width: 1800px) {
   :is(.desk, .d-public) .lg-docked {
-    padding-right: min(540px, 38vw);
-  }
-  :is(.desk, .d-public) .lg .lc-drawer {
-    width: min(540px, 38vw);
+    padding-right: 540px;
   }
   :is(.desk, .d-public) .lg .lc-drawer::backdrop {
     background: transparent;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+  }
+}
+@media (min-width: 1200px) {
+  :is(.desk, .d-public) .lg .lc-drawer {
+    width: 540px;
   }
 }
 :is(.desk, .d-public) .lg .lc-drawer {
@@ -3187,7 +3190,7 @@ body:has(.d-public) {
   padding: 7px 12px;
   font-size: 13.5px;
 }
-@media (max-width: 1900px) {
+@media (min-width: 1800px) and (max-width: 2100px) {
   :is(.desk, .d-public) .lg-docked .lg-tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
