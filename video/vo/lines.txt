@@ -1,0 +1,17 @@
+L01|John Doe survived the crash.
+L02|Then came the bill. Four hundred and fifty-six thousand dollars.
+L03|In America, one bad night can cost you everything you have.
+L04|We're a team from Canada. Back home, John's night ends with a cast and a ride home, not a bill. Watching Americans go through this, we kept asking: why?
+L05|And we're not the only ones asking.
+L06|Medicare for All has become one of the biggest fights in American politics.
+L07|Funny thing. Our project's working name was TrumpCare.
+L08|So we built that card. And a way to pay for it.
+L09|OpenCare's community fund is designed to be paid for like a public good. Nonprofit hospitals already owe their communities charity care to keep their tax exemption. Public programs, like Massachusetts' Health Safety Net, pay in. And anyone can donate.
+L10|Back at the hospital, John doesn't fill out a single form.
+L11|He taps his CareCard. OpenCare runs the bill through every assistance policy the hospital offers, and takes off a hundred and forty-six thousand dollars. What's left goes to the community fund, in one tap.
+L12|On the other side, a real person reviews every request. Everyone is eligible; a published need formula only decides who's seen first. Each case comes with a brief and red flags, like instructions someone hid in a bill to trick the AI. The AI advises. A human decides.
+L13|One click, and the fund pays the hospital directly, through Capital One's Nessie banking API.
+L14|Every payment gets a receipt on the Solana blockchain. Public, permanent, and with no patient data on it.
+L15|Billed: four hundred and fifty-six thousand. Left for John to pay: zero.
+L16|Insurance. The hospital. The community. Every source of help, in order, until the bill hits zero.
+L17|OpenCare. Care for all.
