@@ -17,7 +17,10 @@ export function SiteNav({ current }: { current?: SitePage }) {
     <nav className="site-nav" aria-label="Main">
       {LINKS.map((l) => (
         <Link key={l.page} href={l.href} aria-current={current === l.page ? "page" : undefined}>
-          {l.label}
+          {/* data-label reserves the bold width, so highlighting a tab never moves the others. */}
+          <span className="site-nav-label" data-label={l.label}>
+            {l.label}
+          </span>
         </Link>
       ))}
       <Link href="/admin" className="site-nav-staff" title="Staff sign-in">

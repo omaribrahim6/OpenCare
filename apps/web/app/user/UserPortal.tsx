@@ -1,13 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Bill, Grant, GrantStatus, PortalOverviewResponse, PortalPaymentReceipt } from "@abdulcare/contracts";
 import { GoldCareCard } from "@/components/desk/GoldCareCard";
 import { Icon } from "@/components/Icon";
 import { LogoWordmark } from "@/components/Logo";
-import { SiteHeader, SiteNav } from "@/components/SiteNav";
+import { SiteHeader } from "@/components/SiteNav";
 import { STATUS_LABEL } from "@/components/StatusBadge";
 import { cleanName, firstName, shortDate, stepLabel, usd } from "@/lib/format";
 import { PortalError, getOverview, payBalance, signIn, signOut } from "./portal-api";
@@ -265,15 +264,7 @@ function Dashboard({
 
   return (
     <div className="u-portal">
-      <header className="u-bar">
-        <Link href="/" className="site-brand" aria-label="OpenCare home">
-          <LogoWordmark />
-        </Link>
-        <SiteNav current="account" />
-        <button className="d-btn u-signout" onClick={onSignOut}>
-          <Icon name="logout" /> Sign out
-        </button>
-      </header>
+      <SiteHeader current="account" />
 
       <main className="u-main">
         <section className="u-hello">
@@ -281,6 +272,10 @@ function Dashboard({
             <p className="d-kicker">Welcome back</p>
             <h1>{firstName(name)}</h1>
             <p className="u-muted">Your bills, your claims to the community fund, and what's left to pay.</p>
+            {/* Sign out lives here, not in the header, so the menu sits in the same place on every page. */}
+            <button className="d-btn u-signout" onClick={onSignOut}>
+              <Icon name="logout" /> Sign out
+            </button>
           </div>
           <div className="u-card-wrap">
             <GoldCareCard
