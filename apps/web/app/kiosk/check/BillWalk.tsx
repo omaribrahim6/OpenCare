@@ -32,14 +32,17 @@ type Step = {
 const IN_FLIGHT = ["pending_review", "approved", "payment_pending"];
 const STEP_MS = 1100;
 
-function pickVisit(visits: VisitData[]): VisitData | null {
+function pickVisit(visits: VisitData[], visitId?: string): VisitData | null {
+  const asked = visitId ? visits.find((v) => v.bill.visit.id === visitId) : undefined;
+  if (asked) return asked;
   const sorted = [...visits].sort((a, b) => b.bill.visit.createdAt.localeCompare(a.bill.visit.createdAt));
   return sorted.find((v) => v.bill.remainingCents > 0) ?? sorted[0] ?? null;
 }
 
-async function loadVisit(demo: boolean) {
+/** The visit to walk: the one the kiosk asked for, else the newest with a balance left. */
+async function loadVisit(demo: boolean, visitId?: string) {
   const { visits } = await getPatientWorkspace(demo);
-  return pickVisit(visits.filter((v): v is VisitData => v.bill !== null));
+  return pickVisit(visits.filter((v): v is VisitData => v.bill !== null), visitId);
 }
 
 /** Policies the patient qualifies for that haven't been submitted yet. */
@@ -142,7 +145,7 @@ type State =
   | { phase: "loading" | "no_session" | "error" | "empty" }
   | { phase: "ready"; data: VisitData };
 
-export function BillWalk({ demo }: { demo: boolean }) {
+export function BillWalk({ demo, visitId }: { demo: boolean; visitId?: string }) {
   const [state, setState] = useState<State>({ phase: "loading" });
   const [shown, setShown] = useState(0);
   const [applying, setApplying] = useState(false);
@@ -160,7 +163,7 @@ export function BillWalk({ demo }: { demo: boolean }) {
     setShown(0);
     setFinished(false);
     try {
-      let data = await loadVisit(demo);
+      let data = await loadVisit(demo, visitId);
       if (!alive()) return;
       if (!data) return setState({ phase: "empty" });
       setState({ phase: "ready", data });
@@ -174,7 +177,7 @@ export function BillWalk({ demo }: { demo: boolean }) {
       if (!data.grant && applicable(data.bill).length > 0) {
         setApplying(true);
         await applyForSavings(data.bill.visit.id, demo);
-        const next = await loadVisit(demo);
+        const next = await loadVisit(demo, visitId);
         if (!alive()) return;
         if (next) data = next;
         setState({ phase: "ready", data });
@@ -192,7 +195,7 @@ export function BillWalk({ demo }: { demo: boolean }) {
       setApplying(false);
       setState({ phase: isNoSession(error) ? "no_session" : "error" });
     }
-  }, [demo]);
+  }, [demo, visitId]);
 
   useEffect(() => {
     void walk();
@@ -201,12 +204,12 @@ export function BillWalk({ demo }: { demo: boolean }) {
 
   const refresh = useCallback(async () => {
     try {
-      const data = await loadVisit(demo);
+      const data = await loadVisit(demo, visitId);
       if (data) setState({ phase: "ready", data });
     } catch (error) {
       if (isNoSession(error)) setState({ phase: "no_session" });
     }
-  }, [demo]);
+  }, [demo, visitId]);
 
   const steps = state.phase === "ready" ? buildSteps(state.data) : [];
   // Once the walk is done, steps added later (a fund request) show at once.
