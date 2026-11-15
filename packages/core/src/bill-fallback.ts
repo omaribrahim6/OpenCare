@@ -127,8 +127,8 @@ export function briefFallback(input: BriefInput): BriefDraft {
   for (const f of input.factors.filter((f) => f.unknown)) {
     flags.push({ kind: "unknown_factor", detail: `${f.label} unknown (scored at the midpoint).` });
   }
-  // Reviewers approve whole dollars, so the suggestion is the balance rounded down to a dollar.
-  const suggestedCents = Math.floor(input.remainingCents / 100) * 100;
+  // Reviewers can approve cents, so the suggestion is the exact remaining balance.
+  const suggestedCents = Math.max(0, input.remainingCents);
   return {
     path: input.path,
     reasons,

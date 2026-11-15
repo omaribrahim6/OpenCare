@@ -281,9 +281,13 @@ export async function requestHelp(
   return getGrant(db, id);
 }
 
+/** Smallest approval: the Nessie sandbox payout moves whole dollars, so it needs at least one. */
+export const MIN_APPROVAL_CENTS = 100;
+
 /**
  * A caseworker approves (reserving fund budget atomically) or rejects a pending request.
- * One approval is enough at any amount (Musa, Nov 14 2026).
+ * One approval is enough at any amount (Musa, Nov 14 2026). Approving less than was requested is a
+ * partial approval: the patient pays the rest (payPatientBalance).
  */
 export async function decideGrant(
   db: Db,
@@ -315,8 +319,9 @@ export async function decideGrant(
 
     const cents = decision.approvedCents;
     if (!isPositiveCents(cents)) throw new CoreError("bad_request", "approvedCents must be a positive integer");
-    // Nessie stores whole dollars only, so a payout of cents would be truncated (payments lane).
-    if (cents % 100 !== 0) throw new CoreError("bad_request", "Approve whole dollars only");
+    // Cents are fine (Mohamed, Nov 15 2026): our records keep the exact amount and the Nessie sandbox
+    // moves the whole-dollar part. At least $1.00, so there is always a Nessie payout to make.
+    if (cents < MIN_APPROVAL_CENTS) throw new CoreError("bad_request", "Approve at least $1.00");
     if (cents > Number(grant.requested_cents)) {
       throw new CoreError("bad_request", "Can't approve more than was requested");
     }

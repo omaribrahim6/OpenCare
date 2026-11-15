@@ -279,7 +279,7 @@ export async function getReviewQueue(
 
 /**
  * The decision brief for a pending request, cached by a hash of its inputs so reloads are stable.
- * Core re-checks the amount (whole dollars, at most the remaining balance) and falls back to the
+ * Core re-checks the amount (whole cents, at most the remaining balance) and falls back to the
  * template brief if the engine fails or breaks that rule.
  */
 export async function getDecisionBrief(
@@ -304,7 +304,6 @@ export async function getDecisionBrief(
       const okAmount =
         Number.isSafeInteger(candidate.suggestedCents) &&
         candidate.suggestedCents >= 0 &&
-        candidate.suggestedCents % 100 === 0 &&
         candidate.suggestedCents <= input.remainingCents;
       if (okAmount && Array.isArray(candidate.reasons) && Array.isArray(candidate.flags)) draft = candidate;
     } catch {

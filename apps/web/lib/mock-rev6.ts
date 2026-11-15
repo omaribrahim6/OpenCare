@@ -515,9 +515,9 @@ export async function decideGrant(id: string, req: GrantDecisionRequest): Promis
   if (record?.grant) {
     const demoGrant = record.grant;
     if (demoGrant.status !== "pending_review") return { grant: demoGrant };
-    if (req.decision === "approve" && (req.approvedCents <= 0 || req.approvedCents % 100 !== 0 ||
+    if (req.decision === "approve" && (!Number.isSafeInteger(req.approvedCents) || req.approvedCents < 100 ||
       req.approvedCents > Math.min(demoBudget(availableCents, records), assemble(record).remainingCents))) {
-      throw new Error("Enter a whole-dollar amount within the balance and available fund budget.");
+      throw new Error("Enter an amount from $1.00 within the balance and available fund budget.");
     }
     record.grant =
       req.decision === "approve"
