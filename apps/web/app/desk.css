@@ -3192,3 +3192,291 @@ body:has(.d-public) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* ------------------------------------------------------------ Public ledger (/fund): privacy-safe columns and filters,
+   on the page's original look (no restyle of the existing cards, tabs or table) */
+
+.d-public .pl-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.d-public .pl-toolbar .tabs {
+  margin: 0;
+}
+.d-public .d-ledger-search.pl-search {
+  position: relative;
+  flex: 1 1 280px;
+  max-width: 420px;
+  margin: 0;
+}
+.d-public .pl-search svg {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  width: 17px;
+  height: 17px;
+  transform: translateY(-50%);
+  color: var(--oc-slate, #5c6178);
+  pointer-events: none;
+}
+.d-public .d-ledger-search.pl-search input {
+  min-height: 44px;
+  padding-left: 42px;
+}
+.d-public .pl-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.d-public .pl-select svg {
+  position: absolute;
+  left: 13px;
+  width: 16px;
+  height: 16px;
+  color: var(--oc-slate, #5c6178);
+  pointer-events: none;
+}
+.d-public .pl-select select {
+  appearance: none;
+  min-height: 44px;
+  max-width: 230px;
+  padding: 0 34px 0 36px;
+  border: 1px solid var(--oc-line, rgba(23, 26, 43, 0.09));
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235c6178' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right 12px center / 14px;
+  color: inherit;
+  font: inherit;
+  font-size: 13.5px;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.d-public .pl-case {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px 3px 10px;
+  border-radius: 999px;
+  background: var(--oc-iris-soft, #eeeffc);
+  color: var(--oc-iris, #4d55d4);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.d-public .pl-case button,
+.d-public .pl-sig button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.d-public .pl-case button:hover,
+.d-public .pl-sig button:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+.d-public .pl-case svg,
+.d-public .pl-sig svg {
+  width: 14px;
+  height: 14px;
+}
+.d-public .pl-amount.in {
+  color: #2a7a5f;
+}
+.d-public .pl-verify {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.d-public .pl-verify .chip svg,
+.d-public .pl-record .chip svg {
+  width: 13px;
+  height: 13px;
+}
+.d-public .pl-ext {
+  display: grid;
+  place-items: center;
+  color: var(--oc-slate, #5c6178);
+}
+.d-public .pl-ext:hover {
+  color: var(--oc-iris, #4d55d4);
+}
+.d-public .pl-ext svg {
+  width: 16px;
+  height: 16px;
+}
+.d-public .pl-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 13.5px;
+}
+.d-public .pl-pager nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.d-public .pl-pager nav button {
+  display: grid;
+  place-items: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--oc-line, rgba(23, 26, 43, 0.09));
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.d-public .pl-pager nav button[aria-current="page"] {
+  border-color: var(--oc-ink, #171a2b);
+  background: var(--oc-ink, #171a2b);
+  color: #fff;
+}
+.d-public .pl-pager nav button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.d-public .pl-pager nav svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Public record panel */
+.d-public .pl-record {
+  width: min(460px, 100vw);
+  padding: 22px;
+}
+.d-public .pl-record-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.d-public .pl-record-head > div {
+  flex: 1;
+  min-width: 0;
+}
+.d-public .pl-record-head h2 {
+  margin: 0;
+  font-size: 22px;
+}
+.d-public .pl-record-head p {
+  margin: 2px 0 0;
+  color: var(--oc-slate, #5c6178);
+  font-size: 13.5px;
+}
+.d-public .pl-record-icon,
+.d-public .pl-row-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--oc-iris-soft, #eeeffc);
+  color: var(--oc-iris, #4d55d4);
+}
+.d-public .pl-record-icon {
+  width: 52px;
+  height: 52px;
+}
+.d-public .pl-record-icon svg {
+  width: 24px;
+  height: 24px;
+}
+.d-public .pl-record-amount {
+  margin-bottom: 12px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: #f6f6fa;
+}
+.d-public .pl-record-amount small {
+  display: block;
+  color: var(--oc-slate, #5c6178);
+  font-size: 13.5px;
+}
+.d-public .pl-record-amount strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.d-public .pl-record-rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.d-public .pl-record-rows li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--oc-line, rgba(23, 26, 43, 0.09));
+  border-radius: 14px;
+}
+.d-public .pl-row-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+.d-public .pl-row-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.d-public .pl-record-rows li > div {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  justify-items: start;
+}
+.d-public .pl-record-rows small {
+  color: var(--oc-slate, #5c6178);
+  font-size: 12.5px;
+}
+.d-public .pl-record-rows strong {
+  font-weight: 500;
+}
+.d-public .pl-sig {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px 3px 10px;
+  border-radius: 8px;
+  background: #f6f6fa;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 13px;
+}
+.d-public .pl-record-note {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f6f6fa;
+  color: var(--oc-slate, #5c6178);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.d-public .pl-record-note svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+}
